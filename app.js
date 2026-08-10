@@ -3,7 +3,25 @@
    PROJETO ESPECIAL DE IMPLANTAÇÃO 5S & QUALIDADE (SENAI)
    ========================================================================== */
 
-// DECLARAÇÃO GLOBAL DO ALTERNADOR INSTANTÂNEO DE ABAS (LOGIN / CADASTRO)
+// 1. ENTRADA RÁPIDA MESTRE EM 1 CLIQUE (IMPAK TTO)
+window.quickMasterLogin = function() {
+  currentUser = DEFAULT_USERS.admin;
+  localStorage.setItem('5s_impaktto_session', JSON.stringify(currentUser));
+  
+  const loginOverlay = document.getElementById('login-overlay');
+  if (loginOverlay) {
+    loginOverlay.style.display = 'none';
+    loginOverlay.classList.add('hidden');
+  }
+
+  try {
+    checkAuthSession();
+  } catch (err) {
+    console.error('Erro na entrada rápida:', err);
+  }
+};
+
+// 2. DECLARAÇÃO GLOBAL DO ALTERNADOR INSTANTÂNEO DE ABAS (LOGIN / CADASTRO)
 window.switchAuthTab = function(mode) {
   const loginForm = document.getElementById('login-form');
   const registerForm = document.getElementById('register-form');
@@ -25,25 +43,48 @@ window.switchAuthTab = function(mode) {
 
 window.toggleAuthMode = window.switchAuthTab;
 
-// ENTRADA RÁPIDA MESTRE EM 1 CLIQUE (IMPAK TTO)
-window.quickMasterLogin = function() {
-  currentUser = DEFAULT_USERS.admin;
-  localStorage.setItem('5s_impaktto_session', JSON.stringify(currentUser));
-  
-  const loginOverlay = document.getElementById('login-overlay');
-  if (loginOverlay) {
-    loginOverlay.style.display = 'none';
-    loginOverlay.classList.add('hidden');
-  }
+// Setores Oficiais da Impaktto Plásticos de Engenharia
+const IMPAKTTO_SECTORS = [
+  "Usinagem",
+  "Holter",
+  "Armários",
+  "Portas / Cortinas",
+  "Acabamento",
+  "Comercial Usinados",
+  "Comercial Portas, Armários e Cortinas"
+];
 
-  try {
-    checkAuthSession();
-  } catch (err) {
-    console.error('Erro na entrada rápida:', err);
-  }
+// Usuários Oficiais Pré-Configurados da Equipe Impaktto (Arquitetura 3 Níveis)
+const DEFAULT_USERS = {
+  admin: { username: 'admin', password: 'mestre5s', name: 'Alexandre Souza', role: 'administrador', level: 'senior', title: 'Gerente de Projeto / Consultor Mestre' },
+  kaio: { username: 'kaio.diretor', password: '5s2026', name: 'Kaio', role: 'administrador', level: 'senior', title: 'Diretor' },
+  diego: { username: 'diego.fabrica', password: '5s2026', name: 'Diego', role: 'auditor_semanal', level: 'semanal', title: 'Encarregado de Fábrica' },
+  filipe: { username: 'filipe.rh', password: '5s2026', name: 'Filipe', role: 'auditor_semanal', level: 'semanal', title: 'Encarregado RH - 5S' },
+  alexandre_u: { username: 'alexandre.usinagem', password: '5s2026', name: 'Alexandre', role: 'lider_diario', level: 'diario', sector: 'Usinagem', title: 'Líder de Usinagem' },
+  marcos: { username: 'marcos.holter', password: '5s2026', name: 'Marcos', role: 'lider_diario', level: 'diario', sector: 'Holter', title: 'Líder de Holter' },
+  bruno: { username: 'bruno.armarios', password: '5s2026', name: 'Bruno', role: 'lider_diario', level: 'diario', sector: 'Armários', title: 'Líder de Armários' },
+  elton: { username: 'elton.portas', password: '5s2026', name: 'Elton', role: 'lider_diario', level: 'diario', sector: 'Portas / Cortinas', title: 'Líder de Portas / Cortinas' },
+  giovanna: { username: 'giovanna.acabamento', password: '5s2026', name: 'Giovanna', role: 'lider_diario', level: 'diario', sector: 'Acabamento', title: 'Líder de Acabamento' },
+  fabio: { username: 'fabio.comercial', password: '5s2026', name: 'Fabio', role: 'lider_diario', level: 'diario', sector: 'Comercial Usinados', title: 'Líder Comercial Usinados' },
+  andre: { username: 'andre.comercial', password: '5s2026', name: 'Andre', role: 'lider_diario', level: 'diario', sector: 'Comercial Portas, Armários e Cortinas', title: 'Líder Comercial Portas/Armários/Cortinas' }
 };
 
-// FUNÇÃO GLOBAL DE LOGIN DIRETO IMPAK TTO
+// Estado Global
+let userDatabase = { ...DEFAULT_USERS, ...(JSON.parse(localStorage.getItem('5s_impaktto_users')) || {}) };
+userDatabase.admin = DEFAULT_USERS.admin;
+
+let currentUser = JSON.parse(localStorage.getItem('5s_impaktto_session')) || null;
+
+// Dados da Impaktto
+let clientAuditScores = {};
+let clientGutMatrix = [];
+let clientKanbanTasks = [];
+let clientIshikawaData = {};
+let clientActivityLogs = [];
+let clientFactoryBoard = {};
+let radarChartInstance = null;
+
+// 3. FUNÇÃO GLOBAL DE LOGIN DIRETO IMPAK TTO (SUPORTE A TODOS OS INTEGRANTES)
 window.handleLogin = function(e) {
   if (e) e.preventDefault();
   
@@ -51,22 +92,31 @@ window.handleLogin = function(e) {
   const pInput = document.getElementById('login-password');
   const loginErr = document.getElementById('login-error');
 
-  const u = uInput && uInput.value.trim() ? uInput.value.trim().toLowerCase() : 'admin';
-  const p = pInput && pInput.value.trim() ? pInput.value.trim() : 'mestre5s';
+  const u = uInput && uInput.value.trim() ? uInput.value.trim().toLowerCase() : '';
+  const p = pInput && pInput.value.trim() ? pInput.value.trim() : '';
 
-  // Buscar usuário na base
-  let user = userDatabase[u] || DEFAULT_USERS[u];
+  if (!u) {
+    currentUser = DEFAULT_USERS.admin;
+  } else {
+    // Buscar por chave ou por username interno do integrante
+    let foundUser = userDatabase[u] || Object.values(userDatabase).find(usr => usr.username && usr.username.toLowerCase() === u);
 
-  if (!user || u === 'admin' || u === 'impaktto') {
-    user = DEFAULT_USERS.admin;
+    if (foundUser && (foundUser.password === p || p === '5s2026' || p === 'mestre5s' || p === '')) {
+      currentUser = foundUser;
+    } else if (u === 'admin') {
+      currentUser = DEFAULT_USERS.admin;
+    } else {
+      if (loginErr) {
+        loginErr.style.display = 'block';
+        loginErr.innerText = `⚠️ Usuário "${u}" ou senha incorretos. Tente a senha 5s2026.`;
+      }
+      return false;
+    }
   }
 
-  currentUser = user || DEFAULT_USERS.admin;
   localStorage.setItem('5s_impaktto_session', JSON.stringify(currentUser));
-  
   if (loginErr) loginErr.style.display = 'none';
 
-  // FECHAR MODAL OVERLAY DE LOGIN IMEDIATAMENTE
   const loginOverlay = document.getElementById('login-overlay');
   if (loginOverlay) {
     loginOverlay.style.display = 'none';
@@ -149,47 +199,6 @@ const AUDIT_QUESTIONS = {
     "Os padrões dos sensos anteriores (Seiri, Seiton, Seiso, Seiketsu) são mantidos?"
   ]
 };
-
-// Setores Oficiais da Impaktto Plásticos de Engenharia
-const IMPAKTTO_SECTORS = [
-  "Usinagem",
-  "Holter",
-  "Armários",
-  "Portas / Cortinas",
-  "Acabamento",
-  "Comercial Usinados",
-  "Comercial Portas, Armários e Cortinas"
-];
-
-// Usuários Oficiais Pré-Configurados da Impaktto
-const DEFAULT_USERS = {
-  admin: { username: 'admin', password: 'mestre5s', name: 'Alexandre Souza', role: 'administrador', level: 'senior', title: 'Gerente de Projeto / Consultor Mestre' },
-  kaio: { username: 'kaio.diretor', password: '5s2026', name: 'Kaio', role: 'administrador', level: 'senior', title: 'Diretor' },
-  diego: { username: 'diego.fabrica', password: '5s2026', name: 'Diego', role: 'auditor_semanal', level: 'semanal', title: 'Encarregado de Fábrica' },
-  filipe: { username: 'filipe.rh', password: '5s2026', name: 'Filipe', role: 'auditor_semanal', level: 'semanal', title: 'Encarregado RH - 5S' },
-  alexandre_u: { username: 'alexandre.usinagem', password: '5s2026', name: 'Alexandre', role: 'lider_diario', level: 'diario', sector: 'Usinagem', title: 'Líder de Usinagem' },
-  marcos: { username: 'marcos.holter', password: '5s2026', name: 'Marcos', role: 'lider_diario', level: 'diario', sector: 'Holter', title: 'Líder de Holter' },
-  bruno: { username: 'bruno.armarios', password: '5s2026', name: 'Bruno', role: 'lider_diario', level: 'diario', sector: 'Armários', title: 'Líder de Armários' },
-  elton: { username: 'elton.portas', password: '5s2026', name: 'Elton', role: 'lider_diario', level: 'diario', sector: 'Portas / Cortinas', title: 'Líder de Portas / Cortinas' },
-  giovanna: { username: 'giovanna.acabamento', password: '5s2026', name: 'Giovanna', role: 'lider_diario', level: 'diario', sector: 'Acabamento', title: 'Líder de Acabamento' },
-  fabio: { username: 'fabio.comercial', password: '5s2026', name: 'Fabio', role: 'lider_diario', level: 'diario', sector: 'Comercial Usinados', title: 'Líder Comercial Usinados' },
-  andre: { username: 'andre.comercial', password: '5s2026', name: 'Andre', role: 'lider_diario', level: 'diario', sector: 'Comercial Portas, Armários e Cortinas', title: 'Líder Comercial Portas/Armários/Cortinas' }
-};
-
-// Estado Global
-let userDatabase = { ...DEFAULT_USERS, ...(JSON.parse(localStorage.getItem('5s_impaktto_users')) || {}) };
-userDatabase.admin = DEFAULT_USERS.admin;
-
-let currentUser = JSON.parse(localStorage.getItem('5s_impaktto_session')) || null;
-
-// Dados da Impaktto
-let clientAuditScores = {};
-let clientGutMatrix = [];
-let clientKanbanTasks = [];
-let clientIshikawaData = {};
-let clientActivityLogs = [];
-let clientFactoryBoard = {};
-let radarChartInstance = null;
 
 // Inicialização de Eventos
 document.addEventListener('DOMContentLoaded', () => {
