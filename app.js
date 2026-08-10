@@ -4,7 +4,7 @@
    ========================================================================== */
 
 // ENDPOINT GLOBAL DE SINCRONIZAÇÃO EM NUVEM PARA MULTI-DISPOSITIVOS (CELULARES, NOTEBOOKS E TVS)
-const CLOUD_SYNC_URL = 'https://kvdb.io/9eL21Jq8rW7mK3v1/5s_impaktto_global_db_v2';
+const CLOUD_SYNC_URL = 'https://kvdb.io/8xQ9mZ2kP5wL1v7n/5s_impaktto_master_db_v3';
 const LOCAL_API_SYNC = '/api/sync';
 
 // CANAL DE TRANSMISSÃO EM TEMPO REAL CROSS-TAB
@@ -145,9 +145,11 @@ async function pushDataToServer() {
     activity_logs: clientActivityLogs,
     factory_board: clientFactoryBoard,
     audit_scores: clientAuditScores,
-    users: userDatabase
+    users: userDatabase,
+    lastUpdate: Date.now()
   };
 
+  // 1. Tentar enviar para API local
   try {
     fetch(LOCAL_API_SYNC, {
       method: 'POST',
@@ -156,6 +158,7 @@ async function pushDataToServer() {
     }).catch(() => {});
   } catch (e) {}
 
+  // 2. Enviar para a Nuvem KVDB (garante que todos os celulares sincronizam cadastros e votos)
   try {
     fetch(CLOUD_SYNC_URL, {
       method: 'POST',
@@ -174,6 +177,7 @@ async function pushDataToServer() {
 async function pullDataFromServer() {
   let fetchedData = null;
 
+  // Tentar API local primeiro
   try {
     const res = await fetch(LOCAL_API_SYNC + '?t=' + Date.now());
     if (res.ok) {
@@ -181,7 +185,8 @@ async function pullDataFromServer() {
     }
   } catch (e) {}
 
-  if (!fetchedData || !fetchedData.activity_logs) {
+  // Se não funcionou, tentar nuvem KVDB
+  if (!fetchedData || !fetchedData.users) {
     try {
       const res = await fetch(CLOUD_SYNC_URL + '?t=' + Date.now());
       if (res.ok) {
@@ -191,8 +196,25 @@ async function pullDataFromServer() {
   }
 
   if (fetchedData && typeof fetchedData === 'object') {
-    let updated = false;
+    // 1. Sincronização de Usuários (Cadastros Novos como a Ararinha Azul)
+    if (fetchedData.users && typeof fetchedData.users === 'object') {
+      const remoteUsers = fetchedData.users;
+      let hasNewUsers = false;
 
+      for (const [uname, uobj] of Object.entries(remoteUsers)) {
+        if (!userDatabase[uname]) {
+          userDatabase[uname] = uobj;
+          hasNewUsers = true;
+        }
+      }
+
+      if (hasNewUsers) {
+        localStorage.setItem('5s_impaktto_users', JSON.stringify(userDatabase));
+        renderUserManagementTable();
+      }
+    }
+
+    // 2. Sincronização de Logs do Feed
     if (Array.isArray(fetchedData.activity_logs) && fetchedData.activity_logs.length > 0) {
       const existingLogs = JSON.parse(localStorage.getItem('5s_activity_logs_impaktto')) || clientActivityLogs;
       const existingIds = new Set(existingLogs.map(l => l.id));
@@ -211,31 +233,29 @@ async function pullDataFromServer() {
         clientActivityLogs = existingLogs.slice(0, 60);
         localStorage.setItem('5s_activity_logs_impaktto', JSON.stringify(clientActivityLogs));
         renderActivityLogs();
-        updated = true;
       }
     }
 
+    // 3. Sincronização do Quadro da Fábrica
     if (fetchedData.factory_board && typeof fetchedData.factory_board === 'object') {
       const mergedBoard = { ...clientFactoryBoard, ...fetchedData.factory_board };
       if (JSON.stringify(mergedBoard) !== JSON.stringify(clientFactoryBoard)) {
         clientFactoryBoard = mergedBoard;
         localStorage.setItem('5s_factory_board_impaktto', JSON.stringify(clientFactoryBoard));
         renderFactoryBoard();
-        updated = true;
-      }
-    }
-
-    if (fetchedData.users && typeof fetchedData.users === 'object') {
-      const mergedUsers = { ...userDatabase, ...fetchedData.users };
-      if (JSON.stringify(mergedUsers) !== JSON.stringify(userDatabase)) {
-        userDatabase = mergedUsers;
-        localStorage.setItem('5s_impaktto_users', JSON.stringify(userDatabase));
-        renderUserManagementTable();
-        updated = true;
       }
     }
   }
 }
+
+window.forceCloudSyncNow = async function() {
+  await pushDataToServer();
+  await pullDataFromServer();
+  renderUserManagementTable();
+  renderActivityLogs();
+  renderFactoryBoard();
+  alert('🔄 Sincronização em Nuvem Concluída! Todos os cadastros e votos foram sincronizados.');
+};
 
 // FUNÇÃO GLOBAL DE LOGIN DIRETO IMPAK TTO
 window.handleLogin = function(e) {
@@ -430,7 +450,7 @@ const AUDIT_QUESTIONS = {
     "Os materiais estão armazenados de forma a facilitar o acesso e evitar acidentes?",
     "As áreas livres de circulação de pessoas e empilhadeiras estão sem obstrução?",
     "A coleta seletiva de resíduos/recicláveis está identificada e funcionando?",
-    "Os cabos elétricos, mangueiras e fios estão devidamente organizedos e seguros?",
+    "Os cabos elétricos, mangueiras e fios estão devidamente organizados e seguros?",
     "Os colaboradores conhecem e respeitam o padrão de organização do setor?",
     "Equipamentos e máquinas desligados ao final do expediente conforme padrão?"
   ],
@@ -545,7 +565,7 @@ function checkAuthSession() {
   if (!autoRefreshTimer) {
     autoRefreshTimer = setInterval(() => {
       pullDataFromServer();
-    }, 3000);
+    }, 2500);
   }
 
   if (isMonitor) {
@@ -681,7 +701,7 @@ function loadImpakttoData() {
   renderUserManagementTable();
 }
 
-// 7. RENDERIZAÇÃO DO PAINEL DE GESTÃO DE COLABORADORES E NÍVEIS (INCLUINDO BOTÃO DE LIBERAÇÃO DE VOTO DE TESTE)
+// 7. RENDERIZAÇÃO DO PAINEL DE GESTÃO DE COLABORADORES E NÍVEIS
 function renderUserManagementTable() {
   const container = document.getElementById('user-management-table-container');
   if (!container) return;
@@ -690,6 +710,12 @@ function renderUserManagementTable() {
   const todayDateStr = new Date().toISOString().split('T')[0];
 
   let html = `
+    <div style="margin-bottom:0.75rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem;">
+      <span style="font-size:0.82rem; color:var(--text-muted);">Total de Integrantes Cadastrados: <strong>${usersList.length}</strong></span>
+      <button class="btn btn-secondary" style="padding:0.25rem 0.6rem; font-size:0.75rem;" onclick="forceCloudSyncNow()">
+        🔄 Sincronizar Nuvem Agora (Buscar Cadastros)
+      </button>
+    </div>
     <table style="width:100%; border-collapse:collapse; font-size:0.85rem;">
       <thead>
         <tr style="background:rgba(255,255,255,0.05); border-bottom:1px solid var(--border-color); text-align:left;">
@@ -1013,7 +1039,7 @@ function renderFactoryBoard() {
         <div style="background: rgba(6, 182, 212, 0.12); border: 1px solid var(--accent-cyan); padding: 0.5rem 0.85rem; border-radius: var(--radius-md); margin-bottom: 0.75rem; display: flex; justify-content: space-between; align-items: center;">
           <div>
             <span style="font-size:0.8rem; font-weight:800; color:var(--accent-cyan);">📺 GESTÃO VISUAL 16:9 • VISÃO DOS 7 SETORES & FECHAMENTO COLETIVO</span>
-            <span style="font-size:0.75rem; color:var(--text-muted); margin-left:0.5rem;">Atualização automática a cada 3s</span>
+            <span style="font-size:0.75rem; color:var(--text-muted); margin-left:0.5rem;">Atualização automática a cada 2.5s</span>
           </div>
           <span class="badge-seiso" style="padding:0.25rem 0.5rem; font-size:0.72rem; font-weight:700;">🟢 DIA ATUAL: ${currentDayCode}</span>
         </div>
@@ -1586,7 +1612,7 @@ window.moveKanban = function(id, dir) {
   if (dir === 'prev' && currentIdx > 0) currentIdx--;
 
   task.status = flow[currentIdx];
-  localStorage.setItem('5s_kanban_tasks_impaktto', JSON.stringify(clientKanbanTasks));
+  localStorage.setItem('5s_impaktto_tasks', JSON.stringify(clientKanbanTasks));
   logActivity(`Moveu a tarefa "${task.title}" para ${task.status.toUpperCase()}`);
   pushDataToServer();
   renderKanban();
