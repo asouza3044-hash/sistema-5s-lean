@@ -72,13 +72,13 @@ const DEFAULT_COMPANIES = {
     id: 'impaktto',
     name: 'IMPAK TTO Plásticos de Engenharia',
     subtitle: 'Projeto de Implantação 5S & Lean - Parceria SENAI',
-    logo: 'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=200&auto=format&fit=crop&q=60' // Logo de teste industrial
+    logo: ''
   },
   sohipren: {
     id: 'sohipren',
     name: 'Sohipren S.A. Oleohidráulica',
     subtitle: 'Metodologia 5S & Gestão da Qualidade ISO 9001',
-    logo: 'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?w=200&auto=format&fit=crop&q=60'
+    logo: ''
   },
   logistica: {
     id: 'logistica',
@@ -126,23 +126,35 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('form-ishikawa')?.addEventListener('submit', handleUpdateIshikawa);
 });
 
-// Checar Parâmetros de URL (?empresa=impaktto) e Personalizar a Modal de Boas-Vindas
+// Checar Parâmetros de URL (?empresa=impaktto) e Travar a Empresa no Auto-Cadastro
 function checkURLParams() {
   const urlParams = new URLSearchParams(window.location.search);
   const companyParam = urlParams.get('empresa');
   
+  const regCompanySelect = document.getElementById('reg-company-id');
+  const regCompanyLockedName = document.getElementById('reg-company-locked-name');
+  const regCompanyLockedId = document.getElementById('reg-company-locked-id');
+
   if (companyParam && companyDatabase[companyParam]) {
     selectedClientId = companyParam;
-    const regCompanySelect = document.getElementById('reg-company-id');
-    if (regCompanySelect) regCompanySelect.value = companyParam;
+    const targetCompany = companyDatabase[companyParam];
+
+    // Travar a empresa vinda do link sem opção de troca no cadastro
+    if (regCompanySelect) regCompanySelect.style.display = 'none';
+    if (regCompanyLockedName) {
+      regCompanyLockedName.style.display = 'block';
+      regCompanyLockedName.value = `🔒 ${targetCompany.name}`;
+    }
+    if (regCompanyLockedId) regCompanyLockedId.value = targetCompany.id;
 
     updateWelcomeBanner(companyParam);
   } else {
+    if (regCompanySelect) regCompanySelect.style.display = 'block';
+    if (regCompanyLockedName) regCompanyLockedName.style.display = 'none';
     updateWelcomeBanner(selectedClientId || 'impaktto');
   }
 }
 
-// Atualizar Banner e Logotipo na Tela de Boas-Vindas / Login
 function updateWelcomeBanner(companyId) {
   const company = companyDatabase[companyId] || companyDatabase['impaktto'];
   const welcomeTitle = document.getElementById('welcome-company-title');
@@ -193,7 +205,11 @@ window.handleRegCompanyChange = function(val) {
 function handleSelfRegister(e) {
   e.preventDefault();
   const name = document.getElementById('reg-name').value.trim();
-  let companyId = document.getElementById('reg-company-id').value;
+  
+  // Obter a empresa travada do link ou a selecionada no dropdown
+  const lockedId = document.getElementById('reg-company-locked-id').value;
+  let companyId = lockedId || document.getElementById('reg-company-id').value;
+  
   const newCompanyName = document.getElementById('reg-new-company-name').value.trim();
   const username = document.getElementById('reg-username').value.trim().toLowerCase();
   const password = document.getElementById('reg-password').value.trim();
@@ -226,13 +242,11 @@ function handleSelfRegister(e) {
   logActivity(`Novo participante entrou na auditoria de campo (${name})`);
 }
 
-// Administrador Cadastra Nova Empresa com Logotipo e Gera Link
 function handleAdminCreateCompany(e) {
   e.preventDefault();
   const name = document.getElementById('admin-comp-name').value.trim();
   const code = document.getElementById('admin-comp-code').value.trim().toLowerCase().replace(/\s+/g, '-');
   const subtitle = document.getElementById('admin-comp-subtitle').value.trim();
-  const logo = document.getElementById('admin-comp-logo').value.trim();
 
   if (!name || !code) return;
 
@@ -240,7 +254,7 @@ function handleAdminCreateCompany(e) {
     id: code,
     name: name,
     subtitle: subtitle || 'Projeto de Implantação 5S & Qualidade',
-    logo: logo || ''
+    logo: ''
   };
 
   localStorage.setItem('5s_company_database', JSON.stringify(companyDatabase));
