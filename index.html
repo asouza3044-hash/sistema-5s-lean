@@ -15,11 +15,11 @@
 </head>
 <body>
 
-  <!-- TELA DE LOGIN & AUTO-CADASTRO NA SALA DE REUNIÃO (MODAL OVERLAY PERSONALIZADA COM LOGO OFICIAL) -->
+  <!-- TELA DE LOGIN & AUTO-CADASTRO CLEAN (DESIGN MINIMALISTA PREMIUM) -->
   <div id="login-overlay" class="login-overlay">
     <div class="login-card">
       
-      <!-- CONTÊINER DO LOGOTIPO OFICIAL DA EMPRESA DO PROJETO -->
+      <!-- LOGOTIPO OFICIAL DA EMPRESA -->
       <div class="welcome-logo-container">
         <img id="welcome-logo-img" src="logo_impaktto.png" alt="Impaktto Plásticos de Engenharia" class="welcome-company-logo">
       </div>
@@ -29,43 +29,48 @@
         <p id="welcome-company-subtitle">Projeto Especial de Implantação 5S & SENAI</p>
       </div>
 
-      <!-- BOTÕES DE TROCA ENTRE LOGIN E AUTO-CADASTRO -->
-      <div class="nav-tabs" style="margin-bottom: 1.5rem; justify-content: center;">
-        <button type="button" id="auth-tab-register" class="nav-btn active" onclick="toggleAuthMode('register')">
-          ✨ Sou Novo Integrante
-        </button>
-        <button type="button" id="auth-tab-login" class="nav-btn" onclick="toggleAuthMode('login')">
+      <!-- ALTERNADOR MINIMALISTA ENTRE LOGIN E CADASTRO -->
+      <div class="auth-toggle-bar">
+        <button type="button" id="auth-tab-login" class="auth-toggle-btn active" onclick="switchAuthTab('login')">
           🔑 Já Tenho Login
+        </button>
+        <button type="button" id="auth-tab-register" class="auth-toggle-btn" onclick="switchAuthTab('register')">
+          ✨ Criar Conta Rápida
         </button>
       </div>
 
-      <!-- FORMULÁRIO DE AUTO-CADASTRO RÁPIDO NA SALA DE REUNIÃO -->
-      <form id="register-form">
+      <!-- FORMULÁRIO 1: LOGIN DIRETO E ULTRA-CLEAN (APENAS 2 CAMPOS) -->
+      <form id="login-form">
         <div class="form-group" style="text-align: left;">
-          <label>Nome</label>
+          <label>Usuário de Acesso</label>
+          <input type="text" id="login-username" class="form-control" placeholder="Ex: alexandre.usinagem ou admin" required autocomplete="username">
+        </div>
+
+        <div class="form-group" style="text-align: left;">
+          <label>Senha</label>
+          <input type="password" id="login-password" class="form-control" placeholder="••••••••" required autocomplete="current-password">
+        </div>
+
+        <div id="login-error" style="color: var(--status-ruim); font-size: 0.8rem; margin-bottom: 1rem; display: none;">
+          ⚠️ Usuário ou senha incorretos. Tente novamente!
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="width: 100%; padding: 0.85rem; font-size: 1rem;">
+          🔑 Entrar no Portal 5S
+        </button>
+      </form>
+
+      <!-- FORMULÁRIO 2: AUTO-CADASTRO RÁPIDO E DESPOLUÍDO (APENAS O ESSENCIAL) -->
+      <form id="register-form" style="display: none;">
+        <div class="form-group" style="text-align: left;">
+          <label>Seu Nome</label>
           <input type="text" id="reg-name" class="form-control" placeholder="Ex: Alexandre, Diego, Kaio..." required>
-        </div>
-
-        <div class="form-group" style="text-align: left;">
-          <label>Empresa / Projeto</label>
-          <!-- CAMPO BLOQUEADO DE EMPRESA -->
-          <input type="text" id="reg-company-locked-name" class="form-control" value="🔒 IMPAK TTO Plásticos de Engenharia" style="background: rgba(99, 102, 241, 0.15); font-weight: bold; border-color: var(--primary); color: #a5b4fc;" readonly>
-          <input type="hidden" id="reg-company-locked-id" value="impaktto">
-        </div>
-
-        <div class="form-group" style="text-align: left;">
-          <label>Nível de Atuação 5S</label>
-          <select id="reg-level" class="form-control">
-            <option value="diario" selected>📋 Líder Diário (Inspeciona Setor)</option>
-            <option value="semanal">🔍 Auditor Semanal (Valida Apuração)</option>
-            <option value="senior">👑 Auditor Sênior / Gerência</option>
-          </select>
         </div>
 
         <div class="form-group" style="text-align: left;">
           <label>Setor de Atuação</label>
           <select id="reg-sector" class="form-control">
-            <option value="Usinagem">Usinagem</option>
+            <option value="Usinagem" selected>Usinagem</option>
             <option value="Holter">Holter</option>
             <option value="Armários">Armários</option>
             <option value="Portas / Cortinas">Portas / Cortinas</option>
@@ -76,7 +81,7 @@
         </div>
 
         <div class="form-group" style="text-align: left;">
-          <label>Crie um Usuário de Acesso</label>
+          <label>Crie um Usuário</label>
           <input type="text" id="reg-username" class="form-control" placeholder="Ex: alexandre.usinagem" required>
         </div>
 
@@ -85,29 +90,11 @@
           <input type="password" id="reg-password" class="form-control" placeholder="••••••••" required>
         </div>
 
-        <button type="submit" class="btn btn-primary" style="width: 100%; padding: 0.9rem; font-size: 1.05rem;">
-          🚀 Entrar e Iniciar Auditoria de Campo
-        </button>
-      </form>
+        <input type="hidden" id="reg-level" value="diario">
+        <input type="hidden" id="reg-company-locked-id" value="impaktto">
 
-      <!-- FORMULÁRIO DE LOGIN -->
-      <form id="login-form" style="display: none;">
-        <div class="form-group" style="text-align: left;">
-          <label>Usuário de Acesso</label>
-          <input type="text" id="login-username" class="form-control" placeholder="Ex: alexandre.usinagem ou admin" required>
-        </div>
-
-        <div class="form-group" style="text-align: left;">
-          <label>Senha</label>
-          <input type="password" id="login-password" class="form-control" placeholder="••••••••" required>
-        </div>
-
-        <div id="login-error" style="color: var(--status-ruim); font-size: 0.8rem; margin-bottom: 1rem; display: none;">
-          ⚠️ Usuário ou senha incorretos. Tente novamente!
-        </div>
-
-        <button type="submit" class="btn btn-primary" style="width: 100%; padding: 0.8rem;">
-          🔑 Entrar no Portal 5S
+        <button type="submit" class="btn btn-primary" style="width: 100%; padding: 0.85rem; font-size: 1rem;">
+          🚀 Finalizar e Acessar Portal
         </button>
       </form>
 
@@ -149,7 +136,7 @@
       <button class="nav-btn" data-tab="tab-tools">
         🛠️ Ferramentas da Qualidade
       </button>
-      <!-- MANUAL EXCLUSIVO E RESTRITO AO ADM / CONSULTOR MESTRE -->
+      <!-- MANUAL ESTRITAMENTE RESTRITO AO ADM / CONSULTOR MESTRE -->
       <button class="nav-btn" data-tab="tab-manual" style="display: none;">
         📖 Manual de Implantação (Restrito ADM)
       </button>

@@ -151,13 +151,9 @@ function checkURLParams() {
   
   const targetCompanyId = (companyParam && companyDatabase[companyParam]) ? companyParam : 'impaktto';
   selectedClientId = targetCompanyId;
-  const targetCompany = companyDatabase[targetCompanyId] || companyDatabase['impaktto'];
 
-  const regCompanyLockedName = document.getElementById('reg-company-locked-name');
   const regCompanyLockedId = document.getElementById('reg-company-locked-id');
-
-  if (regCompanyLockedName) regCompanyLockedName.value = `🔒 ${targetCompany.name}`;
-  if (regCompanyLockedId) regCompanyLockedId.value = targetCompany.id;
+  if (regCompanyLockedId) regCompanyLockedId.value = targetCompanyId;
 
   updateWelcomeBanner(targetCompanyId);
 }
@@ -171,33 +167,35 @@ function updateWelcomeBanner(companyId) {
   if (welcomeSub) welcomeSub.innerText = company.subtitle || 'Projeto de Implantação 5S & Qualidade';
 }
 
-window.toggleAuthMode = function(mode) {
+// ALTERNADOR ULTRA-FLUIDO E INSTANTÂNEO DE ABAS LOGIN / CADASTRO
+window.switchAuthTab = function(mode) {
   const loginForm = document.getElementById('login-form');
   const registerForm = document.getElementById('register-form');
   const btnTabLogin = document.getElementById('auth-tab-login');
   const btnTabRegister = document.getElementById('auth-tab-register');
 
   if (mode === 'register') {
-    loginForm.style.display = 'none';
-    registerForm.style.display = 'block';
-    btnTabLogin.classList.remove('active');
-    btnTabRegister.classList.add('active');
+    if (loginForm) loginForm.style.display = 'none';
+    if (registerForm) registerForm.style.display = 'block';
+    if (btnTabLogin) btnTabLogin.classList.remove('active');
+    if (btnTabRegister) btnTabRegister.classList.add('active');
   } else {
-    loginForm.style.display = 'block';
-    registerForm.style.display = 'none';
-    btnTabLogin.classList.add('active');
-    btnTabRegister.classList.remove('active');
+    if (loginForm) loginForm.style.display = 'block';
+    if (registerForm) registerForm.style.display = 'none';
+    if (btnTabLogin) btnTabLogin.classList.add('active');
+    if (btnTabRegister) btnTabRegister.classList.remove('active');
   }
 };
+
+window.toggleAuthMode = window.switchAuthTab;
 
 function handleSelfRegister(e) {
   e.preventDefault();
   const name = document.getElementById('reg-name').value.trim();
-  const companyId = document.getElementById('reg-company-locked-id').value || 'impaktto';
+  const companyId = document.getElementById('reg-company-locked-id')?.value || 'impaktto';
   const username = document.getElementById('reg-username').value.trim().toLowerCase();
   const password = document.getElementById('reg-password').value.trim();
-  const userLevel = document.getElementById('reg-level').value || 'diario';
-  const userSector = document.getElementById('reg-sector').value || 'Usinagem';
+  const userSector = document.getElementById('reg-sector')?.value || 'Usinagem';
 
   if (!name || !username || !password) return;
 
@@ -206,18 +204,12 @@ function handleSelfRegister(e) {
     return;
   }
 
-  const roleMap = {
-    diario: 'lider_diario',
-    semanal: 'auditor_semanal',
-    senior: 'administrador'
-  };
-
   const newUser = {
     username,
     password,
     name,
-    role: roleMap[userLevel] || 'lider_diario',
-    level: userLevel,
+    role: 'lider_diario',
+    level: 'diario',
     sector: userSector,
     companyId
   };
@@ -229,7 +221,7 @@ function handleSelfRegister(e) {
   localStorage.setItem('5s_current_session', JSON.stringify(currentUser));
   checkAuthSession();
 
-  logActivity(`Novo integrante registrado (${name} - ${userLevel.toUpperCase()})`);
+  logActivity(`Novo integrante registrado (${name} - Setor: ${userSector})`);
 }
 
 function handleAdminCreateCompany(e) {
@@ -292,7 +284,7 @@ function checkAuthSession() {
     if (adminAddUserCard) adminAddUserCard.style.display = 'block';
     if (navBtnTools) navBtnTools.style.display = 'flex';
     
-    // MANUAL CORPORATIVO DE IMPLANTAÇÃO: EXCLUSIVO E RESTRITO AO ADM
+    // MANUAL CORPORATIVO DE IMPLANTAÇÃO: ESTRITAMENTE RESTRITO AO ADM
     if (navBtnManual) navBtnManual.style.display = 'flex';
 
     populateAdminClientDropdown();
