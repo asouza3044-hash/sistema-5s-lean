@@ -138,6 +138,49 @@ let activeFactorySectorFilter = 'ALL';
 let radarChartInstance = null;
 let autoRefreshTimer = null;
 
+// HELPER PARA CÁLCULO E CONVERSÃO DE MÉDIA DE VOTOS POR CÉLULA DO QUADRO
+function getBoardCellSummary(boardKey) {
+  const cellData = clientFactoryBoard[boardKey];
+  if (!cellData) {
+    return { status: 'bom', avgPoints: 3.0, voteCount: 0, votes: [] };
+  }
+
+  // Compatibilidade com formato legado (apenas string 'bom' / 'regular' / 'ruim')
+  if (typeof cellData === 'string') {
+    const pts = cellData === 'bom' ? 3 : (cellData === 'regular' ? 2 : 1);
+    return { status: cellData, avgPoints: pts, voteCount: 1, votes: [{ name: 'Voto Registrado', score: cellData, points: pts }] };
+  }
+
+  // Formato com Objeto e Lista de Votos
+  if (typeof cellData === 'object') {
+    const votes = Array.isArray(cellData.votes) ? cellData.votes : [];
+    if (votes.length === 0) {
+      return { status: cellData.status || 'bom', avgPoints: 3.0, voteCount: 0, votes: [] };
+    }
+
+    const totalPts = votes.reduce((acc, v) => acc + (v.points || (v.score === 'bom' ? 3 : (v.score === 'regular' ? 2 : 1))), 0);
+    const avgPts = totalPts / votes.length;
+    let computedStatus = 'bom';
+
+    if (avgPts >= 2.5) {
+      computedStatus = 'bom';
+    } else if (avgPts >= 1.7) {
+      computedStatus = 'regular';
+    } else {
+      computedStatus = 'ruim';
+    }
+
+    return {
+      status: computedStatus,
+      avgPoints: Math.round(avgPts * 10) / 10,
+      voteCount: votes.length,
+      votes: votes
+    };
+  }
+
+  return { status: 'bom', avgPoints: 3.0, voteCount: 0, votes: [] };
+}
+
 // FUNÇÕES MESTRE DE SINCRONIZAÇÃO EM NUVEM REALTIME
 async function pushDataToServer() {
   let cloudState = { users: {}, activity_logs: [], factory_board: {}, audit_scores: {} };
@@ -165,8 +208,36 @@ async function pushDataToServer() {
   clientActivityLogs = Array.from(logMap.values()).sort((a, b) => b.id - a.id).slice(0, 60);
   localStorage.setItem('5s_activity_logs_impaktto', JSON.stringify(clientActivityLogs));
 
-  // Mesclar Quadro da Fábrica
-  clientFactoryBoard = { ...cloudState.factory_board, ...clientFactoryBoard };
+  // Mesclar Quadro da Fábrica e Votos (Agregação inteligente)
+  const cloudBoard = cloudState.factory_board || {};
+  for (const [key, val] of Object.entries(cloudBoard)) {
+    if (!clientFactoryBoard[key]) {
+      clientFactoryBoard[key] = val;
+    } else if (typeof val === 'object' && val.votes) {
+      const localCell = getBoardCellSummary(key);
+      const cloudVotes = val.votes || [];
+      const voteMap = new Map();
+
+      (localCell.votes || []).forEach(v => voteMap.set(v.username || v.name, v));
+      cloudVotes.forEach(v => voteMap.set(v.username || v.name, v));
+
+      const mergedVotes = Array.from(voteMap.values());
+      const totalPts = mergedVotes.reduce((acc, v) => acc + (v.points || (v.score === 'bom' ? 3 : (v.score === 'regular' ? 2 : 1))), 0);
+      const avgPts = mergedVotes.length > 0 ? totalPts / mergedVotes.length : 3;
+
+      let avgStatus = 'bom';
+      if (avgPts >= 2.5) avgStatus = 'bom';
+      else if (avgPts >= 1.7) avgStatus = 'regular';
+      else avgStatus = 'ruim';
+
+      clientFactoryBoard[key] = {
+        status: avgStatus,
+        avgPoints: Math.round(avgPts * 10) / 10,
+        votes: mergedVotes
+      };
+    }
+  }
+
   localStorage.setItem('5s_factory_board_impaktto', JSON.stringify(clientFactoryBoard));
 
   // Salvar Estado Mestre Atualizado na Nuvem via PUT
@@ -233,11 +304,19 @@ async function pullDataFromServer() {
           }
         }
 
-        // 3. Sincronizar Quadro da Fábrica
+        // 3. Sincronizar Quadro da Fábrica e Média dos Votos
         if (d.factory_board && typeof d.factory_board === 'object') {
-          const merged = { ...clientFactoryBoard, ...d.factory_board };
-          if (JSON.stringify(merged) !== JSON.stringify(clientFactoryBoard)) {
-            clientFactoryBoard = merged;
+          const cloudBoard = d.factory_board;
+          let boardChanged = false;
+
+          for (const [key, val] of Object.entries(cloudBoard)) {
+            if (JSON.stringify(clientFactoryBoard[key]) !== JSON.stringify(val)) {
+              clientFactoryBoard[key] = val;
+              boardChanged = true;
+            }
+          }
+
+          if (boardChanged) {
             localStorage.setItem('5s_factory_board_impaktto', JSON.stringify(clientFactoryBoard));
             renderFactoryBoard();
           }
@@ -1076,7 +1155,7 @@ window.selectScore3Level = function(sensoName, qNum, qKey, level) {
   pushDataToServer();
 };
 
-// 5. RENDEREZAÇÃO COM CLIQUE DIRETO INTERATIVO EM QUALQUER VISÃO DO QUADRO
+// 5. RENDERIZAÇÃO DO QUADRO COM CÁLCULO E AGREGAÇÃO DA MÉDIA DE VOTOS POR SETOR E DIA
 function renderFactoryBoard() {
   const container = document.getElementById('factory-board-container');
   const titleEl = document.getElementById('factory-board-title');
@@ -1227,13 +1306,14 @@ function renderFactoryBoard() {
               `;
             } else {
               const boardKey = `${sec}_${s.key}_${s.dayCode}`;
-              const val = clientFactoryBoard[boardKey] || 'bom';
+              const summary = getBoardCellSummary(boardKey);
               const iconMap = { bom: '🟢 Bom', regular: '🟡 Regular', ruim: '🔴 Ruim' };
+              const countBadge = summary.voteCount > 1 ? `<span style="background:rgba(0,0,0,0.4); padding:0.1rem 0.35rem; border-radius:10px; font-size:0.65rem; margin-left:0.25rem;">📊 ${summary.avgPoints} (${summary.voteCount})</span>` : '';
 
               return `
                 <td style="vertical-align:middle; padding:0.3rem 0.2rem;">
-                  <button class="score-btn-factory selected" data-level="${val}" style="display:inline-block; padding:0.25rem 0.4rem; font-size:0.72rem; font-weight:700; cursor:pointer; border:none;" onclick="cycleFactoryBoard('${sec}', '${boardKey}', '${s.name}', '${s.dayCode}')">
-                    ${iconMap[val]}
+                  <button class="score-btn-factory selected" data-level="${summary.status}" style="display:inline-block; padding:0.25rem 0.4rem; font-size:0.72rem; font-weight:700; cursor:pointer; border:none;" onclick="cycleFactoryBoard('${sec}', '${boardKey}', '${s.name}', '${s.dayCode}')" title="Clique para avaliar. Média Atual: ${summary.avgPoints} (${summary.voteCount} votos)">
+                    ${iconMap[summary.status]} ${countBadge}
                   </button>
                 </td>
               `;
@@ -1262,27 +1342,26 @@ function renderFactoryBoard() {
             `;
           }
 
-          let hasRuim = false;
-          let hasRegular = false;
-          let countRuim = 0;
-          let countRegular = 0;
+          let totalPtsSum = 0;
+          let sectorCount = 0;
 
           IMPAKTTO_SECTORS.forEach(sec => {
             const bKey = `${sec}_${s.key}_${s.dayCode}`;
-            const val = clientFactoryBoard[bKey] || 'bom';
-            if (val === 'ruim') { hasRuim = true; countRuim++; }
-            if (val === 'regular') { hasRegular = true; countRegular++; }
+            const summary = getBoardCellSummary(bKey);
+            totalPtsSum += summary.avgPoints;
+            sectorCount++;
           });
 
+          const overallAvg = Math.round((totalPtsSum / sectorCount) * 10) / 10;
           let currentStatus = 'bom';
-          let labelText = '🟢 Bom (7/7)';
+          let labelText = `🟢 Bom (${overallAvg})`;
 
-          if (hasRuim) {
+          if (overallAvg < 1.7) {
             currentStatus = 'ruim';
-            labelText = `🔴 Ruim (${countRuim} set.)`;
-          } else if (hasRegular) {
+            labelText = `🔴 Ruim (${overallAvg})`;
+          } else if (overallAvg < 2.5) {
             currentStatus = 'regular';
-            labelText = `🟡 Reg (${countRegular} set.)`;
+            labelText = `🟡 Reg (${overallAvg})`;
           }
 
           return `
@@ -1348,13 +1427,14 @@ function renderFactoryBoard() {
               `;
             } else {
               const boardKey = `${selectedSector}_${s.key}_${day}`;
-              const currentStatus = clientFactoryBoard[boardKey] || 'bom';
+              const summary = getBoardCellSummary(boardKey);
               const iconMap = { bom: '🟢 Bom', regular: '🟡 Regular', ruim: '🔴 Ruim' };
+              const countBadge = summary.voteCount > 1 ? `<span style="background:rgba(0,0,0,0.4); padding:0.1rem 0.35rem; border-radius:10px; font-size:0.65rem; margin-left:0.25rem;">📊 ${summary.avgPoints} (${summary.voteCount}v)</span>` : '';
 
               return `
                 <td style="vertical-align:middle; ${day === currentDayCode ? 'background:rgba(99,102,241,0.1);' : ''}">
-                  <button class="btn btn-secondary" style="padding:0.3rem 0.6rem; font-size:0.78rem;" onclick="cycleFactoryBoard('${selectedSector}', '${boardKey}', '${s.name}', '${day}')">
-                    ${iconMap[currentStatus]}
+                  <button class="btn btn-secondary" style="padding:0.3rem 0.6rem; font-size:0.78rem;" onclick="cycleFactoryBoard('${selectedSector}', '${boardKey}', '${s.name}', '${day}')" title="Clique para votar. Média Atual: ${summary.avgPoints} (${summary.voteCount} votos computados)">
+                    ${iconMap[summary.status]} ${countBadge}
                   </button>
                 </td>
               `;
@@ -1374,7 +1454,7 @@ window.changeFactorySectorFilter = function(val) {
   renderFactoryBoard();
 };
 
-// 6. CICLO DE AVALIAÇÃO COM REGRA ESTRITA DE 1 VOTO POR DIA POR COLABORADOR/LÍDER E BANCO COMPARTILHADO
+// 6. CICLO DE AVALIAÇÃO COM COMPUTO E MÉDIA DE MÚLTIPLOS VOTOS NO MESMO SETOR
 window.cycleFactoryBoard = function(sectorName, boardKey, sensoName, day) {
   if (!currentUser) return;
 
@@ -1392,11 +1472,42 @@ window.cycleFactoryBoard = function(sectorName, boardKey, sensoName, day) {
     }
   }
 
-  const current = clientFactoryBoard[boardKey] || 'bom';
+  // Obter votos atuais da célula
+  const currentSummary = getBoardCellSummary(boardKey);
   const nextMap = { bom: 'regular', regular: 'ruim', ruim: 'bom' };
-  const next = nextMap[current];
+  const nextScore = nextMap[currentSummary.status];
+  const scorePts = { bom: 3, regular: 2, ruim: 1 };
 
-  clientFactoryBoard[boardKey] = next;
+  // Registrar Voto do Usuário Atual
+  let existingVotes = currentSummary.votes || [];
+  
+  // Remover voto anterior do mesmo usuário se houver re-tentativa
+  existingVotes = existingVotes.filter(v => (v.username || v.name) !== currentUser.username && (v.username || v.name) !== currentUser.name);
+
+  const timestamp = new Date().toLocaleString('pt-BR');
+  existingVotes.push({
+    username: currentUser.username,
+    name: currentUser.name,
+    role: currentUser.role || 'colaborador',
+    score: nextScore,
+    points: scorePts[nextScore],
+    timestamp: timestamp
+  });
+
+  const totalPts = existingVotes.reduce((acc, v) => acc + v.points, 0);
+  const avgPts = totalPts / existingVotes.length;
+
+  let avgStatus = 'bom';
+  if (avgPts >= 2.5) avgStatus = 'bom';
+  else if (avgPts >= 1.7) avgStatus = 'regular';
+  else avgStatus = 'ruim';
+
+  clientFactoryBoard[boardKey] = {
+    status: avgStatus,
+    avgPoints: Math.round(avgPts * 10) / 10,
+    votes: existingVotes
+  };
+
   localStorage.setItem('5s_factory_board_impaktto', JSON.stringify(clientFactoryBoard));
 
   if (!isSeniorOrSemanal) {
@@ -1404,17 +1515,20 @@ window.cycleFactoryBoard = function(sectorName, boardKey, sensoName, day) {
   }
 
   renderFactoryBoard();
+
   const labelMap = { bom: '🟢 BOM', regular: '🟡 REGULAR', ruim: '🔴 RUIM' };
   const auditorName = currentUser.name;
   const originSector = currentUser.sector || 'Fábrica';
+  const totalVotesCount = existingVotes.length;
 
   if (isSeniorOrSemanal) {
-    logActivity(`⚖️ Calibração de Auditoria (por ${auditorName}): Marcou ${sensoName} na ${day} como ${labelMap[next]} no Setor ${sectorName}`);
+    logActivity(`⚖️ Calibração de Auditoria (por ${auditorName}): Marcou ${sensoName} na ${day} como ${labelMap[nextScore]} no Setor ${sectorName} (Média Computada: ${Math.round(avgPts * 10) / 10} com ${totalVotesCount} votos)`);
   } else if (isLider) {
-    logActivity(`Marcou ${sensoName} na ${day} como ${labelMap[next]} no Setor ${sectorName} (Auditoria Cruzada por Líder ${auditorName} - Origem: ${originSector})`);
+    logActivity(`Marcou ${sensoName} na ${day} como ${labelMap[nextScore]} no Setor ${sectorName} (Auditoria Cruzada por Líder ${auditorName} - Origem: ${originSector} • Média Computada: ${Math.round(avgPts * 10) / 10})`);
   } else {
-    logActivity(`Marcou ${sensoName} na ${day} como ${labelMap[next]} no Setor ${sectorName} (Apontamento por Colaborador ${auditorName} - ${originSector})`);
+    logActivity(`Marcou ${sensoName} na ${day} como ${labelMap[nextScore]} no Setor ${sectorName} (Apontamento Cidadão por ${auditorName} - Setor: ${originSector} • Média Computada: ${Math.round(avgPts * 10) / 10})`);
   }
+
   pushDataToServer();
 };
 
@@ -1703,7 +1817,7 @@ window.moveKanban = function(id, dir) {
 };
 
 window.deleteKanban = function(id) {
-  const task = task = clientKanbanTasks.find(t => t.id === id);
+  const task = clientKanbanTasks.find(t => t.id === id);
   if (task) logActivity(`Excluiu a tarefa "${task.title}" do Kanban`);
 
   clientKanbanTasks = clientKanbanTasks.filter(t => t.id !== id);
