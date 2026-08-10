@@ -211,7 +211,7 @@ function handleSelfRegister(e) {
     console.error('Erro ao carregar sessão pós-registro:', err);
   }
 
-  logActivity(`Novo integrante registrado (${name} - Setor Origem: ${userSector} - Grupo 1: Colaborador)`);
+  logActivity(`✨ Novo colaborador registrado (${name} - Setor: ${userSector} - Participação Aberta no 5S)`);
 }
 
 // 3. CONTROLE DE TROCA DE SENHA PESSOAL E SEGURANÇA
@@ -393,7 +393,6 @@ function checkAuthSession() {
     loginOverlay.classList.add('hidden');
   }
 
-  // ALERTA DE SEGURANÇA SE ESTIVER USANDO SENHA PADRÃO '5s2026'
   const secAlert = document.getElementById('security-password-alert');
   const userPass = currentUser.password || '5s2026';
   const isDefaultPassword = (userPass === '5s2026' && currentUser.username !== 'monitor');
@@ -602,10 +601,10 @@ function renderUserManagementTable() {
         </td>
         <td style="padding:0.6rem;">
           <select class="form-control" style="font-size:0.78rem; padding:0.25rem 0.5rem; width:auto;" onchange="updateUserLevel('${u.username}', this.value)" ${isSelfAdmin ? 'disabled' : ''}>
-            <option value="colaborador" ${uLevel === 'colaborador' ? 'selected' : ''}>🟢 Grupo 1: Colaborador de Setor</option>
-            <option value="diario" ${uLevel === 'diario' ? 'selected' : ''}>⭐ Grupo 1: Líder Diário de Setor</option>
-            <option value="semanal" ${uLevel === 'semanal' ? 'selected' : ''}>🟡 Grupo 2: Auditor Volante / Encarregado</option>
-            <option value="senior" ${uLevel === 'senior' ? 'selected' : ''}>👑 Grupo 3: Gerência & Diretoria</option>
+            <option value="colaborador" ${uLevel === 'colaborador' ? 'selected' : ''}>🟢 Grupo 1: Colaborador de Setor (Auditoria Cidadã)</option>
+            <option value="diario" ${uLevel === 'diario' ? 'selected' : ''}>⭐ Grupo 1: Líder Diário de Setor (Auditoria Cruzada)</option>
+            <option value="semanal" ${uLevel === 'semanal' ? 'selected' : ''}>🟡 Grupo 2: Auditor Volante / Encarregado (Calibração)</option>
+            <option value="senior" ${uLevel === 'senior' ? 'selected' : ''}>👑 Grupo 3: Gerência & Diretoria (Gestão Mestre)</option>
           </select>
         </td>
         <td style="padding:0.6rem; text-align:center;">
@@ -829,11 +828,9 @@ function renderFactoryBoard() {
   const isLider = (currentUser && (currentUser.level === 'diario' || currentUser.role === 'lider_diario'));
   const isMonitor = (currentUser && currentUser.level === 'monitor');
 
-  // Aplicar regra da Auditoria Cruzada para Líderes, ou Setor Próprio para Colaboradores
   const targetAuditSector = isLider ? (SECTOR_ROTATION_MAP[userSector] || 'Holter') : userSector;
   let selectedSector = isDiarioOrColab ? targetAuditSector : (activeFactorySectorFilter || 'ALL');
 
-  // Identificar Dia Atual da Semana (SEG, TER, QUA, QUI, SEX, SAB)
   const dayNames = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
   const daysOrder = ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
   
@@ -843,7 +840,6 @@ function renderFactoryBoard() {
 
   const todayFocus = DAILY_SENSO_FOCUS[currentDayCode] || DAILY_SENSO_FOCUS['SEG'];
 
-  // Atualizar Título Dinâmico do Card
   if (titleEl) {
     if (isMonitor) {
       titleEl.innerHTML = `📺 Matriz dos Setores Individuais & Fechamento Coletivo da Semana`;
@@ -856,7 +852,6 @@ function renderFactoryBoard() {
     }
   }
 
-  // Banner do Rodízio Competente ou Seletor
   if (filterSelectContainer) {
     if (isMonitor) {
       filterSelectContainer.style.display = 'block';
@@ -873,15 +868,15 @@ function renderFactoryBoard() {
       filterSelectContainer.style.display = 'block';
       
       const bannerSubtext = isLider ? `
-        <span style="font-size:0.75rem; font-weight:800; color:var(--accent-cyan); text-transform:uppercase; letter-spacing:0.05em;">🔄 RODÍZIO COMPETENTE 5X5 DE AUDITORIA CRUZADA:</span>
+        <span style="font-size:0.75rem; font-weight:800; color:var(--accent-cyan); text-transform:uppercase; letter-spacing:0.05em;">🔄 RODÍZIO COMPETENTE 5X5 DE AUDITORIA CRUZADA (LÍDER):</span>
         <div style="font-size:0.95rem; font-weight:700; color:var(--text-main); margin-top:0.15rem;">
           Seu Setor Origem: <span style="color:var(--text-muted);">${userSector}</span> ➔ 
           <span style="color:var(--status-bom); font-weight:800;">📍 SEU DESTINO DE AUDITORIA: ${targetAuditSector}</span>
         </div>
       ` : `
-        <span style="font-size:0.75rem; font-weight:800; color:var(--accent-cyan); text-transform:uppercase; letter-spacing:0.05em;">📍 PAINEL DO COLABORADOR DE CAMPO:</span>
+        <span style="font-size:0.75rem; font-weight:800; color:var(--accent-cyan); text-transform:uppercase; letter-spacing:0.05em;">🤝 AVALIAÇÃO DE CAMPO INDEPENDENTE (COLABORADOR CIDADÃO 5S):</span>
         <div style="font-size:0.95rem; font-weight:700; color:var(--text-main); margin-top:0.15rem;">
-          Setor de Atuação: <span style="color:var(--status-bom); font-weight:800;">📍 ${userSector}</span>
+          Seu Setor de Atuação: <span style="color:var(--status-bom); font-weight:800;">📍 ${userSector}</span> • <i>Dê sua nota diária para o seu setor abaixo!</i>
         </div>
       `;
 
