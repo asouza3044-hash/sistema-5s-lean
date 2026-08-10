@@ -89,7 +89,7 @@ const AUDIT_QUESTIONS = {
 };
 
 // Setores Oficiais da Impaktto
-const IMPAK TTO_SECTORS = [
+const IMPAKTTO_SECTORS = [
   "Usinagem",
   "Holter",
   "Armários",
@@ -106,7 +106,7 @@ const DEFAULT_COMPANIES = {
     name: 'IMPAK TTO Plásticos de Engenharia',
     subtitle: 'Projeto Especial de Implantação 5S & SENAI',
     logo: 'logo_impaktto.png',
-    sectors: IMPAK TTO_SECTORS
+    sectors: IMPAKTTO_SECTORS
   },
   sohipren: {
     id: 'sohipren',
@@ -217,7 +217,7 @@ window.handleLogin = function(e) {
     
     if (loginErr) loginErr.style.display = 'none';
 
-    // FECHAR MODAL OVERLAY DE LOGIN IMMEDIATAMENTE
+    // FECHAR MODAL OVERLAY DE LOGIN IMEDIATAMENTE
     const loginOverlay = document.getElementById('login-overlay');
     if (loginOverlay) {
       loginOverlay.style.display = 'none';
@@ -233,10 +233,15 @@ window.handleLogin = function(e) {
   } else {
     if (loginErr) {
       loginErr.style.display = 'block';
-      loginErr.innerText = `⚠️ Usuário ou senha incorretos. Tente: admin / mestre5s`;
+      loginErr.innerText = `⚠️ Usuário "${u}" ou senha incorretos. Tente: admin / mestre5s`;
     }
     return false;
   }
+};
+
+window.clearSystemSession = function() {
+  localStorage.clear();
+  location.reload();
 };
 
 function handleSelfRegister(e) {
