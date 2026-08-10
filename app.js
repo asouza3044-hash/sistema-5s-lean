@@ -66,7 +66,7 @@ const AUDIT_QUESTIONS = {
   ]
 };
 
-// Base de Empresas (Com Impaktto como Padrão Fixo)
+// Base de Empresas
 const DEFAULT_COMPANIES = {
   impaktto: {
     id: 'impaktto',
@@ -125,7 +125,6 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('form-ishikawa')?.addEventListener('submit', handleUpdateIshikawa);
 });
 
-// Checar Parâmetros de URL ou Manter Impaktto como Empresa Única Travada no Cadastro
 function checkURLParams() {
   const urlParams = new URLSearchParams(window.location.search);
   const companyParam = urlParams.get('empresa');
@@ -134,7 +133,6 @@ function checkURLParams() {
   selectedClientId = targetCompanyId;
   const targetCompany = companyDatabase[targetCompanyId] || companyDatabase['impaktto'];
 
-  // Definir empresa travada de forma estática
   const regCompanyLockedName = document.getElementById('reg-company-locked-name');
   const regCompanyLockedId = document.getElementById('reg-company-locked-id');
 
@@ -511,24 +509,25 @@ window.selectScore3Level = function(sensoName, qNum, qKey, level) {
   logActivity(`Avaliou o item ${sensoName.toUpperCase()} #${qNum} como ${labelMap[level]}`);
 };
 
+// Renderizar Quadro Virtual "COMO ESTÁ NOSSA ÁREA?" com Resumo Explicativo abaixo de cada Senso
 function renderFactoryBoard() {
   const container = document.getElementById('factory-board-container');
   if (!container) return;
 
   const days = ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
   const sensos = [
-    { key: 'seiri', name: 'Utilização', class: 'badge-seiri' },
-    { key: 'seiton', name: 'Organização', class: 'badge-seiton' },
-    { key: 'seiso', name: 'Limpeza', class: 'badge-seiso' },
-    { key: 'seiketsu', name: 'Padronização', class: 'badge-seiketsu' },
-    { key: 'shitsuke', name: 'Disciplina', class: 'badge-shitsuke' }
+    { key: 'seiri', name: 'UTILIZAÇÃO', class: 'badge-seiri', desc: 'Separar o útil do inútil • Descarte de desnecessários' },
+    { key: 'seiton', name: 'ORGANIZAÇÃO', class: 'badge-seiton', desc: 'Um lugar para cada coisa • Identificação visual' },
+    { key: 'seiso', name: 'LIMPEZA', class: 'badge-seiso', desc: 'Manter o setor limpo • Inspecionar e conservar' },
+    { key: 'seiketsu', name: 'PADRONIZAÇÃO', class: 'badge-seiketsu', desc: 'Manter padrões • Saúde, higiene e segurança' },
+    { key: 'shitsuke', name: 'DISCIPLINA', class: 'badge-shitsuke', desc: 'Seguir regras • Cultivar hábitos diariamente' }
   ];
 
   let html = `
     <table class="factory-board-table">
       <thead>
         <tr>
-          <th style="text-align:left;">CONCEITO 5S</th>
+          <th style="text-align:left; width: 280px;">CONCEITO 5S</th>
           ${days.map(d => `<th>${d}</th>`).join('')}
         </tr>
       </thead>
@@ -538,15 +537,20 @@ function renderFactoryBoard() {
   sensos.forEach(s => {
     html += `
       <tr>
-        <td style="text-align:left;"><span class="senso-badge-title ${s.class}" style="margin:0;">${s.name}</span></td>
+        <td style="text-align:left; vertical-align:middle; padding: 0.85rem;">
+          <span class="senso-badge-title ${s.class}" style="margin:0 0 0.25rem 0;">${s.name}</span>
+          <div style="font-size:0.75rem; color:#9ca3af; line-height:1.25; font-weight: 500;">
+            💡 ${s.desc}
+          </div>
+        </td>
         ${days.map(day => {
           const boardKey = `${s.key}_${day}`;
           const currentStatus = clientFactoryBoard[boardKey] || 'bom';
           const iconMap = { bom: '🟢 Bom', regular: '🟡 Regular', ruim: '🔴 Ruim' };
           
           return `
-            <td>
-              <button class="btn btn-secondary" style="padding:0.25rem 0.5rem; font-size:0.75rem;" onclick="cycleFactoryBoard('${boardKey}', '${s.name}', '${day}')">
+            <td style="vertical-align:middle;">
+              <button class="btn btn-secondary" style="padding:0.3rem 0.6rem; font-size:0.78rem;" onclick="cycleFactoryBoard('${boardKey}', '${s.name}', '${day}')">
                 ${iconMap[currentStatus]}
               </button>
             </td>
