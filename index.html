@@ -10,10 +10,10 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
   <!-- Chart.js para o Gráfico Radar dos 5 Sensos -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <!-- Local Styles com Cache Busting v13.0 -->
-  <link rel="stylesheet" href="styles.css?v=13.0">
+  <!-- Local Styles com Cache Busting v14.0 -->
+  <link rel="stylesheet" href="styles.css?v=14.0">
   <!-- JavaScript Principal Carregado no Head -->
-  <script src="app.js?v=13.0"></script>
+  <script src="app.js?v=14.0"></script>
 </head>
 <body>
 
@@ -118,12 +118,12 @@
       <form id="form-change-password" onsubmit="handleChangePassword(event)">
         <div class="form-group" style="text-align: left;">
           <label>Senha Atual</label>
-          <input type="password" id="change-pass-current" class="form-control" placeholder="Digite sua senha atual (ex: 5s2026)" required>
+          <input type="password" id="change-pass-current" class="form-control" placeholder="Digite sua senha de acesso atual" required>
         </div>
 
         <div class="form-group" style="text-align: left;">
           <label>Nova Senha Pessoal</label>
-          <input type="password" id="change-pass-new" class="form-control" placeholder="Digite sua nova senha" required minlength="4">
+          <input type="password" id="change-pass-new" class="form-control" placeholder="Digite sua nova senha individual" required minlength="4">
         </div>
 
         <div class="form-group" style="text-align: left;">
@@ -182,13 +182,13 @@
   <!-- MAIN CONTAINER -->
   <main class="main-container">
 
-    <!-- BANNER DE ALERTA DE SEGURANÇA PARA TROCA DE SENHA PADRÃO -->
+    <!-- BANNER DE ALERTA DE SEGURANÇA DISCRETO (SEM ENTREGAR A SENHA PADRÃO!) -->
     <div id="security-password-alert" style="display: none; background: linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(239, 68, 68, 0.15)); border: 1px solid var(--status-regular); padding: 0.85rem 1.25rem; border-radius: var(--radius-md); margin-bottom: 1.25rem; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
       <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
         <div>
           <strong style="color: #fde047; font-size: 0.9rem;">⚠️ ALERTA DE SEGURANÇA DE ACESSO:</strong>
           <div style="font-size: 0.85rem; color: #f8fafc; margin-top: 0.15rem;">
-            Você ainda está utilizando a <strong>senha padrão "5s2026"</strong>! Altere agora sua senha pessoal para garantir que outros não façam lançamentos em seu nome.
+            Você ainda está utilizando a <strong>senha inicial de primeiro acesso</strong>! Altere agora sua senha pessoal para garantir que outros não façam lançamentos em seu nome.
           </div>
         </div>
         <button class="btn btn-primary" onclick="openChangePasswordModal()" style="padding: 0.45rem 0.9rem; font-size: 0.82rem; font-weight: 700;">
