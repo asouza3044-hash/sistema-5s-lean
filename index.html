@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Portal de Consultoria 5S & Ferramentas da Qualidade</title>
+  <title>Portal de Consultoria 5S & Qualidade - Impaktto & SENAI</title>
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -13,30 +13,63 @@
 </head>
 <body>
 
-  <!-- TELA DE LOGIN & AUTO-CADASTRO CORPORATIVO (MODAL OVERLAY) -->
+  <!-- TELA DE LOGIN & AUTO-CADASTRO NA SALA DE REUNIÃO (MODAL OVERLAY) -->
   <div id="login-overlay" class="login-overlay">
     <div class="login-card">
       <div class="login-header">
         <div class="brand-icon" style="margin: 0 auto 1rem auto;">5S</div>
         <h2>Portal de Consultoria 5S</h2>
-        <p>Acesse seu projeto corporativo ou cadastre-se</p>
+        <p>Projeto Especial Impaktto & SENAI</p>
       </div>
 
-      <!-- BOTÕES DE TROCA ENTRE LOGIN E AUTO-CADASTRO DE NOVO INTEGRANTE -->
+      <!-- BOTÕES DE TROCA ENTRE LOGIN E AUTO-CADASTRO -->
       <div class="nav-tabs" style="margin-bottom: 1.5rem; justify-content: center;">
-        <button type="button" id="auth-tab-login" class="nav-btn active" onclick="toggleAuthMode('login')">
-          🔑 Já Tenho Login
-        </button>
-        <button type="button" id="auth-tab-register" class="nav-btn" onclick="toggleAuthMode('register')">
+        <button type="button" id="auth-tab-register" class="nav-btn active" onclick="toggleAuthMode('register')">
           ✨ Sou Novo Integrante
         </button>
+        <button type="button" id="auth-tab-login" class="nav-btn" onclick="toggleAuthMode('login')">
+          🔑 Já Tenho Login
+        </button>
       </div>
 
+      <!-- FORMULÁRIO DE AUTO-CADASTRO RÁPIDO NA SALA DE REUNIÃO -->
+      <form id="register-form">
+        <div class="form-group" style="text-align: left;">
+          <label>Seu Nome Completo</label>
+          <input type="text" id="reg-name" class="form-control" placeholder="Ex: Engenheiro João (SENAI)" required>
+        </div>
+
+        <div class="form-group" style="text-align: left;">
+          <label>Empresa / Projeto</label>
+          <select id="reg-company-id" class="form-control" onchange="handleRegCompanyChange(this.value)">
+          </select>
+        </div>
+
+        <div class="form-group" id="reg-new-company-container" style="text-align: left; display: none;">
+          <label>Nome da Nova Empresa</label>
+          <input type="text" id="reg-new-company-name" class="form-control" placeholder="Ex: Minha Empresa Ltda">
+        </div>
+
+        <div class="form-group" style="text-align: left;">
+          <label>Crie um Usuário de Acesso</label>
+          <input type="text" id="reg-username" class="form-control" placeholder="Ex: joao.impaktto" required>
+        </div>
+
+        <div class="form-group" style="text-align: left;">
+          <label>Crie uma Senha</label>
+          <input type="password" id="reg-password" class="form-control" placeholder="••••••••" required>
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="width: 100%; padding: 0.8rem; font-size: 1rem;">
+          🚀 Entrar e Iniciar Auditoria de Campo
+        </button>
+      </form>
+
       <!-- FORMULÁRIO DE LOGIN -->
-      <form id="login-form">
+      <form id="login-form" style="display: none;">
         <div class="form-group" style="text-align: left;">
           <label>Usuário de Acesso</label>
-          <input type="text" id="login-username" class="form-control" placeholder="Ex: maria.sohipren ou admin" required>
+          <input type="text" id="login-username" class="form-control" placeholder="Ex: impaktto ou admin" required>
         </div>
 
         <div class="form-group" style="text-align: left;">
@@ -53,44 +86,9 @@
         </button>
       </form>
 
-      <!-- FORMULÁRIO DE AUTO-CADASTRO PARA NOVOS INTEGRANTES -->
-      <form id="register-form" style="display: none;">
-        <div class="form-group" style="text-align: left;">
-          <label>Seu Nome Completo</label>
-          <input type="text" id="reg-name" class="form-control" placeholder="Ex: Carlos Henrique Souza" required>
-        </div>
-
-        <div class="form-group" style="text-align: left;">
-          <label>Sua Empresa / Projeto</label>
-          <select id="reg-company-id" class="form-control" onchange="handleRegCompanyChange(this.value)">
-          </select>
-        </div>
-
-        <div class="form-group" id="reg-new-company-container" style="text-align: left; display: none;">
-          <label>Nome da Nova Empresa</label>
-          <input type="text" id="reg-new-company-name" class="form-control" placeholder="Ex: Minha Empresa Ltda">
-        </div>
-
-        <div class="form-group" style="text-align: left;">
-          <label>Crie um Usuário de Acesso</label>
-          <input type="text" id="reg-username" class="form-control" placeholder="Ex: carlos.sohipren" required>
-        </div>
-
-        <div class="form-group" style="text-align: left;">
-          <label>Crie uma Senha</label>
-          <input type="password" id="reg-password" class="form-control" placeholder="••••••••" required>
-        </div>
-
-        <button type="submit" class="btn btn-primary" style="width: 100%; padding: 0.8rem;">
-          🚀 Criar Conta & Acessar Sistema
-        </button>
-      </form>
-
       <div class="credentials-box">
-        <strong>💡 Contas para Teste de Demonstração:</strong><br>
-        • <strong>Consultor Mestre (Admin):</strong> <code>admin</code> | Senha: <code>master5s</code><br>
-        • <strong>Auditora Sohipren:</strong> <code>maria.sohipren</code> | Senha: <code>5s2026</code><br>
-        • <strong>Operações Logística:</strong> <code>ana.logistica</code> | Senha: <code>5s2026</code>
+        <strong>💡 Acesso Mestre do Consultor:</strong><br>
+        • <strong>Consultor Mestre (Xandinho):</strong> <code>admin</code> | Senha: <code>mestre5s</code>
       </div>
     </div>
   </div>
@@ -102,7 +100,7 @@
       <div class="brand-icon">5S</div>
       <div class="brand-text">
         <h1>Consultoria da Qualidade & 5S</h1>
-        <p id="active-client-name">🏢 Empresa: Selecionando...</p>
+        <p id="active-client-name">🏢 Empresa: Impaktto (SENAI & Fábrica)</p>
       </div>
     </div>
 
@@ -125,7 +123,7 @@
     <!-- TABS NAVIGATION -->
     <nav class="nav-tabs">
       <button class="nav-btn active" data-tab="tab-dashboard">
-        📊 Dashboard & Auditoria
+        📋 Auditoria 5S de Campo
       </button>
       <button class="nav-btn" data-tab="tab-tools">
         🛠️ Ferramentas da Qualidade
@@ -141,15 +139,15 @@
   <main class="main-container">
 
     <!-- ===================================================================
-         ABA 1: DASHBOARD & AUDITORIA 5S
+         ABA 1: DASHBOARD & AUDITORIA 5S DE CAMPO
          =================================================================== -->
     <section id="tab-dashboard" class="tab-content active">
       
-      <!-- PAINEL DE MATURIDADE GLOBAL DO CLIENTE -->
+      <!-- PAINEL DE MATURIDADE GLOBAL DA EMPRESA -->
       <div class="card">
         <div class="card-header">
-          <h2 class="card-title">🏆 Nível de Maturidade 5S do Cliente</h2>
-          <button class="btn btn-secondary" onclick="window.print()">🖨️ Exportar / Imprimir Relatório</button>
+          <h2 class="card-title">🏆 Nível de Maturidade 5S da Empresa</h2>
+          <button class="btn btn-secondary" onclick="window.print()">🖨️ Exportar Relatório Consolidado</button>
         </div>
 
         <div class="grid-metrics">
@@ -201,7 +199,7 @@
 
         <div style="background: rgba(255,255,255,0.03); padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
           <div>
-            <span style="font-size: 0.85rem; color: var(--text-muted);">Índice Geral do Cliente:</span>
+            <span style="font-size: 0.85rem; color: var(--text-muted);">Índice Geral de Maturidade:</span>
             <h3 id="global-maturity-score" style="font-size: 2rem; font-family: var(--font-display); color: var(--primary);">100%</h3>
           </div>
           <div>
@@ -211,26 +209,26 @@
         </div>
       </div>
 
-      <!-- CARD DE RASTREABILIDADE / HISTÓRICO DE QUEM MEXEU -->
+      <!-- CARD DE RASTREABILIDADE AO VIVO (FEED DA REUNIÃO E DA FÁBRICA) -->
       <div class="card" style="border-color: rgba(6, 182, 212, 0.4); background: rgba(6, 182, 212, 0.03);">
         <div class="card-header">
-          <h2 class="card-title" style="color: var(--accent-cyan);">📜 Histórico de Atividade (Quem Mexeu no Sistema)</h2>
+          <h2 class="card-title" style="color: var(--accent-cyan);">📜 Feed de Lançamentos de Campo (Ao Vivo)</h2>
         </div>
         <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.75rem;">
-          Registro em tempo real de cada usuário que alterou notas, Kanban ou Matriz GUT no projeto desta empresa:
+          Lançamentos sendo realizados em tempo real pelos auditores e equipe no chão de fábrica:
         </p>
         <div id="activity-log-container" style="max-height: 180px; overflow-y: auto; background: rgba(0,0,0,0.2); padding: 0.75rem; border-radius: var(--radius-sm);">
         </div>
       </div>
 
-      <!-- FORMULÁRIO DE AUDITORIA INTERATIVA DO CLIENTE -->
+      <!-- FORMULÁRIO DA AUDITORIA 5S DE CAMPO -->
       <div class="card">
         <div class="card-header">
           <h2 class="card-title">📋 Checklist Oficial de Auditoria 5S (50 Itens)</h2>
           <button class="btn btn-danger" onclick="resetAudit()">🔄 Redefinir Respostas</button>
         </div>
         <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.5rem;">
-          Selecione a pontuação de <strong>1 (Insuficiente)</strong> a <strong>4 (Ótimo)</strong> para cada um dos itens abaixo. O cálculo e a autoria do usuário logado são gravados automaticamente.
+          Selecione a pontuação de <strong>1 (Insuficiente)</strong> a <strong>4 (Ótimo)</strong> para cada um dos itens abaixo enquanto inspeciona o chão de fábrica.
         </p>
 
         <!-- Container das 50 Perguntas -->
@@ -241,7 +239,7 @@
 
 
     <!-- ===================================================================
-         ABA 2: CENTRAL DE FERRAMENTAS DA QUALIDADE
+         ABA 2: CENTRAL DE FERRAMENTAS DA QUALIDADE (EXCLUSIVO PARA CONSULTOR/ADMIN)
          =================================================================== -->
     <section id="tab-tools" class="tab-content">
       
@@ -257,15 +255,15 @@
         <form id="form-new-user" class="grid-2col">
           <div class="form-group">
             <label>Nome da Empresa do Cliente</label>
-            <input type="text" id="new-company-name" class="form-control" placeholder="Ex: Sohipren Indústria" required>
+            <input type="text" id="new-company-name" class="form-control" placeholder="Ex: Impaktto Indústria" required>
           </div>
           <div class="form-group">
             <label>Nome Completo do Colaborador / Auditor</label>
-            <input type="text" id="new-user-name" class="form-control" placeholder="Ex: Maria Silva (Auditora)" required>
+            <input type="text" id="new-user-name" class="form-control" placeholder="Ex: Eng. João (SENAI)" required>
           </div>
           <div class="form-group">
             <label>Usuário de Login</label>
-            <input type="text" id="new-user-name-user" class="form-control" placeholder="Ex: maria.sohipren" required>
+            <input type="text" id="new-user-name-user" class="form-control" placeholder="Ex: joao.impaktto" required>
           </div>
           <div class="form-group">
             <label>Senha de Acesso</label>
@@ -277,10 +275,10 @@
         </form>
       </div>
 
-      <!-- SUB-SEÇÃO: MATRIZ GUT DO CLIENTE -->
+      <!-- SUB-SEÇÃO: MATRIZ GUT -->
       <div class="card">
         <div class="card-header">
-          <h2 class="card-title">🎯 Matriz GUT - Priorização de Problemas do Cliente</h2>
+          <h2 class="card-title">🎯 Matriz GUT - Priorização de Problemas da Empresa</h2>
         </div>
 
         <form id="form-gut" class="grid-2col" style="margin-bottom: 1.5rem;">
@@ -341,10 +339,10 @@
         </div>
       </div>
 
-      <!-- SUB-SEÇÃO: KANBAN 5W2H DO CLIENTE -->
+      <!-- SUB-SEÇÃO: KANBAN 5W2H -->
       <div class="card">
         <div class="card-header">
-          <h2 class="card-title">📌 Quadro Kanban 5W2H - Plano de Ação do Cliente</h2>
+          <h2 class="card-title">📌 Quadro Kanban 5W2H - Plano de Ação da Empresa</h2>
         </div>
 
         <form id="form-kanban" class="grid-2col" style="margin-bottom: 1.5rem;">
@@ -399,7 +397,7 @@
         </div>
       </div>
 
-      <!-- SUB-SEÇÃO: ISHIKAWA DO CLIENTE -->
+      <!-- SUB-SEÇÃO: ISHIKAWA -->
       <div class="card">
         <div class="card-header">
           <h2 class="card-title">🐟 Diagrama de Ishikawa (Espinha de Peixe / 6M)</h2>

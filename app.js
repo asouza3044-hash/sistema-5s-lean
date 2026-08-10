@@ -1,8 +1,8 @@
 /* ==========================================================================
-   PORTAL DE CONSULTORIA 5S & QUALIDADE (100% EM PORTUGUÊS DO BRASIL)
+   PORTAL DE CONSULTORIA 5S & QUALIDADE (ESPECIAL REUNIÃO IMPAKTTO & SENAI)
    ========================================================================== */
 
-// Base de Dados Oficial de Pergunta dos 5 Sensos (50 Perguntas Oficiais)
+// Base de Dados Oficial de Perguntas dos 5 Sensos (50 Itens Oficiais)
 const AUDIT_QUESTIONS = {
   seiri: [
     "Há objetos pessoais ou materiais no setor que não possuem relação com o processo?",
@@ -66,25 +66,25 @@ const AUDIT_QUESTIONS = {
   ]
 };
 
-// Base de Usuários
-const DEFAULT_USERS = {
-  admin: { username: 'admin', password: 'mestre5s', name: 'Consultor Mestre (Xandinho)', role: 'administrador', companyId: 'sohipren' },
-  sohipren: { username: 'sohipren', password: '5s2026', name: 'Líder Sohipren', role: 'cliente', companyId: 'sohipren' },
-  'maria.sohipren': { username: 'maria.sohipren', password: '5s2026', name: 'Maria Silva (Auditora)', role: 'cliente', companyId: 'sohipren' },
-  logistica: { username: 'logistica', password: '5s2026', name: 'Gerente Logística', role: 'cliente', companyId: 'logistica' },
-  'ana.logistica': { username: 'ana.logistica', password: '5s2026', name: 'Ana Paula (Operações)', role: 'cliente', companyId: 'logistica' }
-};
-
+// Base de Empresas Inicial
 const DEFAULT_COMPANIES = {
+  impaktto: { id: 'impaktto', name: 'Cliente Impaktto (Projeto SENAI & Fábrica)' },
   sohipren: { id: 'sohipren', name: 'Sohipren Indústria' },
   logistica: { id: 'logistica', name: 'Empresa de Logística ABC' }
+};
+
+// Base de Usuários Inicial
+const DEFAULT_USERS = {
+  admin: { username: 'admin', password: 'mestre5s', name: 'Consultor Mestre (Xandinho)', role: 'administrador', companyId: 'impaktto' },
+  impaktto: { username: 'impaktto', password: '5s2026', name: 'Equipe Impaktto', role: 'cliente', companyId: 'impaktto' },
+  senai: { username: 'senai', password: '5s2026', name: 'Equipe SENAI', role: 'cliente', companyId: 'impaktto' }
 };
 
 // Estado Global
 let userDatabase = JSON.parse(localStorage.getItem('5s_user_database')) || DEFAULT_USERS;
 let companyDatabase = JSON.parse(localStorage.getItem('5s_company_database')) || DEFAULT_COMPANIES;
 let currentUser = JSON.parse(localStorage.getItem('5s_current_session')) || null;
-let selectedClientId = JSON.parse(localStorage.getItem('5s_active_client_id')) || null;
+let selectedClientId = JSON.parse(localStorage.getItem('5s_active_client_id')) || 'impaktto';
 
 // Dados do Cliente Ativo
 let clientAuditScores = {};
@@ -108,7 +108,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('form-ishikawa')?.addEventListener('submit', handleUpdateIshikawa);
 });
 
-// Checar parâmetros de URL (?empresa=sohipren)
+// Checar Parâmetros de URL (?empresa=impaktto)
 function checkURLParams() {
   const urlParams = new URLSearchParams(window.location.search);
   const companyParam = urlParams.get('empresa');
@@ -159,7 +159,7 @@ window.handleRegCompanyChange = function(val) {
   }
 };
 
-// Auto-Cadastro de Novo Integrante
+// Auto-Cadastro Rápido na Sala de Reunião
 function handleSelfRegister(e) {
   e.preventDefault();
   const name = document.getElementById('reg-name').value.trim();
@@ -181,7 +181,7 @@ function handleSelfRegister(e) {
   }
 
   if (userDatabase[username]) {
-    alert('Este nome de usuário já existe. Escolha outro usuário (ex: joao.sohipren).');
+    alert('Este nome de usuário já está em uso. Escolha outro usuário (ex: joao.impaktto).');
     return;
   }
 
@@ -193,13 +193,12 @@ function handleSelfRegister(e) {
   localStorage.setItem('5s_current_session', JSON.stringify(currentUser));
   checkAuthSession();
 
-  logActivity(`Novo integrante cadastrou-se no portal (${name})`);
+  logActivity(`Novo participante entrou na auditoria de campo (${name})`);
 }
 
-// Checagem de Sessão e Controle de Acesso do Administrador
+// Controle Estrito de Permissões de Interface por Perfil
 function checkAuthSession() {
   const loginOverlay = document.getElementById('login-overlay');
-  const adminAddUserCard = document.getElementById('admin-add-user-card');
 
   if (!currentUser) {
     if (loginOverlay) loginOverlay.classList.remove('hidden');
@@ -208,23 +207,44 @@ function checkAuthSession() {
 
   if (loginOverlay) loginOverlay.classList.add('hidden');
 
-  // RIGOROSO CONTROLE DE ACESSO: Painel EXCLUSIVO para o Administrador
-  if (currentUser.role === 'administrador') {
-    selectedClientId = selectedClientId || 'sohipren';
-    document.getElementById('admin-client-selector-container')?.style.setProperty('display', 'block');
-    if (adminAddUserCard) adminAddUserCard.style.setProperty('display', 'block');
+  const isAdmin = (currentUser.role === 'administrador');
+
+  // Elementos Exclusivos do Administrador (Consultor Mestre)
+  const navBtnTools = document.querySelector('.nav-btn[data-tab="tab-tools"]');
+  const navBtnManual = document.querySelector('.nav-btn[data-tab="tab-manual"]');
+  const adminClientSelector = document.getElementById('admin-client-selector-container');
+  const adminAddUserCard = document.getElementById('admin-add-user-card');
+
+  if (isAdmin) {
+    // Administrador tem visão total
+    selectedClientId = selectedClientId || 'impaktto';
+    if (adminClientSelector) adminClientSelector.style.display = 'block';
+    if (adminAddUserCard) adminAddUserCard.style.display = 'block';
+    if (navBtnTools) navBtnTools.style.display = 'flex';
+    if (navBtnManual) navBtnManual.style.display = 'flex';
     populateAdminClientDropdown();
   } else {
-    selectedClientId = currentUser.companyId || currentUser.username;
-    document.getElementById('admin-client-selector-container')?.style.setProperty('display', 'none');
-    if (adminAddUserCard) adminAddUserCard.style.setProperty('display', 'none');
+    // Usuários/Auditores da Fábrica têm visão simplificada focada em campo
+    selectedClientId = currentUser.companyId || 'impaktto';
+    if (adminClientSelector) adminClientSelector.style.display = 'none';
+    if (adminAddUserCard) adminAddUserCard.style.display = 'none';
+    
+    // Ocultar ferramentas administrativas para usuários comuns para foco 100% na Auditoria de Campo
+    if (navBtnTools) navBtnTools.style.display = 'none';
+    if (navBtnManual) navBtnManual.style.display = 'none';
+
+    // Garante que o cliente está na aba de Auditoria de Campo
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    document.querySelector('.nav-btn[data-tab="tab-dashboard"]')?.classList.add('active');
+    document.getElementById('tab-dashboard')?.classList.add('active');
   }
 
   localStorage.setItem('5s_active_client_id', JSON.stringify(selectedClientId));
   
-  const activeCompanyObj = companyDatabase[selectedClientId] || { name: 'Empresa Cliente' };
+  const activeCompanyObj = companyDatabase[selectedClientId] || { name: 'Empresa Impaktto' };
   document.getElementById('active-client-name').innerText = `🏢 Empresa: ${activeCompanyObj.name}`;
-  document.getElementById('logged-user-name').innerText = `👤 ${currentUser.name}`;
+  document.getElementById('logged-user-name').innerText = `👤 ${currentUser.name} ${isAdmin ? '(Consultor Mestre)' : '(Auditor de Campo)'}`;
 
   loadClientData(selectedClientId);
 }
@@ -256,7 +276,7 @@ window.handleLogout = function() {
   location.reload();
 };
 
-// Dropdown de Empresas para o Administrador
+// Dropdown de Empresas para Administrador
 function populateAdminClientDropdown() {
   const select = document.getElementById('admin-client-select');
   if (!select) return;
@@ -273,7 +293,7 @@ window.changeActiveClientAdmin = function(newClientId) {
   checkAuthSession();
 };
 
-// Cadastrar Novo Usuário pelo Administrador
+// Cadastrar Usuário pelo Administrador
 function handleCreateNewUser(e) {
   e.preventDefault();
   const companyName = document.getElementById('new-company-name').value.trim();
@@ -293,7 +313,7 @@ function handleCreateNewUser(e) {
   userDatabase[username] = { username, password, name, role: 'cliente', companyId };
   localStorage.setItem('5s_user_database', JSON.stringify(userDatabase));
 
-  alert(`Usuário registrado pelo Administrador!\nNome: ${name}\nUsuário: ${username}`);
+  alert(`Usuário registrado!\nNome: ${name}\nUsuário: ${username}`);
   document.getElementById('new-company-name').value = '';
   document.getElementById('new-user-name').value = '';
   document.getElementById('new-user-name-user').value = '';
@@ -303,22 +323,22 @@ function handleCreateNewUser(e) {
   populateAdminClientDropdown();
 }
 
-// Carregar Dados Isolados do Cliente
+// Carregar Dados do Cliente Ativo
 function loadClientData(clientId) {
   clientAuditScores = JSON.parse(localStorage.getItem(`5s_audit_scores_${clientId}`)) || {};
   clientGutMatrix = JSON.parse(localStorage.getItem(`5s_gut_matrix_${clientId}`)) || [];
   clientKanbanTasks = JSON.parse(localStorage.getItem(`5s_kanban_tasks_${clientId}`)) || [
-    { id: '1', title: 'Demarcar área de paletes no setor de Estoque', senso: 'seiton', status: 'a-fazer', owner: 'Supervisão', date: '2026-08-20', createdBy: 'Consultor Mestre' },
-    { id: '2', title: 'Treinamento de EPIs para Operadores', senso: 'seiketsu', status: 'em-andamento', owner: 'Qualidade', date: '2026-08-15', createdBy: 'Maria Silva' }
+    { id: '1', title: 'Demarcar corredores de circulação no chão de fábrica', senso: 'seiton', status: 'a-fazer', owner: 'Manutenção', date: '2026-08-20', createdBy: 'Consultor Mestre' },
+    { id: '2', title: 'Implantar quadro shadowboard para ferramentas de usinagem', senso: 'seiri', status: 'em-andamento', owner: 'Liderança Fábrica', date: '2026-08-15', createdBy: 'Equipe SENAI' }
   ];
   clientIshikawaData = JSON.parse(localStorage.getItem(`5s_ishikawa_${clientId}`)) || {
-    problem: `Plano de Ação 5S - ${companyDatabase[clientId]?.name || 'Empresa'}`,
-    maoObra: ['Rotina diária de descarte a implementar'],
-    metodo: ['Procedimento Operacional Padrão pendente'],
-    maquina: ['Manutenção preventiva programada'],
-    material: ['Identificação de sobressalentes'],
-    meioAmbiente: ['Sinalização de vias de pedestre'],
-    medicao: ['Rondas semanais de auditoria']
+    problem: `Auditoria de Campo 5S - ${companyDatabase[clientId]?.name || 'Impaktto'}`,
+    maoObra: ['Rotina de limpeza diária a estruturar'],
+    metodo: ['Procedimentos visuais de organização nas bancadas'],
+    maquina: ['Identificação dos pontos de lubrificação'],
+    material: ['Triagem de insumos no estoque intermediário'],
+    meioAmbiente: ['Organização de fiação elétrica e pneumática'],
+    medicao: ['Rondas semanais da Comissão de Qualidade']
   };
   clientActivityLogs = JSON.parse(localStorage.getItem(`5s_activity_logs_${clientId}`)) || [];
 
@@ -330,7 +350,7 @@ function loadClientData(clientId) {
   renderActivityLogs();
 }
 
-// Registrar Rastreabilidade
+// Rastreabilidade de Ações
 function logActivity(actionText) {
   const timestamp = new Date().toLocaleString('pt-BR');
   const userLabel = currentUser ? currentUser.name : 'Usuário';
@@ -354,7 +374,7 @@ function renderActivityLogs() {
   if (!container) return;
 
   if (clientActivityLogs.length === 0) {
-    container.innerHTML = `<div style="font-size:0.85rem; color:var(--text-muted); padding:0.5rem;">Nenhuma alteração registrada ainda.</div>`;
+    container.innerHTML = `<div style="font-size:0.85rem; color:var(--text-muted); padding:0.5rem;">Nenhuma avaliação registrada ainda. Acompanhe os lançamentos da equipe ao vivo!</div>`;
     return;
   }
 
@@ -366,7 +386,7 @@ function renderActivityLogs() {
   `).join('');
 }
 
-// Navegação de Abas
+// Navegação entre Abas
 function initTabs() {
   const navBtns = document.querySelectorAll('.nav-btn');
   const tabContents = document.querySelectorAll('.tab-content');
@@ -382,7 +402,7 @@ function initTabs() {
   });
 }
 
-// Renderizar Auditoria 5S
+// Renderizar Formulários de Auditoria 5S de Campo
 function renderAuditForms() {
   const container = document.getElementById('audit-questions-container');
   if (!container) return;
@@ -434,6 +454,7 @@ function renderAuditForms() {
   container.innerHTML = html;
 }
 
+// Selecionar Nota na Auditoria de Campo
 window.selectScore = function(sensoName, qNum, qKey, score) {
   clientAuditScores[qKey] = score;
   localStorage.setItem(`5s_audit_scores_${selectedClientId}`, JSON.stringify(clientAuditScores));
@@ -450,9 +471,10 @@ window.selectScore = function(sensoName, qNum, qKey, score) {
   }
 
   calculateAuditResults();
-  logActivity(`Alterou a nota do item ${sensoName.toUpperCase()} #${qNum} para nota ${score}`);
+  logActivity(`Pontuou o item ${sensoName.toUpperCase()} #${qNum} com Nota ${score}`);
 };
 
+// Calcular Resultados e Nível de Maturidade
 function calculateAuditResults() {
   const totals = { seiri: 0, seiton: 0, seiso: 0, seiketsu: 0, shitsuke: 0 };
   const maxPerSenso = 40;
@@ -502,6 +524,7 @@ function calculateAuditResults() {
   }
 }
 
+// Resetar Auditoria
 window.resetAudit = function() {
   if (confirm(`Deseja redefinir a auditoria de "${companyDatabase[selectedClientId]?.name}"?`)) {
     clientAuditScores = {};
@@ -539,7 +562,7 @@ function renderGUTTable() {
   clientGutMatrix.sort((a, b) => b.score - a.score);
 
   if (clientGutMatrix.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color: var(--text-muted); padding: 1rem;">Nenhum problema cadastrado para este cliente.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color: var(--text-muted); padding: 1rem;">Nenhum problema cadastrado para esta empresa.</td></tr>`;
     return;
   }
 
