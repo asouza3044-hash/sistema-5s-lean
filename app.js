@@ -337,7 +337,7 @@ function checkAuthSession() {
 
   if (isMonitor) {
     // ---------------------------------------------------------------------
-    // CONTA MONITOR (TV FÁBRICA & ESCRITÓRIO): LAYOUT 16:9 ELEGANTE (ZERO FEED / ANONIMATO)
+    // CONTA MONITOR (TV FÁBRICA & ESCRITÓRIO): LAYOUT 16:9 ELEGANTE (INDIVIDUAL + COLETIVO)
     // ---------------------------------------------------------------------
     document.body.classList.add('monitor-mode');
     activeFactorySectorFilter = 'ALL';
@@ -354,7 +354,6 @@ function checkAuthSession() {
     document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
     document.getElementById('tab-dashboard')?.classList.add('active');
 
-    // Ativar auto-refresh dos dados a cada 30 segundos na TV
     if (!autoRefreshTimer) {
       autoRefreshTimer = setInterval(() => {
         loadImpakttoData();
@@ -607,7 +606,7 @@ window.selectScore3Level = function(sensoName, qNum, qKey, level) {
   logActivity(`Avaliou o item ${sensoName.toUpperCase()} #${qNum} como ${labelMap[level]}`);
 };
 
-// 5. RENDEREZAÇÃO DO QUADRO COM MODO TV MONITOR 16:9 ELEGANTE
+// 5. RENDEREZAÇÃO DO QUADRO DE MATRIZ DE DEPARTAMENTOS INDIVIDUAIS + FECHAMENTO COLETIVO DA SEMANA
 function renderFactoryBoard() {
   const container = document.getElementById('factory-board-container');
   const titleEl = document.getElementById('factory-board-title');
@@ -631,7 +630,7 @@ function renderFactoryBoard() {
   // Atualizar Título Dinâmico do Card
   if (titleEl) {
     if (isMonitor) {
-      titleEl.innerHTML = `📺 Quadro Geral Consolidado da Fábrica (IMPAK TTO)`;
+      titleEl.innerHTML = `📺 Matriz dos Setores Individuais & Fechamento Coletivo da Semana`;
     } else if (isDiario) {
       titleEl.innerHTML = `📋 Quadro da Fábrica: COMO ESTÁ NOSSA ÁREA?`;
     } else if (selectedSector === 'ALL') {
@@ -648,10 +647,10 @@ function renderFactoryBoard() {
       filterSelectContainer.innerHTML = `
         <div style="background: rgba(6, 182, 212, 0.12); border: 1px solid var(--accent-cyan); padding: 0.5rem 0.85rem; border-radius: var(--radius-md); margin-bottom: 0.75rem; display: flex; justify-content: space-between; align-items: center;">
           <div>
-            <span style="font-size:0.8rem; font-weight:800; color:var(--accent-cyan);">📺 GESTÃO VISUAL 16:9 • AO VIVO NO TELÃO</span>
+            <span style="font-size:0.8rem; font-weight:800; color:var(--accent-cyan);">📺 GESTÃO VISUAL 16:9 • VISÃO DOS 7 SETORES & FECHAMENTO COLETIVO</span>
             <span style="font-size:0.75rem; color:var(--text-muted); margin-left:0.5rem;">Atualização automática a cada 30s</span>
           </div>
-          <span class="badge-seiso" style="padding:0.25rem 0.5rem; font-size:0.72rem; font-weight:700;">🟢 SISTEMA 100% OPERACIONAL</span>
+          <span class="badge-seiso" style="padding:0.25rem 0.5rem; font-size:0.72rem; font-weight:700;">🟢 FECHAMENTO SEMANAL AO VIVO</span>
         </div>
       `;
     } else if (isDiario) {
@@ -692,70 +691,129 @@ function renderFactoryBoard() {
   }
 
   const days = ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
-  const sensos = [
-    { key: 'seiri', dayCode: 'SEG', name: 'UTILIZAÇÃO (SEIRI)', class: 'badge-seiri', desc: 'Segunda: Separar o útil do inútil • Descarte de desnecessários' },
-    { key: 'seiton', dayCode: 'TER', name: 'ORGANIZAÇÃO (SEITON)', class: 'badge-seiton', desc: 'Terça: Um lugar para cada coisa • Identificação visual' },
-    { key: 'seiso', dayCode: 'QUA', name: 'LIMPEZA (SEISO)', class: 'badge-seiso', desc: 'Quarta: Manter o setor limpo • Inspecionar e conservar' },
-    { key: 'seiketsu', dayCode: 'QUI', name: 'PADRONIZAÇÃO (SEIKETSU)', class: 'badge-seiketsu', desc: 'Quinta: Manter padrões • Saúde, higiene e EPIs' },
-    { key: 'shitsuke', dayCode: 'SEX', name: 'DISCIPLINA (SHITSUKE)', class: 'badge-shitsuke', desc: 'Sexta: Seguir regras • Fechamento da Semana' }
-  ];
 
-  let html = `
-    <table class="factory-board-table">
-      <thead>
+  // SE FOR MODO TV MONITOR OU SELETOR ALL: MOSTRAR MATRIZ DOS 7 SETORES INDIVIDUAIS + FECHAMENTO COLETIVO!
+  if (isMonitor || selectedSector === 'ALL') {
+    const sensos = [
+      { key: 'seiri', dayCode: 'SEG', name: '1. SEIRI (Seg)' },
+      { key: 'seiton', dayCode: 'TER', name: '2. SEITON (Ter)' },
+      { key: 'seiso', dayCode: 'QUA', name: '3. SEISO (Qua)' },
+      { key: 'seiketsu', dayCode: 'QUI', name: '4. SEIKETSU (Qui)' },
+      { key: 'shitsuke', dayCode: 'SEX', name: '5. SHITSUKE (Sex)' }
+    ];
+
+    let html = `
+      <table class="factory-board-table">
+        <thead>
+          <tr>
+            <th style="text-align:left; width: 180px;">DEPARTAMENTO / SETOR</th>
+            ${sensos.map(s => `<th style="${s.dayCode === currentDayCode ? 'background:rgba(99,102,241,0.3); color:#fff;' : ''}">${s.name} ${s.dayCode === currentDayCode ? '⭐' : ''}</th>`).join('')}
+          </tr>
+        </thead>
+        <tbody>
+    `;
+
+    // 1. LINHAS INDIVIDUAIS DE CADA UM DOS 7 SETORES DA IMPAK TTO
+    IMPAKTTO_SECTORS.forEach(sec => {
+      html += `
         <tr>
-          <th style="text-align:left; width: 260px;">CONCEITO 5S (RODÍZIO 5X5)</th>
-          ${days.map(d => `<th style="${d === currentDayCode ? 'background:rgba(99,102,241,0.3); color:#fff; border-bottom:2px solid var(--primary);' : ''}">${d} ${d === currentDayCode ? '⭐ (Hoje)' : ''}</th>`).join('')}
-        </tr>
-      </thead>
-      <tbody>
-  `;
-
-  sensos.forEach(s => {
-    const isFocusToday = (s.dayCode === currentDayCode);
-
-    html += `
-      <tr style="${isFocusToday ? 'background: rgba(99,102,241,0.06);' : ''}">
-        <td style="text-align:left; vertical-align:middle; padding: ${isMonitor ? '0.5rem 0.6rem' : '0.85rem'};">
-          <span class="senso-badge-title ${s.class}" style="margin:0 0 0.15rem 0;">${s.name}</span>
-          <div style="font-size:0.7rem; color:#9ca3af; line-height:1.25; font-weight: 500;">
-            💡 ${s.desc}
-          </div>
-        </td>
-        ${days.map(day => {
-          if (selectedSector === 'ALL' || isMonitor) {
-            let hasRuim = false;
-            let hasRegular = false;
-            let countRuim = 0;
-            let countRegular = 0;
-
-            IMPAKTTO_SECTORS.forEach(sec => {
-              const bKey = `${sec}_${s.key}_${day}`;
-              const val = clientFactoryBoard[bKey] || 'bom';
-              if (val === 'ruim') { hasRuim = true; countRuim++; }
-              if (val === 'regular') { hasRegular = true; countRegular++; }
-            });
-
-            let currentStatus = 'bom';
-            let labelText = '🟢 Bom (7/7)';
-
-            if (hasRuim) {
-              currentStatus = 'ruim';
-              labelText = `🔴 Ruim (${countRuim} set.)`;
-            } else if (hasRegular) {
-              currentStatus = 'regular';
-              labelText = `🟡 Reg (${countRegular} set.)`;
-            }
+          <td style="text-align:left; font-weight:700; font-size:0.8rem; color:#e2e8f0; padding: 0.45rem 0.6rem;">
+            📍 ${sec}
+          </td>
+          ${sensos.map(s => {
+            const boardKey = `${sec}_${s.key}_${s.dayCode}`;
+            const val = clientFactoryBoard[boardKey] || 'bom';
+            const iconMap = { bom: '🟢 Bom', regular: '🟡 Regular', ruim: '🔴 Ruim' };
 
             return `
-              <td style="vertical-align:middle;">
-                <span class="score-btn-factory selected" data-level="${currentStatus}" style="display:inline-block; padding:${isMonitor ? '0.3rem 0.45rem' : '0.35rem 0.5rem'}; font-size:0.75rem; font-weight:700;">
-                  ${labelText}
+              <td style="vertical-align:middle; padding:0.3rem 0.2rem;">
+                <span class="score-btn-factory selected" data-level="${val}" style="display:inline-block; padding:0.25rem 0.4rem; font-size:0.72rem; font-weight:700;">
+                  ${iconMap[val]}
                 </span>
               </td>
             `;
+          }).join('')}
+        </tr>
+      `;
+    });
 
-          } else {
+    // 2. LINHA ESPECIAL DE FECHAMENTO COLETIVO DA SEMANA (TOTAL EMPRESA)
+    html += `
+      <tr style="background: rgba(99, 102, 241, 0.18); border-top: 2px solid var(--primary);">
+        <td style="text-align:left; font-weight:800; font-size:0.85rem; color:var(--accent-cyan); padding: 0.6rem 0.6rem;">
+          🌐 FECHAMENTO COLETIVO IMPAK TTO
+        </td>
+        ${sensos.map(s => {
+          let hasRuim = false;
+          let hasRegular = false;
+          let countRuim = 0;
+          let countRegular = 0;
+
+          IMPAKTTO_SECTORS.forEach(sec => {
+            const bKey = `${sec}_${s.key}_${s.dayCode}`;
+            const val = clientFactoryBoard[bKey] || 'bom';
+            if (val === 'ruim') { hasRuim = true; countRuim++; }
+            if (val === 'regular') { hasRegular = true; countRegular++; }
+          });
+
+          let currentStatus = 'bom';
+          let labelText = '🟢 Bom (7/7)';
+
+          if (hasRuim) {
+            currentStatus = 'ruim';
+            labelText = `🔴 Ruim (${countRuim} set.)`;
+          } else if (hasRegular) {
+            currentStatus = 'regular';
+            labelText = `🟡 Reg (${countRegular} set.)`;
+          }
+
+          return `
+            <td style="vertical-align:middle; padding:0.4rem 0.2rem;">
+              <span class="score-btn-factory selected" data-level="${currentStatus}" style="display:inline-block; padding:0.35rem 0.55rem; font-size:0.75rem; font-weight:800; box-shadow: 0 0 10px rgba(0,0,0,0.4);">
+                ${labelText}
+              </span>
+            </td>
+          `;
+        }).join('')}
+      </tr>
+    `;
+
+    html += `</tbody></table>`;
+    container.innerHTML = html;
+
+  } else {
+    // SE FOR VISÃO INDIVIDUAL DO LÍDER NO GRUPO 1: MOSTRAR QUADRO DE SENSOS X DIAS DO SEU DESTINO
+    const sensos = [
+      { key: 'seiri', dayCode: 'SEG', name: 'UTILIZAÇÃO (SEIRI)', class: 'badge-seiri', desc: 'Segunda: Separar o útil do inútil • Descarte de desnecessários' },
+      { key: 'seiton', dayCode: 'TER', name: 'ORGANIZAÇÃO (SEITON)', class: 'badge-seiton', desc: 'Terça: Um lugar para cada coisa • Identificação visual' },
+      { key: 'seiso', dayCode: 'QUA', name: 'LIMPEZA (SEISO)', class: 'badge-seiso', desc: 'Quarta: Manter o setor limpo • Inspecionar e conservar' },
+      { key: 'seiketsu', dayCode: 'QUI', name: 'PADRONIZAÇÃO (SEIKETSU)', class: 'badge-seiketsu', desc: 'Quinta: Manter padrões • Saúde, higiene e EPIs' },
+      { key: 'shitsuke', dayCode: 'SEX', name: 'DISCIPLINA (SHITSUKE)', class: 'badge-shitsuke', desc: 'Sexta: Seguir regras • Fechamento da Semana' }
+    ];
+
+    let html = `
+      <table class="factory-board-table">
+        <thead>
+          <tr>
+            <th style="text-align:left; width: 280px;">CONCEITO 5S (RODÍZIO 5X5)</th>
+            ${days.map(d => `<th style="${d === currentDayCode ? 'background:rgba(99,102,241,0.3); color:#fff; border-bottom:2px solid var(--primary);' : ''}">${d} ${d === currentDayCode ? '⭐ (Hoje)' : ''}</th>`).join('')}
+          </tr>
+        </thead>
+        <tbody>
+    `;
+
+    sensos.forEach(s => {
+      const isFocusToday = (s.dayCode === currentDayCode);
+
+      html += `
+        <tr style="${isFocusToday ? 'background: rgba(99,102,241,0.06);' : ''}">
+          <td style="text-align:left; vertical-align:middle; padding: 0.85rem;">
+            <span class="senso-badge-title ${s.class}" style="margin:0 0 0.25rem 0;">${s.name}</span>
+            <div style="font-size:0.75rem; color:#9ca3af; line-height:1.25; font-weight: 500;">
+              💡 ${s.desc}
+            </div>
+          </td>
+          ${days.map(day => {
             const boardKey = `${selectedSector}_${s.key}_${day}`;
             const currentStatus = clientFactoryBoard[boardKey] || 'bom';
             const iconMap = { bom: '🟢 Bom', regular: '🟡 Regular', ruim: '🔴 Ruim' };
@@ -767,14 +825,14 @@ function renderFactoryBoard() {
                 </button>
               </td>
             `;
-          }
-        }).join('')}
-      </tr>
-    `;
-  });
+          }).join('')}
+        </tr>
+      `;
+    });
 
-  html += `</tbody></table>`;
-  container.innerHTML = html;
+    html += `</tbody></table>`;
+    container.innerHTML = html;
+  }
 }
 
 window.changeFactorySectorFilter = function(val) {
@@ -1020,7 +1078,7 @@ function renderKanban() {
 }
 
 window.moveKanban = function(id, dir) {
-  const task = clientKanbanTasks.find(t => t.id === id);
+  const task = task = clientKanbanTasks.find(t => t.id === id);
   if (!task) return;
 
   const flow = ['a-fazer', 'em-andamento', 'concluido'];
