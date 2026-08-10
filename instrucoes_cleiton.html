@@ -39,40 +39,53 @@
       width: 100%;
       max-width: 800px;
       background: #ffffff;
-      padding: 2.5rem;
+      padding: 2rem;
       border-radius: 12px;
       box-shadow: 0 10px 25px rgba(0,0,0,0.08);
       border: 1px solid #e2e8f0;
     }
 
-    .header-bar {
+    /* CABEÇALHO OFICIAL COM MARCA IMPAK TTO EM DESTAQUE */
+    .header-bar-impaktto {
+      background: #0f172a;
+      padding: 1.25rem 1.5rem;
+      border-radius: 10px;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding-bottom: 1.25rem;
-      border-bottom: 3px solid #6366f1;
       margin-bottom: 1.5rem;
+      border-bottom: 4px solid #6366f1;
     }
 
     .logo-img {
-      height: 48px;
+      height: 60px;
+      width: auto;
+      object-fit: contain;
     }
 
     .header-title-right {
       text-align: right;
     }
 
-    .header-title-right h3 {
+    .header-title-right h2 {
       font-family: 'Outfit', sans-serif;
-      font-size: 0.95rem;
-      color: #4f46e5;
+      font-size: 1.05rem;
+      color: #ffffff;
       text-transform: uppercase;
       letter-spacing: 0.05em;
     }
 
+    .header-title-right h3 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 0.82rem;
+      color: #06b6d4;
+      text-transform: uppercase;
+      margin-top: 0.15rem;
+    }
+
     .header-title-right p {
       font-size: 0.75rem;
-      color: #64748b;
+      color: #94a3b8;
     }
 
     .doc-title-block {
@@ -263,12 +276,13 @@
 
   <div class="pdf-container">
     
-    <!-- CABEÇALHO OFICIAL COM LOGO DA IMPAK TTO -->
-    <div class="header-bar">
+    <!-- CABEÇALHO OFICIAL DE ALTO IMPACTO COM A LOGO DA IMPAK TTO -->
+    <div class="header-bar-impaktto">
       <img src="logo_impaktto.png" alt="Impaktto Plásticos de Engenharia" class="logo-img">
       <div class="header-title-right">
-        <h3>Programa Lean & Qualidade 5S</h3>
-        <p>Parceria SENAI & IMPAK TTO Plásticos de Engenharia</p>
+        <h2>Impaktto Plásticos de Engenharia</h2>
+        <h3>Programa Mestre Lean & Qualidade 5S</h3>
+        <p>Parceria Estratégica SENAI</p>
       </div>
     </div>
 

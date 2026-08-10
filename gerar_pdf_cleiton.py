@@ -6,6 +6,7 @@ Projeto: Implantação 5S & Qualidade (SENAI)
 """
 
 import os
+import shutil
 from reportlab.lib.pagesizes import letter
 from reportlab.lib import colors
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image, HRFlowable
@@ -13,8 +14,17 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch
 
 def build_pdf():
-    pdf_filename = r"C:\Users\lasec\.gemini\antigravity\scratch\manual-5s-qualidade\instrucao_trabalho_cleiton_5s.pdf"
-    artifacts_pdf = r"C:\Users\lasec\.gemini\antigravity\brain\c8f26f84-9c35-4516-bb09-a221d2c2091e\instrucao_trabalho_cleiton_5s.pdf"
+    scratch_dir = r"C:\Users\lasec\.gemini\antigravity\scratch\manual-5s-qualidade"
+    brain_dir = r"C:\Users\lasec\.gemini\antigravity\brain\c8f26f84-9c35-4516-bb09-a221d2c2091e"
+
+    logo_scratch = os.path.join(scratch_dir, "logo_impaktto.png")
+    logo_brain = os.path.join(brain_dir, "logo_impaktto.png")
+
+    if os.path.exists(logo_scratch) and not os.path.exists(logo_brain):
+        shutil.copy(logo_scratch, logo_brain)
+
+    pdf_filename = os.path.join(scratch_dir, "instrucao_trabalho_cleiton_5s.pdf")
+    artifacts_pdf = os.path.join(brain_dir, "instrucao_trabalho_cleiton_5s.pdf")
 
     doc = SimpleDocTemplate(
         pdf_filename,
@@ -27,39 +37,37 @@ def build_pdf():
 
     styles = getSampleStyleSheet()
     
-    # Estilos customizados elegantes
     primary_color = colors.HexColor("#6366f1")
-    dark_bg = colors.HexColor("#0f172a")
+    dark_header_bg = colors.HexColor("#0f172a")
     accent_cyan = colors.HexColor("#06b6d4")
-    gold_color = colors.HexColor("#d97706")
     text_dark = colors.HexColor("#1e293b")
 
     title_style = ParagraphStyle(
         'DocTitle',
         parent=styles['Heading1'],
         fontName='Helvetica-Bold',
-        fontSize=18,
-        leading=22,
+        fontSize=17,
+        leading=21,
         textColor=colors.HexColor("#0f172a"),
-        alignment=1 # Center
+        alignment=1
     )
 
     subtitle_style = ParagraphStyle(
         'DocSubTitle',
         parent=styles['Normal'],
         fontName='Helvetica-Bold',
-        fontSize=11,
+        fontSize=10.5,
         leading=14,
         textColor=primary_color,
-        alignment=1 # Center
+        alignment=1
     )
 
     heading2_style = ParagraphStyle(
         'SectionHeading',
         parent=styles['Heading2'],
         fontName='Helvetica-Bold',
-        fontSize=12,
-        leading=16,
+        fontSize=11.5,
+        leading=15,
         textColor=primary_color,
         spaceBefore=10,
         spaceAfter=4
@@ -83,29 +91,48 @@ def build_pdf():
         textColor=colors.HexColor("#047857")
     )
 
+    header_right_style = ParagraphStyle(
+        'HRight',
+        parent=styles['Normal'],
+        alignment=2,
+        fontName='Helvetica-Bold',
+        fontSize=9,
+        leading=12,
+        textColor=colors.white
+    )
+
     story = []
 
-    # 1. CABEÇALHO COM LOGOTIPO
-    logo_path = r"C:\Users\lasec\.gemini\antigravity\scratch\manual-5s-qualidade\logo_impaktto.png"
-    if os.path.exists(logo_path):
-        img = Image(logo_path, width=2.2*inch, height=0.6*inch)
-        header_table = Table([
-            [img, Paragraph("<b>PROGRAMA LEAN & QUALIDADE 5S</b><br/><font color='#64748b' size='8'>PARCERIA SENAI & IMPAK TTO PLÁSTICOS DE ENGENHARIA</font>", ParagraphStyle('HRight', parent=styles['Normal'], alignment=2))]
-        ], colWidths=[2.5*inch, 4.5*inch])
+    # 1. CABEÇALHO IMPACTANTE COM O LOGOTIPO OFICIAL DA IMPAK TTO
+    if os.path.exists(logo_scratch):
+        img = Image(logo_scratch, width=2.5*inch, height=0.9*inch)
+        
+        header_text = Paragraph(
+            "<b>IMPAK TTO PLÁSTICOS DE ENGENHARIA</b><br/>"
+            "<font color='#06b6d4' size='8'>PROGRAMA MESTRE LEAN & QUALIDADE 5S</font><br/>"
+            "<font color='#94a3b8' size='7.5'>PARCERIA ESTRATÉGICA SENAI</font>",
+            header_right_style
+        )
+
+        header_table = Table([[img, header_text]], colWidths=[2.8*inch, 4.2*inch])
         header_table.setStyle(TableStyle([
+            ('BACKGROUND', (0,0), (-1,-1), dark_header_bg),
             ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+            ('ALIGN', (0,0), (0,0), 'LEFT'),
             ('ALIGN', (1,0), (1,0), 'RIGHT'),
+            ('PADDING', (0,0), (-1,-1), 10),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 10),
+            ('TOPPADDING', (0,0), (-1,-1), 10),
         ]))
         story.append(header_table)
 
     story.append(Spacer(1, 10))
-    story.append(HRFlowable(width="100%", thickness=2, color=primary_color, spaceBefore=2, spaceAfter=10))
 
     # 2. TÍTULO DO DOCUMENTO
     story.append(Paragraph("TERMO DE NOMEAÇÃO & INSTRUÇÃO DE TRABALHO", title_style))
     story.append(Spacer(1, 4))
     story.append(Paragraph("FUNÇÃO ESPECIAL: AUDITOR VOLANTE / CORINGA DE QUALIDADE 5S (GRUPO 2)", subtitle_style))
-    story.append(Spacer(1, 12))
+    story.append(Spacer(1, 10))
 
     # 3. TEXTO DE EXALTAÇÃO DA FUNÇÃO DO CLEITON
     exaltation_text = """
@@ -122,7 +149,7 @@ def build_pdf():
         ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
     ]))
     story.append(exalt_table)
-    story.append(Spacer(1, 12))
+    story.append(Spacer(1, 10))
 
     # 4. CREDENCIAIS DE ACESSO AO PORTAL
     story.append(Paragraph("🔑 SUAS CREDENCIAIS DE ACESSO AO PORTAL DIGITAL", heading2_style))
@@ -142,7 +169,7 @@ def build_pdf():
         ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
     ]))
     story.append(cred_table)
-    story.append(Spacer(1, 12))
+    story.append(Spacer(1, 10))
 
     # 5. AS 3 ATRIBUIÇÕES PRINCIPAIS DO CLEITON
     story.append(Paragraph("⚙️ SUAS 3 PRINCIPAIS TAREFAS DE CAMPO", heading2_style))
@@ -170,11 +197,11 @@ def build_pdf():
         ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
     ]))
     story.append(tasks_table)
-    story.append(Spacer(1, 20))
+    story.append(Spacer(1, 16))
 
     # 6. ASSINATURAS OFICIAIS DE NOMEAÇÃO
-    story.append(Paragraph("<b>ASSINATURAS OFICIAIS DE NOMEAÇÃO E COMPROMISSO COM A QUALIDADE</b>", ParagraphStyle('SignTitle', parent=styles['Normal'], alignment=1, fontSize=9, fontName='Helvetica-Bold', textColor=text_dark)))
-    story.append(Spacer(1, 25))
+    story.append(Paragraph("<b>ASSINATURAS OFICIAIS DE NOMEAÇÃO E COMPROMISSO COM A QUALIDADE</b>", ParagraphStyle('SignTitle', parent=styles['Normal'], alignment=1, fontSize=8.5, fontName='Helvetica-Bold', textColor=text_dark)))
+    story.append(Spacer(1, 20))
 
     signatures_data = [
         [
@@ -197,13 +224,12 @@ def build_pdf():
     # Build Document
     doc.build(story)
     
-    # Copiar também para o diretório de artefatos
     with open(pdf_filename, 'rb') as f_src:
         pdf_bytes = f_src.read()
     with open(artifacts_pdf, 'wb') as f_dst:
         f_dst.write(pdf_bytes)
 
-    print("PDF GERADO COM SUCESSO EM AMBOS OS DIRETÓRIOS!")
+    print("PDF RECOMPILADO COM A LOGO DA IMPAK TTO EM DESTAQUE!")
 
 if __name__ == "__main__":
     build_pdf()
