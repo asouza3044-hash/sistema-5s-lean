@@ -3,6 +3,24 @@
    PROJETO ESPECIAL DE IMPLANTAÇÃO 5S & QUALIDADE (SENAI)
    ========================================================================== */
 
+// CANAL DE TRANSMISSÃO AO VIVO PARA SINCRONIZAÇÃO EM TEMPO REAL ENTRE TABS E DISPOSITIVOS
+const syncChannel = (typeof BroadcastChannel !== 'undefined') ? new BroadcastChannel('5s_impaktto_sync_channel') : null;
+
+if (syncChannel) {
+  syncChannel.onmessage = (event) => {
+    if (event.data && event.data.type === 'SYNC_ALL_DATA') {
+      loadImpakttoData();
+    }
+  };
+}
+
+// OUVINTE DE ARMAZENAMENTO COMPARTILHADO (CROSS-TAB SYNC)
+window.addEventListener('storage', (e) => {
+  if (e.key && e.key.startsWith('5s_')) {
+    loadImpakttoData();
+  }
+});
+
 // 1. ENTRADA RÁPIDA MESTRE EM 1 CLIQUE (IMPAK TTO)
 window.quickMasterLogin = function() {
   currentUser = DEFAULT_USERS.admin;
@@ -117,6 +135,17 @@ let activeFactorySectorFilter = 'ALL';
 let radarChartInstance = null;
 let autoRefreshTimer = null;
 
+// FUNÇÃO GLOBAL DE TRANSMISSÃO EM TEMPO REAL PUSH
+function notifyGlobalSync() {
+  if (syncChannel) {
+    try {
+      syncChannel.postMessage({ type: 'SYNC_ALL_DATA', timestamp: Date.now() });
+    } catch (e) {
+      console.log('Sync broadcast fail:', e);
+    }
+  }
+}
+
 // FUNÇÃO GLOBAL DE LOGIN DIRETO IMPAK TTO
 window.handleLogin = function(e) {
   if (e) e.preventDefault();
@@ -212,6 +241,7 @@ function handleSelfRegister(e) {
   }
 
   logActivity(`✨ Novo colaborador registrado (${name} - Setor: ${userSector} - Participação Aberta no 5S)`);
+  notifyGlobalSync();
 }
 
 // 3. CONTROLE DE TROCA DE SENHA PESSOAL E SEGURANÇA
@@ -277,6 +307,7 @@ window.handleChangePassword = function(e) {
 
   alert('🎉 Sua nova senha pessoal foi cadastrada com sucesso! Da próxima vez, utilize a sua nova senha.');
   checkAuthSession();
+  notifyGlobalSync();
 };
 
 window.clearSystemSession = function() {
@@ -420,6 +451,13 @@ function checkAuthSession() {
   const navBtnTools = document.querySelector('.nav-btn[data-tab="tab-tools"]');
   const navBtnManual = document.querySelector('.nav-btn[data-tab="tab-manual"]');
 
+  // TIMER RECORRENTE AUTOMÁTICO DE REFRESH DINÂMICO PARA TODOS OS USUÁRIOS (A CADA 4 SEGUNDOS)
+  if (!autoRefreshTimer) {
+    autoRefreshTimer = setInterval(() => {
+      loadImpakttoData();
+    }, 4000);
+  }
+
   if (isMonitor) {
     document.body.classList.add('monitor-mode');
     activeFactorySectorFilter = 'ALL';
@@ -437,23 +475,13 @@ function checkAuthSession() {
     document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
     document.getElementById('tab-dashboard')?.classList.add('active');
 
-    if (!autoRefreshTimer) {
-      autoRefreshTimer = setInterval(() => {
-        loadImpakttoData();
-      }, 30000);
-    }
-
   } else {
     document.body.classList.remove('monitor-mode');
-    if (autoRefreshTimer) {
-      clearInterval(autoRefreshTimer);
-      autoRefreshTimer = null;
-    }
 
     if (isLider || isColaborador) {
       if (cardFactoryBoard) cardFactoryBoard.style.display = 'block';
       if (cardMaturity) cardMaturity.style.display = 'none';
-      if (cardActivityFeed) cardActivityFeed.style.display = 'none';
+      if (cardActivityFeed) cardActivityFeed.style.display = 'block'; // AGORA O FEED FICA VISÍVEL PARA O GRUPO 1 VER OS APONTAMENTOS AO VIVO!
       if (cardAuditChecklist) cardAuditChecklist.style.display = 'none';
       if (cardUserManagement) cardUserManagement.style.display = 'none';
 
@@ -650,6 +678,7 @@ window.updateUserLevel = function(username, newLevel) {
   };
 
   logActivity(`👤 Alterou classificação do integrante "${userDatabase[username].name}" para ${levelText[newLevel]}`);
+  notifyGlobalSync();
 
   renderUserManagementTable();
   alert(`Classificação de "${userDatabase[username].name}" atualizada para ${levelText[newLevel]}!`);
@@ -667,6 +696,7 @@ window.updateUserSector = function(username, newSector) {
 
   localStorage.setItem('5s_impaktto_users', JSON.stringify(userDatabase));
   logActivity(`📍 Alterou setor do integrante "${userDatabase[username].name}" para ${newSector}`);
+  notifyGlobalSync();
 
   renderUserManagementTable();
 };
@@ -680,6 +710,7 @@ window.deleteUserAccount = function(username) {
     localStorage.setItem('5s_impaktto_users', JSON.stringify(userDatabase));
 
     logActivity(`Excluiu o usuário de "${deletedName}"`);
+    notifyGlobalSync();
     renderUserManagementTable();
   }
 };
@@ -695,16 +726,22 @@ function logActivity(actionText) {
     timestamp: timestamp
   };
 
-  clientActivityLogs.unshift(logEntry);
-  if (clientActivityLogs.length > 50) clientActivityLogs.pop();
+  // RE-LEITURA DINÂMICA DO LOCALSTORAGE PARA PRESERVAR LANÇAMENTOS DE OUTROS DISPOSITIVOS
+  let currentLogs = JSON.parse(localStorage.getItem('5s_activity_logs_impaktto')) || [];
+  currentLogs.unshift(logEntry);
+  if (currentLogs.length > 60) currentLogs.pop();
 
+  clientActivityLogs = currentLogs;
   localStorage.setItem('5s_activity_logs_impaktto', JSON.stringify(clientActivityLogs));
   renderActivityLogs();
+  notifyGlobalSync();
 }
 
 function renderActivityLogs() {
   const container = document.getElementById('activity-log-container');
   if (!container) return;
+
+  clientActivityLogs = JSON.parse(localStorage.getItem('5s_activity_logs_impaktto')) || clientActivityLogs;
 
   if (clientActivityLogs.length === 0) {
     container.innerHTML = `<div style="font-size:0.85rem; color:var(--text-muted); padding:0.5rem;">Nenhuma avaliação registrada ainda. Acompanhe os lançamentos da equipe ao vivo!</div>`;
@@ -814,6 +851,7 @@ window.selectScore3Level = function(sensoName, qNum, qKey, level) {
 
   const labelMap = { bom: '🟢 BOM', regular: '🟡 REGULAR', ruim: '🔴 RUIM' };
   logActivity(`Avaliou o item ${sensoName.toUpperCase()} #${qNum} como ${labelMap[level]}`);
+  notifyGlobalSync();
 };
 
 // 5. RENDEREZAÇÃO COM LÓGICA DE PROTEÇÃO TEMPORAL (BLOQUEIO DE DIAS FUTUROS)
@@ -859,7 +897,7 @@ function renderFactoryBoard() {
         <div style="background: rgba(6, 182, 212, 0.12); border: 1px solid var(--accent-cyan); padding: 0.5rem 0.85rem; border-radius: var(--radius-md); margin-bottom: 0.75rem; display: flex; justify-content: space-between; align-items: center;">
           <div>
             <span style="font-size:0.8rem; font-weight:800; color:var(--accent-cyan);">📺 GESTÃO VISUAL 16:9 • VISÃO DOS 7 SETORES & FECHAMENTO COLETIVO</span>
-            <span style="font-size:0.75rem; color:var(--text-muted); margin-left:0.5rem;">Atualização automática a cada 30s</span>
+            <span style="font-size:0.75rem; color:var(--text-muted); margin-left:0.5rem;">Atualização automática a cada 4s</span>
           </div>
           <span class="badge-seiso" style="padding:0.25rem 0.5rem; font-size:0.72rem; font-weight:700;">🟢 DIA ATUAL: ${currentDayCode}</span>
         </div>
@@ -1124,6 +1162,7 @@ window.cycleFactoryBoard = function(sectorName, boardKey, sensoName, day) {
   } else {
     logActivity(`Marcou ${sensoName} na ${day} como ${labelMap[next]} no Setor ${sectorName} (Apontamento por Colaborador ${auditorName} - ${originSector})`);
   }
+  notifyGlobalSync();
 };
 
 // 6. CÁLCULO DE RESULTADOS E CONTROLE ESTRITO DA SINALIZAÇÃO DE PREMIAÇÃO (CONFIDENCIAL GRUPO 2 E 3)
@@ -1270,6 +1309,7 @@ window.resetAudit = function() {
     clientAuditScores = {};
     localStorage.removeItem('5s_audit_scores_impaktto');
     logActivity('Redefiniu todas as respostas da auditoria');
+    notifyGlobalSync();
     renderAuditForms();
     calculateAuditResults();
   }
@@ -1291,6 +1331,7 @@ function handleAddGUT(e) {
   localStorage.setItem('5s_gut_matrix_impaktto', JSON.stringify(clientGutMatrix));
 
   logActivity(`Adicionou o problema "${problem}" na Matriz GUT (Pontuação: ${score})`);
+  notifyGlobalSync();
   document.getElementById('gut-problem').value = '';
   renderGUTTable();
 }
@@ -1299,6 +1340,7 @@ function renderGUTTable() {
   const tbody = document.getElementById('gut-table-body');
   if (!tbody) return;
 
+  clientGutMatrix = JSON.parse(localStorage.getItem('5s_gut_matrix_impaktto')) || clientGutMatrix;
   clientGutMatrix.sort((a, b) => b.score - a.score);
 
   if (clientGutMatrix.length === 0) {
@@ -1327,6 +1369,7 @@ window.removeGUT = function(id) {
 
   clientGutMatrix = clientGutMatrix.filter(i => i.id !== id);
   localStorage.setItem('5s_gut_matrix_impaktto', JSON.stringify(clientGutMatrix));
+  notifyGlobalSync();
   renderGUTTable();
 };
 
@@ -1352,6 +1395,7 @@ function handleAddKanban(e) {
 
   localStorage.setItem('5s_kanban_tasks_impaktto', JSON.stringify(clientKanbanTasks));
   logActivity(`Criou a tarefa no Kanban: "${title}" (Resp: ${owner || 'Não atribuído'})`);
+  notifyGlobalSync();
   document.getElementById('kanban-title').value = '';
   renderKanban();
 }
@@ -1365,6 +1409,8 @@ function renderKanban() {
 
   if (!cols['a-fazer']) return;
   Object.values(cols).forEach(col => col.innerHTML = '');
+
+  clientKanbanTasks = JSON.parse(localStorage.getItem('5s_kanban_tasks_impaktto')) || clientKanbanTasks;
 
   clientKanbanTasks.forEach(task => {
     const card = document.createElement('div');
@@ -1400,6 +1446,7 @@ window.moveKanban = function(id, dir) {
   task.status = flow[currentIdx];
   localStorage.setItem('5s_kanban_tasks_impaktto', JSON.stringify(clientKanbanTasks));
   logActivity(`Moveu a tarefa "${task.title}" para ${task.status.toUpperCase()}`);
+  notifyGlobalSync();
   renderKanban();
 };
 
@@ -1409,6 +1456,7 @@ window.deleteKanban = function(id) {
 
   clientKanbanTasks = clientKanbanTasks.filter(t => t.id !== id);
   localStorage.setItem('5s_kanban_tasks_impaktto', JSON.stringify(clientKanbanTasks));
+  notifyGlobalSync();
   renderKanban();
 };
 
@@ -1423,6 +1471,7 @@ function handleUpdateIshikawa(e) {
   if (cause && clientIshikawaData[mType]) {
     clientIshikawaData[mType].push(cause);
     logActivity(`Adicionou a causa "${cause}" no Diagrama de Ishikawa (${mType.toUpperCase()})`);
+    notifyGlobalSync();
   }
 
   localStorage.setItem('5s_ishikawa_impaktto', JSON.stringify(clientIshikawaData));
@@ -1433,6 +1482,8 @@ function handleUpdateIshikawa(e) {
 function renderIshikawa() {
   const problemTitle = document.getElementById('ishikawa-effect-title');
   if (problemTitle) problemTitle.innerText = clientIshikawaData.problem || 'Sem problema definido';
+
+  clientIshikawaData = JSON.parse(localStorage.getItem('5s_ishikawa_impaktto')) || clientIshikawaData;
 
   const mList = ['maoObra', 'metodo', 'maquina', 'material', 'meioAmbiente', 'medicao'];
   mList.forEach(m => {
