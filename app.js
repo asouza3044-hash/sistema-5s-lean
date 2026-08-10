@@ -177,7 +177,7 @@ const AUDIT_QUESTIONS = {
     "Os materiais e ferramentas necessários para o trabalho estão em locais definidos?",
     "O material separado para reparo/devolução está em local seguro e identificado?",
     "Há controle sobre materiais e componentes que ficaram parados por muito tempo?",
-    "Os documentos impressos (OPs, relatórios, NFs) estão organizedos e separados?",
+    "Os documentos impressos (OPs, relatórios, NFs) estão organizados e separados?",
     "Os produtos acabados/componentes sem uso imediato estão em locais específicos?"
   ],
   seiton: [
@@ -337,16 +337,16 @@ function checkAuthSession() {
 
   if (isMonitor) {
     // ---------------------------------------------------------------------
-    // CONTA MONITOR (TV FÁBRICA & ESCRITÓRIO): SOMENTE O QUADRO DA FÁBRICA EM TELA CHEIA
-    // MATURIDADE REMOVIDA CONFORME DIRETRIZ DE GOVERNANÇA
+    // CONTA MONITOR (TV FÁBRICA & ESCRITÓRIO): RADAR + QUADRO EM 16:9
+    // SINALIZAÇÃO DE PRÊMIO EM DINHEIRO REMOVIDA PARA CONFIDENCIALIDADE
     // ---------------------------------------------------------------------
     document.body.classList.add('monitor-mode');
     activeFactorySectorFilter = 'ALL';
 
+    if (cardMaturity) cardMaturity.style.display = 'block'; // CARD RESTAURADO NA TV
     if (cardFactoryBoard) cardFactoryBoard.style.display = 'block';
-    if (cardMaturity) cardMaturity.style.display = 'none'; // REMOVIDO DO MONITOR
     if (cardActivityFeed) cardActivityFeed.style.display = 'none'; // REMOVIDO PARA ANONIMATO
-    if (cardAuditChecklist) cardAuditChecklist.style.display = 'none'; // Sem formulário de perguntas
+    if (cardAuditChecklist) cardAuditChecklist.style.display = 'none';
 
     if (navTabsContainer) navTabsContainer.style.display = 'none';
     if (navBtnTools) navBtnTools.style.display = 'none';
@@ -369,12 +369,8 @@ function checkAuthSession() {
     }
 
     if (isDiario) {
-      // ---------------------------------------------------------------------
-      // GRUPO 1 (LÍDERES DIÁRIOS): SOMENTE O QUADRO DA ÁREA AUDITADA NO RODÍZIO
-      // MATURIDADE REMOVIDA CONFORME DIRETRIZ DE GOVERNANÇA
-      // ---------------------------------------------------------------------
       if (cardFactoryBoard) cardFactoryBoard.style.display = 'block';
-      if (cardMaturity) cardMaturity.style.display = 'none'; // REMOVIDO DO GRUPO 1
+      if (cardMaturity) cardMaturity.style.display = 'none';
       if (cardActivityFeed) cardActivityFeed.style.display = 'none';
       if (cardAuditChecklist) cardAuditChecklist.style.display = 'none';
 
@@ -386,9 +382,6 @@ function checkAuthSession() {
       document.getElementById('tab-dashboard')?.classList.add('active');
 
     } else if (isSemanal) {
-      // ---------------------------------------------------------------------
-      // GRUPO 2 (AUDITORES SEMANAIS / ENCARREGADOS): QUADRO + CHECKLIST + MATURIDADE + FEED
-      // ---------------------------------------------------------------------
       if (cardFactoryBoard) cardFactoryBoard.style.display = 'block';
       if (cardMaturity) cardMaturity.style.display = 'block';
       if (cardActivityFeed) cardActivityFeed.style.display = 'block';
@@ -404,9 +397,6 @@ function checkAuthSession() {
       document.getElementById('tab-dashboard')?.classList.add('active');
 
     } else {
-      // ---------------------------------------------------------------------
-      // GRUPO 3 (AUDITORES SÊNIOR / ADM & GERÊNCIA/DIRETORIA): ACESSO TOTAL COMPLETO
-      // ---------------------------------------------------------------------
       if (cardFactoryBoard) cardFactoryBoard.style.display = 'block';
       if (cardMaturity) cardMaturity.style.display = 'block';
       if (cardActivityFeed) cardActivityFeed.style.display = 'block';
@@ -914,7 +904,7 @@ window.cycleFactoryBoard = function(sectorName, boardKey, sensoName, day) {
   logActivity(`Marcou ${sensoName} na ${day} como ${labelMap[next]} no Setor ${sectorName} (Auditoria Cruzada por ${auditorName} - Origem: ${originSector})`);
 };
 
-// 6. CÁLCULO DE RESULTADOS E TERMÔMETRO DO PROGRAMA DE PREMIAÇÃO MENSAL EM DINHEIRO (META >= 90%)
+// 6. CÁLCULO DE RESULTADOS E CONTROLE ESTRITO DA SINALIZAÇÃO DE PREMIAÇÃO (CONFIDENCIAL GRUPO 2 E 3)
 function calculateAuditResults() {
   const totals = { seiri: 0, seiton: 0, seiso: 0, seiketsu: 0, shitsuke: 0 };
   const maxPerSenso = 30;
@@ -966,34 +956,43 @@ function calculateAuditResults() {
     }
   }
 
-  // ATUALIZAÇÃO DO TERMÔMETRO DO PRÊMIO MENSAL EM DINHEIRO (META >= 90%)
+  // REGRAS ESTRITAS DE SINALIZAÇÃO DO PRÊMIO MENSAL EM DINHEIRO (META >= 90% CONFIDENCIAL GRUPO 2 E 3)
   const rewardBadgeEl = document.getElementById('monthly-reward-badge');
   if (rewardBadgeEl) {
-    if (globalPct >= 90) {
-      rewardBadgeEl.innerHTML = `
-        <div style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(245, 158, 11, 0.2)); border: 2px solid #f59e0b; padding: 0.85rem 1.25rem; border-radius: var(--radius-md); margin-top: 0.75rem; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 0 20px rgba(245, 158, 11, 0.3);">
-          <div>
-            <span style="font-size: 0.78rem; font-weight: 800; color: #fde047; text-transform: uppercase; letter-spacing:0.05em;">🏆 PROGRAMA DE PREMIAÇÃO MENSAL EM DINHEIRO (META IMPAK TTO)</span>
-            <div style="font-size: 1.05rem; font-weight: 800; color: #ffffff; margin-top: 0.15rem;">
-              🎉 META DE 90% ALCANÇADA! (${globalPct}%) - FÁBRICA ELEGÍVEL AO PRÊMIO EM DINHEIRO MENSAL!
+    const isSeniorOrSemanal = (currentUser && (currentUser.level === 'senior' || currentUser.level === 'semanal' || currentUser.role === 'administrador' || currentUser.role === 'auditor_semanal'));
+
+    if (isSeniorOrSemanal) {
+      rewardBadgeEl.style.display = 'block';
+      if (globalPct >= 90) {
+        rewardBadgeEl.innerHTML = `
+          <div style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(245, 158, 11, 0.2)); border: 2px solid #f59e0b; padding: 0.85rem 1.25rem; border-radius: var(--radius-md); margin-top: 0.75rem; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 0 20px rgba(245, 158, 11, 0.3);">
+            <div>
+              <span style="font-size: 0.78rem; font-weight: 800; color: #fde047; text-transform: uppercase; letter-spacing:0.05em;">🏆 GESTÃO DE PREMIAÇÃO MENSAL EM DINHEIRO (RESTRITO AUDITORES & DIRETORIA)</span>
+              <div style="font-size: 1.05rem; font-weight: 800; color: #ffffff; margin-top: 0.15rem;">
+                🎉 META DE 90% ALCANÇADA! (${globalPct}%) - ELEGÍVEL AO PRÊMIO EM DINHEIRO MENSAL!
+              </div>
             </div>
+            <span style="font-size: 1.8rem; filter: drop-shadow(0 0 10px rgba(245, 158, 11, 0.8));">💰</span>
           </div>
-          <span style="font-size: 1.8rem; filter: drop-shadow(0 0 10px rgba(245, 158, 11, 0.8));">💰</span>
-        </div>
-      `;
+        `;
+      } else {
+        const remaining = 90 - globalPct;
+        rewardBadgeEl.innerHTML = `
+          <div style="background: rgba(255, 255, 255, 0.04); border: 1px solid var(--border-color); padding: 0.75rem 1rem; border-radius: var(--radius-md); margin-top: 0.75rem; display: flex; align-items: center; justify-content: space-between;">
+            <div>
+              <span style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">🏆 GESTÃO DE PREMIAÇÃO MENSAL EM DINHEIRO (META: 90%)</span>
+              <div style="font-size: 0.88rem; font-weight: 700; color: var(--text-main); margin-top: 0.15rem;">
+                Nota Atual da Auditoria: ${globalPct}% • <span style="color: var(--status-regular);">Faltam ${remaining}% para alcançar a Meta do Prêmio em Dinheiro!</span>
+              </div>
+            </div>
+            <span style="font-size: 1.4rem;">🎯</span>
+          </div>
+        `;
+      }
     } else {
-      const remaining = 90 - globalPct;
-      rewardBadgeEl.innerHTML = `
-        <div style="background: rgba(255, 255, 255, 0.04); border: 1px solid var(--border-color); padding: 0.75rem 1rem; border-radius: var(--radius-md); margin-top: 0.75rem; display: flex; align-items: center; justify-content: space-between;">
-          <div>
-            <span style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">🏆 PROGRAMA DE PREMIAÇÃO MENSAL EM DINHEIRO (META: 90%)</span>
-            <div style="font-size: 0.88rem; font-weight: 700; color: var(--text-main); margin-top: 0.15rem;">
-              Nota Atual da Auditoria: ${globalPct}% • <span style="color: var(--status-regular);">Faltam ${remaining}% para alcançar a Meta do Prêmio em Dinheiro!</span>
-            </div>
-          </div>
-          <span style="font-size: 1.4rem;">🎯</span>
-        </div>
-      `;
+      // 100% OCULTO NO MODO TV E GRUPO 1 PARA PRESERVAR CONFIDENCIALIDADE
+      rewardBadgeEl.style.display = 'none';
+      rewardBadgeEl.innerHTML = '';
     }
   }
 
