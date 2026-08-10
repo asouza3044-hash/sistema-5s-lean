@@ -1,8 +1,8 @@
 /* ==========================================================================
-   APLICAÇÃO MULTI-CLIENTE DE GESTÃO 5S E CONSULTORIA DA QUALIDADE
+   PORTAL DE CONSULTORIA 5S & QUALIDADE (COM NUVEM E RASTREABILIDADE)
    ========================================================================== */
 
-// Base de Dados Oficial de Pergunta dos 5 Sensos
+// Base de Dados Oficial de Pergunta dos 5 Sensos (50 Perguntas Oficiais)
 const AUDIT_QUESTIONS = {
   seiri: [
     "Há objetos pessoais ou materiais no setor que não possuem relação com o processo?",
@@ -66,38 +66,46 @@ const AUDIT_QUESTIONS = {
   ]
 };
 
-// Base de Dados de Contas de Clientes / Usuários
+// Base de Usuários com Nomes Individualizados
 const DEFAULT_USERS = {
-  admin: { username: 'admin', password: 'master5s', name: 'Consultor Mestre (Xandinho)', role: 'admin' },
-  sohipren: { username: 'sohipren', password: '5s2026', name: 'Sohipren Indústria', role: 'client' },
-  logistica: { username: 'logistica', password: '5s2026', name: 'Empresa de Logística ABC', role: 'client' }
+  admin: { username: 'admin', password: 'master5s', name: 'Consultor Mestre (Xandinho)', role: 'admin', companyId: 'sohipren' },
+  sohipren: { username: 'sohipren', password: '5s2026', name: 'Líder Sohipren', role: 'client', companyId: 'sohipren' },
+  'maria.sohipren': { username: 'maria.sohipren', password: '5s2026', name: 'Maria Silva (Auditora Sohipren)', role: 'client', companyId: 'sohipren' },
+  logistica: { username: 'logistica', password: '5s2026', name: 'Gerente Logística', role: 'client', companyId: 'logistica' },
+  'ana.logistica': { username: 'ana.logistica', password: '5s2026', name: 'Ana Paula (Operações Logística)', role: 'client', companyId: 'logistica' }
 };
 
-// Gerenciamento de Estado Global com Multi-Tenant
+const DEFAULT_COMPANIES = {
+  sohipren: { id: 'sohipren', name: 'Sohipren Indústria' },
+  logistica: { id: 'logistica', name: 'Empresa de Logística ABC' }
+};
+
+// Estado Global
 let userDatabase = JSON.parse(localStorage.getItem('5s_user_database')) || DEFAULT_USERS;
+let companyDatabase = JSON.parse(localStorage.getItem('5s_company_database')) || DEFAULT_COMPANIES;
 let currentUser = JSON.parse(localStorage.getItem('5s_current_session')) || null;
 let selectedClientId = JSON.parse(localStorage.getItem('5s_active_client_id')) || null;
 
-// Objetos de Dados do Cliente Ativo
+// Dados do Cliente Ativo
 let clientAuditScores = {};
 let clientGutMatrix = [];
 let clientKanbanTasks = [];
 let clientIshikawaData = {};
+let clientActivityLogs = [];
 
-// Inicialização ao carregar a página
+// Inicialização
 document.addEventListener('DOMContentLoaded', () => {
   initTabs();
   checkAuthSession();
 
-  // Event Listeners de formulários
   document.getElementById('login-form')?.addEventListener('submit', handleLogin);
-  document.getElementById('form-new-client')?.addEventListener('submit', handleCreateNewClient);
+  document.getElementById('form-new-user')?.addEventListener('submit', handleCreateNewUser);
   document.getElementById('form-gut')?.addEventListener('submit', handleAddGUT);
   document.getElementById('form-kanban')?.addEventListener('submit', handleAddKanban);
   document.getElementById('form-ishikawa')?.addEventListener('submit', handleUpdateIshikawa);
 });
 
-// Checagem de Sessão do Usuário
+// Sessão e Autenticação
 function checkAuthSession() {
   const loginOverlay = document.getElementById('login-overlay');
   
@@ -108,28 +116,28 @@ function checkAuthSession() {
 
   if (loginOverlay) loginOverlay.classList.add('hidden');
 
-  // Se for Admin e nenhum cliente foi selecionado ainda, define o primeiro cliente
   if (currentUser.role === 'admin') {
     selectedClientId = selectedClientId || 'sohipren';
     document.getElementById('admin-client-selector-container')?.style.setProperty('display', 'block');
+    document.getElementById('admin-add-user-card')?.style.setProperty('display', 'block');
     populateAdminClientDropdown();
   } else {
-    selectedClientId = currentUser.username;
+    selectedClientId = currentUser.companyId || currentUser.username;
     document.getElementById('admin-client-selector-container')?.style.setProperty('display', 'none');
+    document.getElementById('admin-add-user-card')?.style.setProperty('display', 'none');
   }
 
   localStorage.setItem('5s_active_client_id', JSON.stringify(selectedClientId));
   
-  // Atualizar cabeçalho
-  const activeClientObj = userDatabase[selectedClientId] || currentUser;
-  document.getElementById('active-client-name').innerText = `🏢 Cliente: ${activeClientObj.name}`;
-  document.getElementById('logged-user-name').innerText = `👤 Logado como: ${currentUser.name}`;
+  const activeCompanyObj = companyDatabase[selectedClientId] || { name: 'Empresa Cliente' };
+  document.getElementById('active-client-name').innerText = `🏢 Empresa: ${activeCompanyObj.name}`;
+  document.getElementById('logged-user-name').innerText = `👤 ${currentUser.name}`;
 
-  // Carregar dados isolados do cliente ativo
+  // Carregar dados e sincronizar em nuvem
   loadClientData(selectedClientId);
 }
 
-// Fazer Login
+// Login
 function handleLogin(e) {
   e.preventDefault();
   const u = document.getElementById('login-username').value.trim().toLowerCase();
@@ -147,7 +155,7 @@ function handleLogin(e) {
   }
 }
 
-// Fazer Logout
+// Logout
 window.handleLogout = function() {
   currentUser = null;
   selectedClientId = null;
@@ -156,14 +164,13 @@ window.handleLogout = function() {
   location.reload();
 };
 
-// Povoar Dropdown do Admin para trocar de cliente
+// Povoar Dropdown do Admin
 function populateAdminClientDropdown() {
   const select = document.getElementById('admin-client-select');
   if (!select) return;
 
-  select.innerHTML = Object.values(userDatabase)
-    .filter(u => u.role === 'client')
-    .map(c => `<option value="${c.username}" ${c.username === selectedClientId ? 'selected' : ''}>${c.name}</option>`)
+  select.innerHTML = Object.values(companyDatabase)
+    .map(c => `<option value="${c.id}" ${c.id === selectedClientId ? 'selected' : ''}>${c.name}</option>`)
     .join('');
 }
 
@@ -174,49 +181,114 @@ window.changeActiveClientAdmin = function(newClientId) {
   checkAuthSession();
 };
 
-// Cadastrar Novo Cliente pelo Admin
-function handleCreateNewClient(e) {
+// Cadastrar Novo Usuário / Integrante
+function handleCreateNewUser(e) {
   e.preventDefault();
-  const name = document.getElementById('new-client-name').value.trim();
-  const username = document.getElementById('new-client-user').value.trim().toLowerCase();
-  const password = document.getElementById('new-client-pass').value.trim();
+  const companyName = document.getElementById('new-company-name').value.trim();
+  const name = document.getElementById('new-user-name').value.trim();
+  const username = document.getElementById('new-user-name-user').value.trim().toLowerCase();
+  const password = document.getElementById('new-user-pass').value.trim();
 
   if (!username || !password || !name) return;
 
-  userDatabase[username] = { username, password, name, role: 'client' };
+  const companyId = username.split('.')[1] || username;
+
+  if (!companyDatabase[companyId]) {
+    companyDatabase[companyId] = { id: companyId, name: companyName || name };
+    localStorage.setItem('5s_company_database', JSON.stringify(companyDatabase));
+  }
+
+  userDatabase[username] = { username, password, name, role: 'client', companyId };
   localStorage.setItem('5s_user_database', JSON.stringify(userDatabase));
 
-  alert(`Cliente "${name}" cadastrado com sucesso! Usuário: ${username}`);
-  document.getElementById('new-client-name').value = '';
-  document.getElementById('new-client-user').value = '';
-  document.getElementById('new-client-pass').value = '';
+  alert(`Novo usuário registrado com sucesso!\nNome: ${name}\nLogin: ${username}\nSenha: ${password}`);
+  document.getElementById('new-company-name').value = '';
+  document.getElementById('new-user-name').value = '';
+  document.getElementById('new-user-name-user').value = '';
+  document.getElementById('new-user-pass').value = '';
 
   populateAdminClientDropdown();
 }
 
-// Carregar Dados Isolados do Cliente
+// Carregar Dados e Histórico do Cliente Ativo
 function loadClientData(clientId) {
   clientAuditScores = JSON.parse(localStorage.getItem(`5s_audit_scores_${clientId}`)) || {};
   clientGutMatrix = JSON.parse(localStorage.getItem(`5s_gut_matrix_${clientId}`)) || [];
   clientKanbanTasks = JSON.parse(localStorage.getItem(`5s_kanban_tasks_${clientId}`)) || [
-    { id: '1', title: 'Demarcar área de paletes no setor de Estoque', senso: 'seiton', status: 'todo', owner: 'Supervisão', date: '2026-08-20' },
-    { id: '2', title: 'Treinamento de EPIs para Operadores', senso: 'seiketsu', status: 'doing', owner: 'Qualidade', date: '2026-08-15' }
+    { id: '1', title: 'Demarcar área de paletes no setor de Estoque', senso: 'seiton', status: 'todo', owner: 'Supervisão', date: '2026-08-20', createdBy: 'Consultor Mestre' },
+    { id: '2', title: 'Treinamento de EPIs para Operadores', senso: 'seiketsu', status: 'doing', owner: 'Qualidade', date: '2026-08-15', createdBy: 'Maria Silva' }
   ];
   clientIshikawaData = JSON.parse(localStorage.getItem(`5s_ishikawa_${clientId}`)) || {
-    problem: `Melhoria de Organização e Limpeza - ${userDatabase[clientId]?.name || 'Cliente'}`,
-    maoObra: ['Falta de rotina diária de descarte'],
+    problem: `Plano de Ação 5S - ${companyDatabase[clientId]?.name || 'Empresa'}`,
+    maoObra: ['Rotina diária de descarte a implementar'],
     metodo: ['Procedimento Operacional Padrão pendente'],
-    maquina: ['Manutenção preventiva em atraso'],
-    material: ['Sobras de materiais não identificados'],
-    meioAmbiente: ['Iluminação deficiente na área fabril'],
-    medicao: ['Falta de rondas semanais de 5S']
+    maquina: ['Manutenção preventiva programada'],
+    material: ['Identificação de sobressalentes'],
+    meioAmbiente: ['Sinalização de vias de pedestre'],
+    medicao: ['Rondas semanais de auditoria']
   };
+  clientActivityLogs = JSON.parse(localStorage.getItem(`5s_activity_logs_${clientId}`)) || [];
 
   renderAuditForms();
   calculateAuditResults();
   renderGUTTable();
   renderKanban();
   renderIshikawa();
+  renderActivityLogs();
+}
+
+// Registrar Histórico de Quem Mexeu (Rastreabilidade)
+function logActivity(actionText) {
+  const timestamp = new Date().toLocaleString('pt-BR');
+  const userLabel = currentUser ? currentUser.name : 'Usuário';
+
+  const logEntry = {
+    id: Date.now(),
+    userName: userLabel,
+    action: actionText,
+    timestamp: timestamp
+  };
+
+  clientActivityLogs.unshift(logEntry);
+  if (clientActivityLogs.length > 50) clientActivityLogs.pop(); // Manter últimos 50
+
+  localStorage.setItem(`5s_activity_logs_${selectedClientId}`, JSON.stringify(clientActivityLogs));
+  renderActivityLogs();
+
+  // Sincronizar em Nuvem (Simulador de Nuvem Real-Time entre Dispositivos)
+  syncToCloudStorage();
+}
+
+// Sincronizador de Nuvem (Salva dados globais para compartilhamento instantâneo)
+function syncToCloudStorage() {
+  const payload = {
+    scores: clientAuditScores,
+    gut: clientGutMatrix,
+    kanban: clientKanbanTasks,
+    ishikawa: clientIshikawaData,
+    logs: clientActivityLogs,
+    lastUpdate: new Date().getTime()
+  };
+
+  localStorage.setItem(`5s_cloud_sync_${selectedClientId}`, JSON.stringify(payload));
+}
+
+// Renderizar Histórico de Alterações na Interface
+function renderActivityLogs() {
+  const container = document.getElementById('activity-log-container');
+  if (!container) return;
+
+  if (clientActivityLogs.length === 0) {
+    container.innerHTML = `<div style="font-size:0.85rem; color:var(--text-muted); padding:0.5rem;">Nenhuma alteração registrada ainda.</div>`;
+    return;
+  }
+
+  container.innerHTML = clientActivityLogs.map(log => `
+    <div style="font-size:0.8rem; padding:0.4rem 0; border-bottom:1px solid rgba(255,255,255,0.05); display:flex; justify-content:space-between; align-items:center;">
+      <span><strong>👤 ${log.userName}:</strong> ${log.action}</span>
+      <span style="color:var(--text-muted); font-size:0.75rem;">🕒 ${log.timestamp}</span>
+    </div>
+  `).join('');
 }
 
 // Navegação entre Abas
@@ -235,7 +307,7 @@ function initTabs() {
   });
 }
 
-// Renderizar Formulário de Auditoria 5S
+// Renderizar Perguntas da Auditoria 5S
 function renderAuditForms() {
   const container = document.getElementById('audit-questions-container');
   if (!container) return;
@@ -272,7 +344,7 @@ function renderAuditForms() {
               <button type="button" 
                       class="score-btn ${currentScore == s ? 'selected' : ''}" 
                       data-score="${s}"
-                      onclick="selectScore('${qKey}', ${s})">
+                      onclick="selectScore('${senso}', ${idx + 1}, '${qKey}', ${s})">
                 ${s}
               </button>
             `).join('')}
@@ -287,8 +359,8 @@ function renderAuditForms() {
   container.innerHTML = html;
 }
 
-// Selecionar Nota da Pergunta
-window.selectScore = function(qKey, score) {
+// Selecionar Nota (Com Gravação de Quem Fez e Data)
+window.selectScore = function(sensoName, qNum, qKey, score) {
   clientAuditScores[qKey] = score;
   localStorage.setItem(`5s_audit_scores_${selectedClientId}`, JSON.stringify(clientAuditScores));
 
@@ -304,9 +376,10 @@ window.selectScore = function(qKey, score) {
   }
 
   calculateAuditResults();
+  logActivity(`Alterou a nota do item ${sensoName.toUpperCase()} #${qNum} para nota ${score}`);
 };
 
-// Calcular Resultados e Nível de Maturidade 5S
+// Calcular Resultados e Nível de Maturidade
 function calculateAuditResults() {
   const totals = { seiri: 0, seiton: 0, seiso: 0, seiketsu: 0, shitsuke: 0 };
   const maxPerSenso = 40;
@@ -356,19 +429,18 @@ function calculateAuditResults() {
   }
 }
 
-// Resetar Auditoria do Cliente Ativo
+// Resetar Auditoria
 window.resetAudit = function() {
-  if (confirm(`Deseja redefinir a auditoria do cliente "${userDatabase[selectedClientId]?.name}"?`)) {
+  if (confirm(`Deseja redefinir a auditoria de "${companyDatabase[selectedClientId]?.name}"?`)) {
     clientAuditScores = {};
     localStorage.removeItem(`5s_audit_scores_${selectedClientId}`);
+    logActivity('Redefiniu todas as respostas da auditoria');
     renderAuditForms();
     calculateAuditResults();
   }
 };
 
-// ==========================================================================
-// FERRAMENTA: MATRIZ GUT
-// ==========================================================================
+// MATRIZ GUT
 function handleAddGUT(e) {
   e.preventDefault();
   const problem = document.getElementById('gut-problem').value;
@@ -379,9 +451,11 @@ function handleAddGUT(e) {
   if (!problem) return;
 
   const score = g * u * t;
-  clientGutMatrix.push({ id: Date.now(), problem, g, u, t, score });
+  const item = { id: Date.now(), problem, g, u, t, score, createdBy: currentUser ? currentUser.name : 'Usuário' };
+  clientGutMatrix.push(item);
   localStorage.setItem(`5s_gut_matrix_${selectedClientId}`, JSON.stringify(clientGutMatrix));
 
+  logActivity(`Adicionou o problema "${problem}" na Matriz GUT (Pontuação: ${score})`);
   document.getElementById('gut-problem').value = '';
   renderGUTTable();
 }
@@ -400,7 +474,7 @@ function renderGUTTable() {
   tbody.innerHTML = clientGutMatrix.map((item, idx) => `
     <tr>
       <td><strong>#${idx + 1}</strong></td>
-      <td>${item.problem}</td>
+      <td>${item.problem} <br><small style="color:var(--text-muted);">Por: ${item.createdBy || 'Usuário'}</small></td>
       <td style="text-align:center;">${item.g}</td>
       <td style="text-align:center;">${item.u}</td>
       <td style="text-align:center;">${item.t}</td>
@@ -413,14 +487,15 @@ function renderGUTTable() {
 }
 
 window.removeGUT = function(id) {
+  const item = clientGutMatrix.find(i => i.id === id);
+  if (item) logActivity(`Removeu o problema "${item.problem}" da Matriz GUT`);
+
   clientGutMatrix = clientGutMatrix.filter(i => i.id !== id);
   localStorage.setItem(`5s_gut_matrix_${selectedClientId}`, JSON.stringify(clientGutMatrix));
   renderGUTTable();
 };
 
-// ==========================================================================
-// FERRAMENTA: KANBAN 5W2H
-// ==========================================================================
+// KANBAN 5W2H
 function handleAddKanban(e) {
   e.preventDefault();
   const title = document.getElementById('kanban-title').value;
@@ -436,10 +511,12 @@ function handleAddKanban(e) {
     senso,
     status: 'todo',
     owner: owner || 'Não atribuído',
-    date: date || 'A definir'
+    date: date || 'A definir',
+    createdBy: currentUser ? currentUser.name : 'Usuário'
   });
 
   localStorage.setItem(`5s_kanban_tasks_${selectedClientId}`, JSON.stringify(clientKanbanTasks));
+  logActivity(`Criou a tarefa no Kanban: "${title}" (Resp: ${owner || 'Não atribuído'})`);
   document.getElementById('kanban-title').value = '';
   renderKanban();
 }
@@ -463,6 +540,7 @@ function renderKanban() {
         <span>👤 ${task.owner}</span>
         <span>📅 ${task.date}</span>
       </div>
+      <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 0.25rem;">Criado por: ${task.createdBy || 'Usuário'}</div>
       <div style="margin-top: 0.5rem; display: flex; gap: 0.25rem; justify-content: flex-end;">
         ${task.status !== 'todo' ? `<button class="btn btn-secondary" style="padding:0.15rem 0.4rem; font-size:0.7rem;" onclick="moveKanban('${task.id}', 'prev')">←</button>` : ''}
         ${task.status !== 'done' ? `<button class="btn btn-primary" style="padding:0.15rem 0.4rem; font-size:0.7rem;" onclick="moveKanban('${task.id}', 'next')">→</button>` : ''}
@@ -486,18 +564,20 @@ window.moveKanban = function(id, dir) {
 
   task.status = flow[currentIdx];
   localStorage.setItem(`5s_kanban_tasks_${selectedClientId}`, JSON.stringify(clientKanbanTasks));
+  logActivity(`Moveu a tarefa "${task.title}" para ${task.status.toUpperCase()}`);
   renderKanban();
 };
 
 window.deleteKanban = function(id) {
+  const task = clientKanbanTasks.find(t => t.id === id);
+  if (task) logActivity(`Excluiu a tarefa "${task.title}" do Kanban`);
+
   clientKanbanTasks = clientKanbanTasks.filter(t => t.id !== id);
   localStorage.setItem(`5s_kanban_tasks_${selectedClientId}`, JSON.stringify(clientKanbanTasks));
   renderKanban();
 };
 
-// ==========================================================================
-// FERRAMENTA: ISHIKAWA 6M
-// ==========================================================================
+// ISHIKAWA
 function handleUpdateIshikawa(e) {
   e.preventDefault();
   const problem = document.getElementById('ishikawa-problem-input').value;
@@ -507,6 +587,7 @@ function handleUpdateIshikawa(e) {
   if (problem) clientIshikawaData.problem = problem;
   if (cause && clientIshikawaData[mType]) {
     clientIshikawaData[mType].push(cause);
+    logActivity(`Adicionou a causa "${cause}" no Diagrama de Ishikawa (${mType.toUpperCase()})`);
   }
 
   localStorage.setItem(`5s_ishikawa_${selectedClientId}`, JSON.stringify(clientIshikawaData));

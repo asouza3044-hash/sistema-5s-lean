@@ -19,13 +19,13 @@
       <div class="login-header">
         <div class="brand-icon" style="margin: 0 auto 1rem auto;">5S</div>
         <h2>Portal de Consultoria 5S</h2>
-        <p>Acesse seu projeto corporativo de qualidade</p>
+        <p>Acesse seu projeto corporativo com login individual</p>
       </div>
 
       <form id="login-form">
         <div class="form-group" style="text-align: left;">
           <label>Usuário de Acesso</label>
-          <input type="text" id="login-username" class="form-control" placeholder="Ex: sohipren ou admin" required>
+          <input type="text" id="login-username" class="form-control" placeholder="Ex: maria.sohipren ou admin" required>
         </div>
 
         <div class="form-group" style="text-align: left;">
@@ -43,10 +43,11 @@
       </form>
 
       <div class="credentials-box">
-        <strong>💡 Contas para Teste de Demonstração:</strong><br>
-        • <strong>Consultor Mestre (Admin):</strong> <code>admin</code> | Senha: <code>master5s</code><br>
-        • <strong>Cliente Sohipren:</strong> <code>sohipren</code> | Senha: <code>5s2026</code><br>
-        • <strong>Cliente Logística:</strong> <code>logistica</code> | Senha: <code>5s2026</code>
+        <strong>💡 Logins Individuais para Demonstração:</strong><br>
+        • <strong>Consultor Mestre:</strong> <code>admin</code> | Senha: <code>master5s</code><br>
+        • <strong>Auditora Sohipren:</strong> <code>maria.sohipren</code> | Senha: <code>5s2026</code><br>
+        • <strong>Líder Sohipren:</strong> <code>sohipren</code> | Senha: <code>5s2026</code><br>
+        • <strong>Operações Logística:</strong> <code>ana.logistica</code> | Senha: <code>5s2026</code>
       </div>
     </div>
   </div>
@@ -58,7 +59,7 @@
       <div class="brand-icon">5S</div>
       <div class="brand-text">
         <h1>Consultoria da Qualidade & 5S</h1>
-        <p id="active-client-name">🏢 Cliente: Selecionando...</p>
+        <p id="active-client-name">🏢 Empresa: Selecionando...</p>
       </div>
     </div>
 
@@ -167,6 +168,18 @@
         </div>
       </div>
 
+      <!-- CARD DE RASTREABILIDADE / HISTÓRICO DE QUEM MEXEU -->
+      <div class="card" style="border-color: rgba(6, 182, 212, 0.4); background: rgba(6, 182, 212, 0.03);">
+        <div class="card-header">
+          <h2 class="card-title" style="color: var(--accent-cyan);">📜 Histórico de Atividade (Quem Mexeu no Sistema)</h2>
+        </div>
+        <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.75rem;">
+          Registro em tempo real de cada usuário que alterou notas, Kanban ou Matriz GUT no projeto desta empresa:
+        </p>
+        <div id="activity-log-container" style="max-height: 180px; overflow-y: auto; background: rgba(0,0,0,0.2); padding: 0.75rem; border-radius: var(--radius-sm);">
+        </div>
+      </div>
+
       <!-- FORMULÁRIO DE AUDITORIA INTERATIVA DO CLIENTE -->
       <div class="card">
         <div class="card-header">
@@ -174,7 +187,7 @@
           <button class="btn btn-danger" onclick="resetAudit()">🔄 Redefinir Respostas</button>
         </div>
         <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.5rem;">
-          Selecione a pontuação de <strong>1 (Insuficiente)</strong> a <strong>4 (Ótimo)</strong> para cada um dos itens abaixo. O cálculo é atualizado instantaneamente para a empresa ativa.
+          Selecione a pontuação de <strong>1 (Insuficiente)</strong> a <strong>4 (Ótimo)</strong> para cada um dos itens abaixo. O cálculo e a autoria do usuário logado são gravados automaticamente.
         </p>
 
         <!-- Container das 50 Perguntas -->
@@ -189,30 +202,34 @@
          =================================================================== -->
     <section id="tab-tools" class="tab-content">
       
-      <!-- SUB-SEÇÃO: PAINEL DO CONSULTOR (CADASTRO DE NOVOS CLIENTES) -->
-      <div class="card" id="admin-add-client-card" style="border-color: var(--border-highlight); background: rgba(99, 102, 241, 0.05);">
+      <!-- SUB-SEÇÃO: PAINEL DO CONSULTOR (CADASTRO DE NOVOS USUÁRIOS INDIVIDUALIZADOS) -->
+      <div class="card" id="admin-add-user-card" style="border-color: var(--border-highlight); background: rgba(99, 102, 241, 0.05); display: none;">
         <div class="card-header">
-          <h2 class="card-title">➕ Painel da Consultoria: Cadastrar Novo Cliente</h2>
+          <h2 class="card-title">👥 Painel da Consultoria: Criar Usuário Individualizado</h2>
         </div>
         <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">
-          Cadastre novos clientes para sua consultoria. Cada novo cliente terá acesso a uma área exclusiva com login e senha próprios!
+          Cadastre integrantes da equipe do cliente (ex: Maria, João, Carlos). Cada um terá seu login próprio e o sistema registrará o nome de quem respondeu cada auditoria!
         </p>
 
-        <form id="form-new-client" class="grid-3col">
+        <form id="form-new-user" class="grid-2col">
           <div class="form-group">
             <label>Nome da Empresa do Cliente</label>
-            <input type="text" id="new-client-name" class="form-control" placeholder="Ex: Metalúrgica ABC Ltda" required>
+            <input type="text" id="new-company-name" class="form-control" placeholder="Ex: Sohipren Indústria" required>
+          </div>
+          <div class="form-group">
+            <label>Nome Completo do Colaborador / Auditor</label>
+            <input type="text" id="new-user-name" class="form-control" placeholder="Ex: Maria Silva (Auditora)" required>
           </div>
           <div class="form-group">
             <label>Usuário de Login</label>
-            <input type="text" id="new-client-user" class="form-control" placeholder="Ex: metalurgica_abc" required>
+            <input type="text" id="new-user-name-user" class="form-control" placeholder="Ex: maria.sohipren" required>
           </div>
           <div class="form-group">
             <label>Senha de Acesso</label>
-            <input type="text" id="new-client-pass" class="form-control" placeholder="Ex: 5s123" required>
+            <input type="text" id="new-user-pass" class="form-control" placeholder="Ex: 5s2026" required>
           </div>
-          <div style="grid-column: span 3;">
-            <button type="submit" class="btn btn-primary" style="width: 100%;">🚀 Cadastrar Cliente & Criar Acesso Exclusivo</button>
+          <div style="grid-column: span 2;">
+            <button type="submit" class="btn btn-primary" style="width: 100%;">🚀 Cadastrar Usuário Individualizado</button>
           </div>
         </form>
       </div>
@@ -268,7 +285,7 @@
             <thead>
               <tr style="background: rgba(255,255,255,0.05); border-bottom: 1px solid var(--border-color);">
                 <th style="padding: 0.75rem; text-align: left;">Rank</th>
-                <th style="padding: 0.75rem; text-align: left;">Problema</th>
+                <th style="padding: 0.75rem; text-align: left;">Problema / Registrado por</th>
                 <th style="padding: 0.75rem; text-align: center;">G</th>
                 <th style="padding: 0.75rem; text-align: center;">U</th>
                 <th style="padding: 0.75rem; text-align: center;">T</th>
