@@ -1,8 +1,8 @@
 /* ==========================================================================
-   APLICAÇÃO INTERATIVA DE GESTÃO 5S E FERRAMENTAS DA QUALIDADE
+   APLICAÇÃO MULTI-CLIENTE DE GESTÃO 5S E CONSULTORIA DA QUALIDADE
    ========================================================================== */
 
-// Base de Dados Oficial de Pergunta dos 5 Sensos (Extraídas dos formulários de auditoria corporativos)
+// Base de Dados Oficial de Pergunta dos 5 Sensos
 const AUDIT_QUESTIONS = {
   seiri: [
     "Há objetos pessoais ou materiais no setor que não possuem relação com o processo?",
@@ -66,40 +66,158 @@ const AUDIT_QUESTIONS = {
   ]
 };
 
-// Estado Global da Aplicação
-const AppState = {
-  auditScores: JSON.parse(localStorage.getItem('5s_audit_scores')) || {},
-  gutMatrix: JSON.parse(localStorage.getItem('5s_gut_matrix')) || [],
-  kanbanTasks: JSON.parse(localStorage.getItem('5s_kanban_tasks')) || [
-    { id: '1', title: 'Identificar caixa de ferramentas da Montagem', senso: 'seiton', status: 'todo', owner: 'Rodrigo', date: '2026-08-15' },
-    { id: '2', title: 'Eliminar vazamento de ar na Máquina 03', senso: 'seiso', status: 'doing', owner: 'Carlos', date: '2026-08-12' },
-    { id: '3', title: 'Treinamento de EPIs para o Estoque', senso: 'seiketsu', status: 'done', owner: 'Ana', date: '2026-08-10' }
-  ],
-  ishikawaData: JSON.parse(localStorage.getItem('5s_ishikawa')) || {
-    problem: 'Acúmulo de cavacos e sujeira na bancada da Fábrica',
-    maoObra: ['Falta de hábito de limpar ao término'],
-    metodo: ['Procedimento de limpeza semanal em vez de diário'],
-    maquina: ['Exaustor com filtro saturado'],
-    material: ['Óleo de corte de baixa qualidade'],
-    meioAmbiente: ['Iluminação deficiente na área traseira'],
-    medicao: ['Falta de checklist de liberação de máquina']
-  }
+// Base de Dados de Contas de Clientes / Usuários
+const DEFAULT_USERS = {
+  admin: { username: 'admin', password: 'master5s', name: 'Consultor Mestre (Xandinho)', role: 'admin' },
+  sohipren: { username: 'sohipren', password: '5s2026', name: 'Sohipren Indústria', role: 'client' },
+  logistica: { username: 'logistica', password: '5s2026', name: 'Empresa de Logística ABC', role: 'client' }
 };
+
+// Gerenciamento de Estado Global com Multi-Tenant
+let userDatabase = JSON.parse(localStorage.getItem('5s_user_database')) || DEFAULT_USERS;
+let currentUser = JSON.parse(localStorage.getItem('5s_current_session')) || null;
+let selectedClientId = JSON.parse(localStorage.getItem('5s_active_client_id')) || null;
+
+// Objetos de Dados do Cliente Ativo
+let clientAuditScores = {};
+let clientGutMatrix = [];
+let clientKanbanTasks = [];
+let clientIshikawaData = {};
 
 // Inicialização ao carregar a página
 document.addEventListener('DOMContentLoaded', () => {
   initTabs();
+  checkAuthSession();
+
+  // Event Listeners de formulários
+  document.getElementById('login-form')?.addEventListener('submit', handleLogin);
+  document.getElementById('form-new-client')?.addEventListener('submit', handleCreateNewClient);
+  document.getElementById('form-gut')?.addEventListener('submit', handleAddGUT);
+  document.getElementById('form-kanban')?.addEventListener('submit', handleAddKanban);
+  document.getElementById('form-ishikawa')?.addEventListener('submit', handleUpdateIshikawa);
+});
+
+// Checagem de Sessão do Usuário
+function checkAuthSession() {
+  const loginOverlay = document.getElementById('login-overlay');
+  
+  if (!currentUser) {
+    if (loginOverlay) loginOverlay.classList.remove('hidden');
+    return;
+  }
+
+  if (loginOverlay) loginOverlay.classList.add('hidden');
+
+  // Se for Admin e nenhum cliente foi selecionado ainda, define o primeiro cliente
+  if (currentUser.role === 'admin') {
+    selectedClientId = selectedClientId || 'sohipren';
+    document.getElementById('admin-client-selector-container')?.style.setProperty('display', 'block');
+    populateAdminClientDropdown();
+  } else {
+    selectedClientId = currentUser.username;
+    document.getElementById('admin-client-selector-container')?.style.setProperty('display', 'none');
+  }
+
+  localStorage.setItem('5s_active_client_id', JSON.stringify(selectedClientId));
+  
+  // Atualizar cabeçalho
+  const activeClientObj = userDatabase[selectedClientId] || currentUser;
+  document.getElementById('active-client-name').innerText = `🏢 Cliente: ${activeClientObj.name}`;
+  document.getElementById('logged-user-name').innerText = `👤 Logado como: ${currentUser.name}`;
+
+  // Carregar dados isolados do cliente ativo
+  loadClientData(selectedClientId);
+}
+
+// Fazer Login
+function handleLogin(e) {
+  e.preventDefault();
+  const u = document.getElementById('login-username').value.trim().toLowerCase();
+  const p = document.getElementById('login-password').value.trim();
+
+  const user = userDatabase[u];
+
+  if (user && user.password === p) {
+    currentUser = user;
+    localStorage.setItem('5s_current_session', JSON.stringify(currentUser));
+    document.getElementById('login-error').style.display = 'none';
+    checkAuthSession();
+  } else {
+    document.getElementById('login-error').style.display = 'block';
+  }
+}
+
+// Fazer Logout
+window.handleLogout = function() {
+  currentUser = null;
+  selectedClientId = null;
+  localStorage.removeItem('5s_current_session');
+  localStorage.removeItem('5s_active_client_id');
+  location.reload();
+};
+
+// Povoar Dropdown do Admin para trocar de cliente
+function populateAdminClientDropdown() {
+  const select = document.getElementById('admin-client-select');
+  if (!select) return;
+
+  select.innerHTML = Object.values(userDatabase)
+    .filter(u => u.role === 'client')
+    .map(c => `<option value="${c.username}" ${c.username === selectedClientId ? 'selected' : ''}>${c.name}</option>`)
+    .join('');
+}
+
+// Alternar Cliente pelo Admin
+window.changeActiveClientAdmin = function(newClientId) {
+  selectedClientId = newClientId;
+  localStorage.setItem('5s_active_client_id', JSON.stringify(selectedClientId));
+  checkAuthSession();
+};
+
+// Cadastrar Novo Cliente pelo Admin
+function handleCreateNewClient(e) {
+  e.preventDefault();
+  const name = document.getElementById('new-client-name').value.trim();
+  const username = document.getElementById('new-client-user').value.trim().toLowerCase();
+  const password = document.getElementById('new-client-pass').value.trim();
+
+  if (!username || !password || !name) return;
+
+  userDatabase[username] = { username, password, name, role: 'client' };
+  localStorage.setItem('5s_user_database', JSON.stringify(userDatabase));
+
+  alert(`Cliente "${name}" cadastrado com sucesso! Usuário: ${username}`);
+  document.getElementById('new-client-name').value = '';
+  document.getElementById('new-client-user').value = '';
+  document.getElementById('new-client-pass').value = '';
+
+  populateAdminClientDropdown();
+}
+
+// Carregar Dados Isolados do Cliente
+function loadClientData(clientId) {
+  clientAuditScores = JSON.parse(localStorage.getItem(`5s_audit_scores_${clientId}`)) || {};
+  clientGutMatrix = JSON.parse(localStorage.getItem(`5s_gut_matrix_${clientId}`)) || [];
+  clientKanbanTasks = JSON.parse(localStorage.getItem(`5s_kanban_tasks_${clientId}`)) || [
+    { id: '1', title: 'Demarcar área de paletes no setor de Estoque', senso: 'seiton', status: 'todo', owner: 'Supervisão', date: '2026-08-20' },
+    { id: '2', title: 'Treinamento de EPIs para Operadores', senso: 'seiketsu', status: 'doing', owner: 'Qualidade', date: '2026-08-15' }
+  ];
+  clientIshikawaData = JSON.parse(localStorage.getItem(`5s_ishikawa_${clientId}`)) || {
+    problem: `Melhoria de Organização e Limpeza - ${userDatabase[clientId]?.name || 'Cliente'}`,
+    maoObra: ['Falta de rotina diária de descarte'],
+    metodo: ['Procedimento Operacional Padrão pendente'],
+    maquina: ['Manutenção preventiva em atraso'],
+    material: ['Sobras de materiais não identificados'],
+    meioAmbiente: ['Iluminação deficiente na área fabril'],
+    medicao: ['Falta de rondas semanais de 5S']
+  };
+
   renderAuditForms();
   calculateAuditResults();
   renderGUTTable();
   renderKanban();
   renderIshikawa();
-
-  // Event Listeners dos formulários
-  document.getElementById('form-gut')?.addEventListener('submit', handleAddGUT);
-  document.getElementById('form-kanban')?.addEventListener('submit', handleAddKanban);
-  document.getElementById('form-ishikawa')?.addEventListener('submit', handleUpdateIshikawa);
-});
+}
 
 // Navegação entre Abas
 function initTabs() {
@@ -109,10 +227,8 @@ function initTabs() {
   navBtns.forEach(btn => {
     btn.addEventListener('click', () => {
       const targetTab = btn.getAttribute('data-tab');
-
       navBtns.forEach(b => b.classList.remove('active'));
       tabContents.forEach(c => c.classList.remove('active'));
-
       btn.classList.add('active');
       document.getElementById(targetTab)?.classList.add('active');
     });
@@ -144,7 +260,7 @@ function renderAuditForms() {
 
     questions.forEach((qText, idx) => {
       const qKey = `${senso}_${idx}`;
-      const currentScore = AppState.auditScores[qKey] || 4; // Padrão 4 (Ótimo)
+      const currentScore = clientAuditScores[qKey] || 4;
 
       html += `
         <div class="audit-item">
@@ -173,10 +289,9 @@ function renderAuditForms() {
 
 // Selecionar Nota da Pergunta
 window.selectScore = function(qKey, score) {
-  AppState.auditScores[qKey] = score;
-  localStorage.setItem('5s_audit_scores', JSON.stringify(AppState.auditScores));
+  clientAuditScores[qKey] = score;
+  localStorage.setItem(`5s_audit_scores_${selectedClientId}`, JSON.stringify(clientAuditScores));
 
-  // Atualizar UI dos botões
   const optionsDiv = document.querySelector(`.score-options[data-qkey="${qKey}"]`);
   if (optionsDiv) {
     optionsDiv.querySelectorAll('.score-btn').forEach(btn => {
@@ -194,24 +309,23 @@ window.selectScore = function(qKey, score) {
 // Calcular Resultados e Nível de Maturidade 5S
 function calculateAuditResults() {
   const totals = { seiri: 0, seiton: 0, seiso: 0, seiketsu: 0, shitsuke: 0 };
-  const maxPerSenso = 40; // 10 perguntas * 4 pontos máx
+  const maxPerSenso = 40;
 
   for (const senso of Object.keys(AUDIT_QUESTIONS)) {
     for (let i = 0; i < 10; i++) {
       const qKey = `${senso}_${i}`;
-      const score = AppState.auditScores[qKey] !== undefined ? AppState.auditScores[qKey] : 4;
+      const score = clientAuditScores[qKey] !== undefined ? clientAuditScores[qKey] : 4;
       totals[senso] += score;
     }
   }
 
   let totalScore = 0;
-  let totalMax = 200; // 5 sensos * 40 pontos
+  let totalMax = 200;
 
   for (const senso of Object.keys(totals)) {
     const pct = Math.round((totals[senso] / maxPerSenso) * 100);
     totalScore += totals[senso];
 
-    // Atualizar métricas na tela
     const elScore = document.getElementById(`score-${senso}`);
     const elBar = document.getElementById(`bar-${senso}`);
 
@@ -242,11 +356,11 @@ function calculateAuditResults() {
   }
 }
 
-// Resposta Rápida para Resetar Auditoria
+// Resetar Auditoria do Cliente Ativo
 window.resetAudit = function() {
-  if (confirm('Deseja redefinir todas as respostas da auditoria para o padrão?')) {
-    AppState.auditScores = {};
-    localStorage.removeItem('5s_audit_scores');
+  if (confirm(`Deseja redefinir a auditoria do cliente "${userDatabase[selectedClientId]?.name}"?`)) {
+    clientAuditScores = {};
+    localStorage.removeItem(`5s_audit_scores_${selectedClientId}`);
     renderAuditForms();
     calculateAuditResults();
   }
@@ -265,8 +379,8 @@ function handleAddGUT(e) {
   if (!problem) return;
 
   const score = g * u * t;
-  AppState.gutMatrix.push({ id: Date.now(), problem, g, u, t, score });
-  localStorage.setItem('5s_gut_matrix', JSON.stringify(AppState.gutMatrix));
+  clientGutMatrix.push({ id: Date.now(), problem, g, u, t, score });
+  localStorage.setItem(`5s_gut_matrix_${selectedClientId}`, JSON.stringify(clientGutMatrix));
 
   document.getElementById('gut-problem').value = '';
   renderGUTTable();
@@ -276,15 +390,14 @@ function renderGUTTable() {
   const tbody = document.getElementById('gut-table-body');
   if (!tbody) return;
 
-  // Ordenar por maior pontuação (GUT)
-  AppState.gutMatrix.sort((a, b) => b.score - a.score);
+  clientGutMatrix.sort((a, b) => b.score - a.score);
 
-  if (AppState.gutMatrix.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color: var(--text-muted); padding: 1rem;">Nenhum problema cadastrado na Matriz GUT.</td></tr>`;
+  if (clientGutMatrix.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color: var(--text-muted); padding: 1rem;">Nenhum problema cadastrado para este cliente.</td></tr>`;
     return;
   }
 
-  tbody.innerHTML = AppState.gutMatrix.map((item, idx) => `
+  tbody.innerHTML = clientGutMatrix.map((item, idx) => `
     <tr>
       <td><strong>#${idx + 1}</strong></td>
       <td>${item.problem}</td>
@@ -300,8 +413,8 @@ function renderGUTTable() {
 }
 
 window.removeGUT = function(id) {
-  AppState.gutMatrix = AppState.gutMatrix.filter(i => i.id !== id);
-  localStorage.setItem('5s_gut_matrix', JSON.stringify(AppState.gutMatrix));
+  clientGutMatrix = clientGutMatrix.filter(i => i.id !== id);
+  localStorage.setItem(`5s_gut_matrix_${selectedClientId}`, JSON.stringify(clientGutMatrix));
   renderGUTTable();
 };
 
@@ -317,7 +430,7 @@ function handleAddKanban(e) {
 
   if (!title) return;
 
-  AppState.kanbanTasks.push({
+  clientKanbanTasks.push({
     id: Date.now().toString(),
     title,
     senso,
@@ -326,7 +439,7 @@ function handleAddKanban(e) {
     date: date || 'A definir'
   });
 
-  localStorage.setItem('5s_kanban_tasks', JSON.stringify(AppState.kanbanTasks));
+  localStorage.setItem(`5s_kanban_tasks_${selectedClientId}`, JSON.stringify(clientKanbanTasks));
   document.getElementById('kanban-title').value = '';
   renderKanban();
 }
@@ -339,10 +452,9 @@ function renderKanban() {
   };
 
   if (!cols.todo) return;
-
   Object.values(cols).forEach(col => col.innerHTML = '');
 
-  AppState.kanbanTasks.forEach(task => {
+  clientKanbanTasks.forEach(task => {
     const card = document.createElement('div');
     card.className = 'kanban-card';
     card.innerHTML = `
@@ -358,14 +470,12 @@ function renderKanban() {
       </div>
     `;
 
-    if (cols[task.status]) {
-      cols[task.status].appendChild(card);
-    }
+    if (cols[task.status]) cols[task.status].appendChild(card);
   });
 }
 
 window.moveKanban = function(id, dir) {
-  const task = AppState.kanbanTasks.find(t => t.id === id);
+  const task = clientKanbanTasks.find(t => t.id === id);
   if (!task) return;
 
   const flow = ['todo', 'doing', 'done'];
@@ -375,18 +485,18 @@ window.moveKanban = function(id, dir) {
   if (dir === 'prev' && currentIdx > 0) currentIdx--;
 
   task.status = flow[currentIdx];
-  localStorage.setItem('5s_kanban_tasks', JSON.stringify(AppState.kanbanTasks));
+  localStorage.setItem(`5s_kanban_tasks_${selectedClientId}`, JSON.stringify(clientKanbanTasks));
   renderKanban();
 };
 
 window.deleteKanban = function(id) {
-  AppState.kanbanTasks = AppState.kanbanTasks.filter(t => t.id !== id);
-  localStorage.setItem('5s_kanban_tasks', JSON.stringify(AppState.kanbanTasks));
+  clientKanbanTasks = clientKanbanTasks.filter(t => t.id !== id);
+  localStorage.setItem(`5s_kanban_tasks_${selectedClientId}`, JSON.stringify(clientKanbanTasks));
   renderKanban();
 };
 
 // ==========================================================================
-// FERRAMENTA: ISHIKAWA (ESPINHA DE PEIXE)
+// FERRAMENTA: ISHIKAWA 6M
 // ==========================================================================
 function handleUpdateIshikawa(e) {
   e.preventDefault();
@@ -394,25 +504,25 @@ function handleUpdateIshikawa(e) {
   const mType = document.getElementById('ishikawa-m-type').value;
   const cause = document.getElementById('ishikawa-cause-input').value;
 
-  if (problem) AppState.ishikawaData.problem = problem;
-  if (cause && AppState.ishikawaData[mType]) {
-    AppState.ishikawaData[mType].push(cause);
+  if (problem) clientIshikawaData.problem = problem;
+  if (cause && clientIshikawaData[mType]) {
+    clientIshikawaData[mType].push(cause);
   }
 
-  localStorage.setItem('5s_ishikawa', JSON.stringify(AppState.ishikawaData));
+  localStorage.setItem(`5s_ishikawa_${selectedClientId}`, JSON.stringify(clientIshikawaData));
   document.getElementById('ishikawa-cause-input').value = '';
   renderIshikawa();
 }
 
 function renderIshikawa() {
   const problemTitle = document.getElementById('ishikawa-effect-title');
-  if (problemTitle) problemTitle.innerText = AppState.ishikawaData.problem;
+  if (problemTitle) problemTitle.innerText = clientIshikawaData.problem || 'Sem problema definido';
 
   const mList = ['maoObra', 'metodo', 'maquina', 'material', 'meioAmbiente', 'medicao'];
   mList.forEach(m => {
     const el = document.getElementById(`ishikawa-list-${m}`);
     if (el) {
-      el.innerHTML = (AppState.ishikawaData[m] || []).map(c => `<li>${c}</li>`).join('') || '<li style="color:var(--text-dim)">Nenhuma causa anotada</li>';
+      el.innerHTML = (clientIshikawaData[m] || []).map(c => `<li>${c}</li>`).join('') || '<li style="color:var(--text-dim)">Nenhuma causa anotada</li>';
     }
   });
 }

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sistema de Gestão 5S & Ferramentas da Qualidade</title>
+  <title>Portal de Consultoria 5S & Ferramentas da Qualidade</title>
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -13,14 +13,69 @@
 </head>
 <body>
 
+  <!-- TELA DE LOGIN CORPORATIVO (MODAL OVERLAY) -->
+  <div id="login-overlay" class="login-overlay">
+    <div class="login-card">
+      <div class="login-header">
+        <div class="brand-icon" style="margin: 0 auto 1rem auto;">5S</div>
+        <h2>Portal de Consultoria 5S</h2>
+        <p>Acesse seu projeto corporativo de qualidade</p>
+      </div>
+
+      <form id="login-form">
+        <div class="form-group" style="text-align: left;">
+          <label>Usuário de Acesso</label>
+          <input type="text" id="login-username" class="form-control" placeholder="Ex: sohipren ou admin" required>
+        </div>
+
+        <div class="form-group" style="text-align: left;">
+          <label>Senha</label>
+          <input type="password" id="login-password" class="form-control" placeholder="••••••••" required>
+        </div>
+
+        <div id="login-error" style="color: var(--danger); font-size: 0.8rem; margin-bottom: 1rem; display: none;">
+          ⚠️ Usuário ou senha incorretos. Tente novamente!
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="width: 100%; padding: 0.8rem;">
+          🔑 Entrar no Portal 5S
+        </button>
+      </form>
+
+      <div class="credentials-box">
+        <strong>💡 Contas para Teste de Demonstração:</strong><br>
+        • <strong>Consultor Mestre (Admin):</strong> <code>admin</code> | Senha: <code>master5s</code><br>
+        • <strong>Cliente Sohipren:</strong> <code>sohipren</code> | Senha: <code>5s2026</code><br>
+        • <strong>Cliente Logística:</strong> <code>logistica</code> | Senha: <code>5s2026</code>
+      </div>
+    </div>
+  </div>
+
+
   <!-- APP HEADER -->
   <header class="app-header">
     <div class="brand">
       <div class="brand-icon">5S</div>
       <div class="brand-text">
-        <h1>Gestão da Qualidade & 5S</h1>
-        <p>Sistema Interativo de Auditoria e Melhores Práticas</p>
+        <h1>Consultoria da Qualidade & 5S</h1>
+        <p id="active-client-name">🏢 Cliente: Selecionando...</p>
       </div>
+    </div>
+
+    <!-- PAINEL DE SESSÃO DO USUÁRIO & SELETOR DE CLIENTE ADMIN -->
+    <div class="user-session-bar">
+      
+      <!-- SELETOR DE CLIENTES PARA O ADMIN/CONSULTOR -->
+      <div id="admin-client-selector-container" style="display: none;">
+        <select id="admin-client-select" class="form-control" onchange="changeActiveClientAdmin(this.value)" style="padding: 0.4rem 0.6rem; font-size: 0.8rem; background: rgba(99, 102, 241, 0.2); border-color: var(--primary);">
+        </select>
+      </div>
+
+      <span id="logged-user-name" class="client-badge">👤 Logado</span>
+      
+      <button class="btn btn-secondary" onclick="handleLogout()" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;">
+        🚪 Sair
+      </button>
     </div>
 
     <!-- TABS NAVIGATION -->
@@ -37,6 +92,7 @@
     </nav>
   </header>
 
+
   <!-- MAIN CONTAINER -->
   <main class="main-container">
 
@@ -45,11 +101,11 @@
          =================================================================== -->
     <section id="tab-dashboard" class="tab-content active">
       
-      <!-- PAINEL DE MATURIDADE GLOBAL -->
+      <!-- PAINEL DE MATURIDADE GLOBAL DO CLIENTE -->
       <div class="card">
         <div class="card-header">
-          <h2 class="card-title">🏆 Nível de Maturidade do Programa 5S</h2>
-          <button class="btn btn-secondary" onclick="window.print()">🖨️ Exportar / Imprimir</button>
+          <h2 class="card-title">🏆 Nível de Maturidade 5S do Cliente</h2>
+          <button class="btn btn-secondary" onclick="window.print()">🖨️ Exportar / Imprimir Relatório</button>
         </div>
 
         <div class="grid-metrics">
@@ -101,7 +157,7 @@
 
         <div style="background: rgba(255,255,255,0.03); padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
           <div>
-            <span style="font-size: 0.85rem; color: var(--text-muted);">Índice Geral de Conformidade:</span>
+            <span style="font-size: 0.85rem; color: var(--text-muted);">Índice Geral do Cliente:</span>
             <h3 id="global-maturity-score" style="font-size: 2rem; font-family: var(--font-display); color: var(--primary);">100%</h3>
           </div>
           <div>
@@ -111,14 +167,14 @@
         </div>
       </div>
 
-      <!-- FORMULÁRIO DE AUDITORIA INTERATIVA -->
+      <!-- FORMULÁRIO DE AUDITORIA INTERATIVA DO CLIENTE -->
       <div class="card">
         <div class="card-header">
           <h2 class="card-title">📋 Checklist Oficial de Auditoria 5S (50 Itens)</h2>
           <button class="btn btn-danger" onclick="resetAudit()">🔄 Redefinir Respostas</button>
         </div>
         <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.5rem;">
-          Selecione a pontuação de <strong>1 (Insuficiente)</strong> a <strong>4 (Ótimo)</strong> para cada um dos itens abaixo. O cálculo da nota e percentual por senso é atualizado em tempo real.
+          Selecione a pontuação de <strong>1 (Insuficiente)</strong> a <strong>4 (Ótimo)</strong> para cada um dos itens abaixo. O cálculo é atualizado instantaneamente para a empresa ativa.
         </p>
 
         <!-- Container das 50 Perguntas -->
@@ -133,22 +189,47 @@
          =================================================================== -->
     <section id="tab-tools" class="tab-content">
       
-      <!-- SUB-SEÇÃO: MATRIZ GUT -->
-      <div class="card">
+      <!-- SUB-SEÇÃO: PAINEL DO CONSULTOR (CADASTRO DE NOVOS CLIENTES) -->
+      <div class="card" id="admin-add-client-card" style="border-color: var(--border-highlight); background: rgba(99, 102, 241, 0.05);">
         <div class="card-header">
-          <h2 class="card-title">🎯 Matriz GUT - Priorização de Problemas</h2>
+          <h2 class="card-title">➕ Painel da Consultoria: Cadastrar Novo Cliente</h2>
         </div>
         <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">
-          Calcule a prioridade das Ações 5S multiplicando <strong>Gravidade (1-5) &times; Urgência (1-5) &times; Tendência (1-5)</strong>. A tabela ordena automaticamente as prioridades mais críticas!
+          Cadastre novos clientes para sua consultoria. Cada novo cliente terá acesso a uma área exclusiva com login e senha próprios!
         </p>
+
+        <form id="form-new-client" class="grid-3col">
+          <div class="form-group">
+            <label>Nome da Empresa do Cliente</label>
+            <input type="text" id="new-client-name" class="form-control" placeholder="Ex: Metalúrgica ABC Ltda" required>
+          </div>
+          <div class="form-group">
+            <label>Usuário de Login</label>
+            <input type="text" id="new-client-user" class="form-control" placeholder="Ex: metalurgica_abc" required>
+          </div>
+          <div class="form-group">
+            <label>Senha de Acesso</label>
+            <input type="text" id="new-client-pass" class="form-control" placeholder="Ex: 5s123" required>
+          </div>
+          <div style="grid-column: span 3;">
+            <button type="submit" class="btn btn-primary" style="width: 100%;">🚀 Cadastrar Cliente & Criar Acesso Exclusivo</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- SUB-SEÇÃO: MATRIZ GUT DO CLIENTE -->
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title">🎯 Matriz GUT - Priorização de Problemas do Cliente</h2>
+        </div>
 
         <form id="form-gut" class="grid-2col" style="margin-bottom: 1.5rem;">
           <div class="form-group" style="grid-column: span 2;">
-            <label>Descrição do Problema / Não Conformidade 5S</label>
-            <input type="text" id="gut-problem" class="form-control" placeholder="Ex: Material obsoleto acumulado no setor de montagem..." required>
+            <label>Descrição do Problema 5S</label>
+            <input type="text" id="gut-problem" class="form-control" placeholder="Ex: Sobras de materiais sem identificação acumulados na bancada..." required>
           </div>
           <div class="form-group">
-            <label>Gravidade (G: 1=Mínima, 5=Gravíssima)</label>
+            <label>Gravidade (G: 1-5)</label>
             <select id="gut-g" class="form-control">
               <option value="1">1 - Mínima</option>
               <option value="2">2 - Baixa</option>
@@ -158,7 +239,7 @@
             </select>
           </div>
           <div class="form-group">
-            <label>Urgência (U: 1=Pode aguardar, 5=Imediata)</label>
+            <label>Urgência (U: 1-5)</label>
             <select id="gut-u" class="form-control">
               <option value="1">1 - Pode aguardar</option>
               <option value="2">2 - Pouca urgência</option>
@@ -168,7 +249,7 @@
             </select>
           </div>
           <div class="form-group">
-            <label>Tendência (T: 1=Não piora, 5=Piora rápido)</label>
+            <label>Tendência (T: 1-5)</label>
             <select id="gut-t" class="form-control">
               <option value="1">1 - Sem tendência de piora</option>
               <option value="2">2 - Piora a longo prazo</option>
@@ -200,16 +281,16 @@
         </div>
       </div>
 
-      <!-- SUB-SEÇÃO: KANBAN 5W2H -->
+      <!-- SUB-SEÇÃO: KANBAN 5W2H DO CLIENTE -->
       <div class="card">
         <div class="card-header">
-          <h2 class="card-title">📌 Quadro Kanban de Planos de Ação 5W2H</h2>
+          <h2 class="card-title">📌 Quadro Kanban 5W2H - Plano de Ação do Cliente</h2>
         </div>
 
         <form id="form-kanban" class="grid-2col" style="margin-bottom: 1.5rem;">
           <div class="form-group">
             <label>Ação Corretiva (O quê?)</label>
-            <input type="text" id="kanban-title" class="form-control" placeholder="Ex: Pintar demarcações de piso na Fábrica..." required>
+            <input type="text" id="kanban-title" class="form-control" placeholder="Ex: Organizar cabos elétricos e pneumáticos..." required>
           </div>
           <div class="form-group">
             <label>Senso Relacionado</label>
@@ -223,7 +304,7 @@
           </div>
           <div class="form-group">
             <label>Responsável (Quem?)</label>
-            <input type="text" id="kanban-owner" class="form-control" placeholder="Ex: Rodrigo / Equipe do Estoque">
+            <input type="text" id="kanban-owner" class="form-control" placeholder="Ex: Liderança do Setor">
           </div>
           <div class="form-group">
             <label>Prazo Limite (Quando?)</label>
@@ -258,7 +339,7 @@
         </div>
       </div>
 
-      <!-- SUB-SEÇÃO: ISHIKAWA 6M -->
+      <!-- SUB-SEÇÃO: ISHIKAWA DO CLIENTE -->
       <div class="card">
         <div class="card-header">
           <h2 class="card-title">🐟 Diagrama de Ishikawa (Espinha de Peixe / 6M)</h2>
@@ -266,8 +347,8 @@
 
         <form id="form-ishikawa" class="grid-2col" style="margin-bottom: 1.5rem;">
           <div class="form-group" style="grid-column: span 2;">
-            <label>Efeito / Problema Principal</label>
-            <input type="text" id="ishikawa-problem-input" class="form-control" placeholder="Ex: Recorrência de ferramentas perdidas na Montagem">
+            <label>Efeito / Problema Sob Análise</label>
+            <input type="text" id="ishikawa-problem-input" class="form-control" placeholder="Ex: Recorrência de ferramentas quebradas ou perdidas">
           </div>
           <div class="form-group">
             <label>Categoria do M</label>
@@ -282,7 +363,7 @@
           </div>
           <div class="form-group">
             <label>Causa Identificada</label>
-            <input type="text" id="ishikawa-cause-input" class="form-control" placeholder="Ex: Falta de quadro de ferramentas shadowboard">
+            <input type="text" id="ishikawa-cause-input" class="form-control" placeholder="Ex: Falta de painel sombra para ferramentas">
           </div>
           <div style="grid-column: span 2;">
             <button type="submit" class="btn btn-primary" style="width: 100%;">➕ Adicionar Causa ao Diagrama</button>
@@ -326,7 +407,7 @@
     </section>
 
     <!-- ===================================================================
-         ABA 3: MANUAL DE IMPLANTAÇÃO COMPLETO (MARKDOWN READER)
+         ABA 3: MANUAL DE IMPLANTAÇÃO COMPLETO
          =================================================================== -->
     <section id="tab-manual" class="tab-content">
       <div class="card">
@@ -337,16 +418,15 @@
         
         <div style="font-size: 0.95rem; line-height: 1.8; color: #d1d5db; padding: 1rem; background: rgba(0,0,0,0.3); border-radius: var(--radius-md);">
           <h3 style="color: var(--primary); margin-bottom: 1rem;">Visão Geral do Manual</h3>
-          <p>O Manual completo está salvo no arquivo local <code>manual_implementacao_5s_qualidade.md</code>.</p>
+          <p>O Manual completo de implantação está disponível para consulta e exportação.</p>
           <hr style="border-color: var(--border-color); margin: 1.5rem 0;">
           
-          <h4 style="color: var(--accent-cyan); margin-bottom: 0.5rem;">Principais Tópicos Cobertos no Manual:</h4>
+          <h4 style="color: var(--accent-cyan); margin-bottom: 0.5rem;">Estrutura de Implantação:</h4>
           <ul style="list-style: square inside; margin-left: 1rem;">
-            <li><strong>Diretrizes de Implantação:</strong> Papéis da Alta Direção, Comitê Central e Líderes de Setor.</li>
-            <li><strong>Cronograma Passo a Passo:</strong> Do treinamento inicial ao evento do "Dia D" de descarte.</li>
-            <li><strong>Detalhamento dos 5 Sensos:</strong> Regras práticas para Seiri, Seiton, Seiso, Seiketsu e Shitsuke.</li>
-            <li><strong>Método de Avaliação das Auditorias:</strong> Escala de 1 a 4 pontos e exigência do critério de 95% para evolução de senso.</li>
-            <li><strong>Integração com Lean & ISO 9001:</strong> Aplicação combinada de PDCA, Ishikawa, 5 Porquês, Matriz GUT e Kanban 5W2H.</li>
+            <li><strong>Sensibilização & Treinamentos:</strong> Metodologia de engajamento da equipe.</li>
+            <li><strong>O "Dia D" de Descarte:</strong> Separação de desnecessários e aplicação de cartões vermelhos.</li>
+            <li><strong>Controle de Auditorias:</strong> Escala de pontuação de 1 a 4 e avaliação contínua.</li>
+            <li><strong>Ferramentas Lean Integradas:</strong> Ishikawa, 5 Porquês, GUT e Kanban 5W2H.</li>
           </ul>
         </div>
       </div>
