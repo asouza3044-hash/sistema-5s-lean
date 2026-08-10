@@ -3,39 +3,39 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Portal de Consultoria 5S & Qualidade</title>
+  <title>Portal 5S & Qualidade - IMPAK TTO Plásticos de Engenharia</title>
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
   <!-- Chart.js para o Gráfico Radar dos 5 Sensos -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <!-- Local Styles com Cache Busting v3.5 -->
-  <link rel="stylesheet" href="styles.css?v=3.5">
+  <!-- Local Styles com Cache Busting v4.0 -->
+  <link rel="stylesheet" href="styles.css?v=4.0">
   <!-- JavaScript Principal Carregado no Head -->
-  <script src="app.js?v=3.5"></script>
+  <script src="app.js?v=4.0"></script>
 </head>
 <body>
 
-  <!-- TELA DE LOGIN INSTITUCIONAL ULTRA-CLEAN COM ACESSO RÁPIDO INSTANTÂNEO -->
+  <!-- TELA DE LOGIN INSTITUCIONAL DA CONSULTORIA 5S (100% NEUTRA & ULTRA-CLEAN) -->
   <div id="login-overlay" class="login-overlay">
     <div class="login-card">
       
       <div class="login-header">
         <h2>Consultoria da Qualidade & 5S</h2>
-        <p>Acesso ao Portal Corporativo de Auditoria</p>
+        <p>Portal Corporativo de Auditoria de Campo</p>
       </div>
 
-      <!-- BOTAO DE ACESSO DIRETO EM 1 CLIQUE PARA REUNIÃO E DEMONSTRAÇÃO -->
+      <!-- BOTÃO DE ACESSO DIRETO EM 1 CLIQUE PARA A REUNIÃO DA IMPAKTTO -->
       <div style="margin-bottom: 1.25rem;">
         <button type="button" class="btn btn-primary" onclick="quickMasterLogin()" style="width: 100%; padding: 0.95rem; font-size: 1.05rem; font-weight: 800; background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4); border: 1px solid rgba(255,255,255,0.2);">
-          🚀 ENTRAR DIRETO NO PORTAL 5S
+          🚀 ENTRAR NO PORTAL IMPAK TTO
         </button>
       </div>
 
       <div style="display: flex; align-items: center; margin: 1rem 0; color: var(--text-dim); font-size: 0.75rem;">
         <div style="flex: 1; height: 1px; background: rgba(255,255,255,0.1);"></div>
-        <span style="padding: 0 0.5rem;">ou selecione seu perfil abaixo</span>
+        <span style="padding: 0 0.5rem;">ou entre com usuário e senha</span>
         <div style="flex: 1; height: 1px; background: rgba(255,255,255,0.1);"></div>
       </div>
 
@@ -53,7 +53,7 @@
       <form id="login-form" onsubmit="handleLogin(event)">
         <div class="form-group" style="text-align: left;">
           <label>Usuário de Acesso</label>
-          <input type="text" id="login-username" class="form-control" placeholder="admin ou alexandre.usinagem" value="admin" autocomplete="username">
+          <input type="text" id="login-username" class="form-control" placeholder="Ex: alexandre.usinagem ou admin" value="admin" autocomplete="username">
         </div>
 
         <div class="form-group" style="text-align: left;">
@@ -76,7 +76,7 @@
         </div>
       </form>
 
-      <!-- FORMULÁRIO 2: AUTO-CADASTRO RÁPIDO E DESPOLUÍDO -->
+      <!-- FORMULÁRIO 2: AUTO-CADASTRO RÁPIDO -->
       <form id="register-form" style="display: none;">
         <div class="form-group" style="text-align: left;">
           <label>Seu Nome</label>
@@ -106,9 +106,6 @@
           <input type="password" id="reg-password" class="form-control" placeholder="••••••••">
         </div>
 
-        <input type="hidden" id="reg-level" value="diario">
-        <input type="hidden" id="reg-company-locked-id" value="impaktto">
-
         <button type="submit" class="btn btn-primary" style="width: 100%; padding: 0.85rem; font-size: 1rem;">
           🚀 Finalizar e Acessar Portal
         </button>
@@ -118,7 +115,7 @@
   </div>
 
 
-  <!-- APP HEADER (ONDE O LOGO DA EMPRESA APARECE APÓS O CARREGAMENTO DO SISTEMA) -->
+  <!-- APP HEADER (MARCA EXCLUSIVA IMPAK TTO CARREGADA APÓS O LOGIN) -->
   <header class="app-header">
     <div class="brand">
       <img id="header-company-logo" src="logo_impaktto.png" alt="Impaktto Plásticos de Engenharia" class="company-logo-img">
@@ -128,17 +125,9 @@
       </div>
     </div>
 
-    <!-- PAINEL DE SESSÃO DO USUÁRIO & SELETOR DE EMPRESA ADMIN -->
+    <!-- PAINEL DE SESSÃO DO USUÁRIO DA IMPAKTTO -->
     <div class="user-session-bar">
-      
-      <!-- SELETOR DE EMPRESAS APENAS PARA O ADMIN/CONSULTOR NO PAINEL MESTRE -->
-      <div id="admin-client-selector-container" style="display: none;">
-        <select id="admin-client-select" class="form-control" onchange="changeActiveClientAdmin(this.value)" style="padding: 0.4rem 0.6rem; font-size: 0.8rem; background: rgba(99, 102, 241, 0.2); border-color: var(--primary);">
-        </select>
-      </div>
-
       <span id="logged-user-name" class="client-badge">👤 Logado</span>
-      
       <button class="btn btn-secondary" onclick="handleLogout()" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;">
         🚪 Sair
       </button>
@@ -152,7 +141,7 @@
       <button class="nav-btn" data-tab="tab-tools">
         🛠️ Ferramentas da Qualidade
       </button>
-      <!-- MANUAL ESTRITAMENTE RESTRITO AO ADM / CONSULTOR MESTRE -->
+      <!-- MANUAL ESTRITAMENTE RESTRITO AO ADM / GERÊNCIA & DIRETORIA -->
       <button class="nav-btn" data-tab="tab-manual" style="display: none;">
         📖 Manual de Implantação (Restrito ADM)
       </button>
@@ -164,18 +153,18 @@
   <main class="main-container">
 
     <!-- ===================================================================
-         ABA 1: DASHBOARD & AUDITORIA 5S DE CAMPO
+         ABA 1: DASHBOARD & AUDITORIA 5S DE CAMPO DA IMPAK TTO
          =================================================================== -->
     <section id="tab-dashboard" class="tab-content active">
       
       <!-- PAINEL DE MATURIDADE GLOBAL DA EMPRESA -->
       <div class="card">
         <div class="card-header">
-          <h2 class="card-title">🏆 Nível de Maturidade 5S da Empresa</h2>
-          <button class="btn btn-secondary" onclick="window.print()">🖨️ Exportar Relatório Consolidado</button>
+          <h2 class="card-title">🏆 Nível de Maturidade 5S - IMPAK TTO</h2>
+          <button class="btn btn-secondary" onclick="window.print()">🖨️ Exportar Relatório Executivo</button>
         </div>
 
-        <!-- GRÁFICO RADAR DOS 5 SENSOS (IMPACTO VISUAL EXECUTIVO) -->
+        <!-- GRÁFICO RADAR DOS 5 SENSOS -->
         <div class="grid-2col" style="margin-bottom: 1.5rem; align-items: center;">
           <div style="background: rgba(0,0,0,0.25); padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--border-color); height: 300px; display: flex; justify-content: center; align-items: center;">
             <canvas id="radarChart5S"></canvas>
@@ -229,13 +218,13 @@
 
       </div>
 
-      <!-- CARD: QUADRO DIGITAL "COMO ESTÁ NOSSA ÁREA?" (FÁBRICA IMPAKTTS/SOHIPREN) -->
+      <!-- CARD: QUADRO DIGITAL "COMO ESTÁ NOSSA ÁREA?" (FÁBRICA IMPAK TTO) -->
       <div class="card" style="border-color: rgba(245, 158, 11, 0.4); background: rgba(245, 158, 11, 0.03);">
         <div class="card-header">
           <h2 class="card-title" style="color: var(--status-regular);">📋 Quadro da Fábrica: COMO ESTÁ NOSSA ÁREA?</h2>
         </div>
         <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem;">
-          Avaliação rápida diária de 3 Níveis (<strong>🟢 Bom | 🟡 Regular | 🔴 Ruim</strong>). Clique no botão do dia para alternar o status:
+          Avaliação diária de 3 Níveis (<strong>🟢 Bom | 🟡 Regular | 🔴 Ruim</strong>). Clique no botão do dia para alternar o status:
         </p>
         <div id="factory-board-container" style="overflow-x: auto;"></div>
       </div>
@@ -246,7 +235,7 @@
           <h2 class="card-title" style="color: var(--accent-cyan);">📜 Feed de Lançamentos de Campo (Ao Vivo)</h2>
         </div>
         <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.75rem;">
-          Lançamentos sendo realizados em tempo real pelos auditores e equipe no chão de fábrica:
+          Lançamentos sendo realizados em tempo real pela equipe no chão de fábrica:
         </p>
         <div id="activity-log-container" style="max-height: 180px; overflow-y: auto; background: rgba(0,0,0,0.2); padding: 0.75rem; border-radius: var(--radius-sm);">
         </div>
@@ -270,88 +259,20 @@
 
 
     <!-- ===================================================================
-         ABA 2: CENTRAL DE FERRAMENTAS DA QUALIDADE (EXCLUSIVO PARA CONSULTOR/ADMIN)
+         ABA 2: CENTRAL DE FERRAMENTAS DA QUALIDADE
          =================================================================== -->
     <section id="tab-tools" class="tab-content">
       
-      <!-- SUB-SEÇÃO: PAINEL DO CONSULTOR (CADASTRO DE EMPRESAS & LINKS EXCLUSIVOS) -->
-      <div class="card" id="admin-add-user-card" style="border-color: var(--border-highlight); background: rgba(99, 102, 241, 0.05); display: none;">
-        <div class="card-header">
-          <h2 class="card-title">👑 Painel Exclusivo do Consultor Mestre (Xandinho)</h2>
-        </div>
-        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.25rem;">
-          Cadastre novas empresas, defina títulos personalizados e **gere o link direto de boas-vindas** para enviar por WhatsApp ou E-mail aos participantes da inspeção.
-        </p>
-
-        <!-- FORMULÁRIO 1: CADASTRO DE EMPRESA E GERAÇÃO DE LINK EXCLUSIVO -->
-        <div style="background: rgba(0,0,0,0.25); padding: 1.25rem; border-radius: var(--radius-md); border: 1px solid var(--border-color); margin-bottom: 1.5rem;">
-          <h3 style="font-size: 1rem; color: var(--primary); margin-bottom: 1rem;">🏢 Cadastrar Empresa & Gerar Link Exclusivo de Convite</h3>
-          
-          <form id="form-new-company" class="grid-2col">
-            <div class="form-group">
-              <label>Nome Oficial da Empresa</label>
-              <input type="text" id="admin-comp-name" class="form-control" placeholder="Ex: IMPAK TTO Plásticos de Engenharia" required>
-            </div>
-            <div class="form-group">
-              <label>Código do Link (ex: impaktto, sohipren)</label>
-              <input type="text" id="admin-comp-code" class="form-control" placeholder="Ex: impaktto" required>
-            </div>
-            <div class="form-group" style="grid-column: span 2;">
-              <label>Subtítulo do Projeto / Descrição</label>
-              <input type="text" id="admin-comp-subtitle" class="form-control" placeholder="Ex: Projeto Especial de Implantação 5S & SENAI">
-            </div>
-
-            <div style="grid-column: span 2;">
-              <button type="submit" class="btn btn-primary" style="width: 100%;">🚀 Cadastrar Empresa & Gerar Link Exclusivo</button>
-            </div>
-          </form>
-
-          <!-- EXIBIÇÃO DO LINK GERADO -->
-          <div id="generated-link-display" style="margin-top: 1rem; display: none; background: rgba(16, 185, 129, 0.1); border: 1px solid var(--status-bom); padding: 1rem; border-radius: var(--radius-sm);">
-            <strong style="color: var(--status-bom); font-size: 0.85rem;">✅ Link Exclusivo Gerado com Sucesso!</strong>
-            <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0.25rem 0 0.5rem 0;">Envie este link para a equipe do projeto e do SENAI para auto-cadastro rápido:</p>
-            <div style="display: flex; gap: 0.5rem;">
-              <input type="text" id="generated-link-input" class="form-control" readonly style="background: rgba(0,0,0,0.4); font-weight: bold; color: #a5b4fc;">
-              <button type="button" class="btn btn-primary" onclick="copyGeneratedLink()" style="white-space: nowrap;">📋 Copiar Link</button>
-            </div>
-          </div>
-        </div>
-
-        <!-- FORMULÁRIO 2: CADASTRO MANUAL DE USUÁRIO POR EMPRESA -->
-        <h3 style="font-size: 1rem; color: var(--accent-cyan); margin-bottom: 0.75rem;">👤 Cadastrar Usuário Manualmente</h3>
-        <form id="form-new-user" class="grid-2col">
-          <div class="form-group">
-            <label>Nome da Empresa</label>
-            <input type="text" id="new-company-name" class="form-control" placeholder="Ex: IMPAK TTO Plásticos de Engenharia" required>
-          </div>
-          <div class="form-group">
-            <label>Nome Completo do Colaborador / Auditor</label>
-            <input type="text" id="new-user-name" class="form-control" placeholder="Ex: João (SENAI)" required>
-          </div>
-          <div class="form-group">
-            <label>Usuário de Login</label>
-            <input type="text" id="new-user-name-user" class="form-control" placeholder="Ex: joao.impaktto" required>
-          </div>
-          <div class="form-group">
-            <label>Senha de Acesso</label>
-            <input type="text" id="new-user-pass" class="form-control" placeholder="Ex: 5s2026" required>
-          </div>
-          <div style="grid-column: span 2;">
-            <button type="submit" class="btn btn-secondary" style="width: 100%;">👤 Cadastrar Usuário Individual</button>
-          </div>
-        </form>
-      </div>
-
       <!-- SUB-SEÇÃO: MATRIZ GUT -->
       <div class="card">
         <div class="card-header">
-          <h2 class="card-title">🎯 Matriz GUT - Priorização de Problemas da Empresa</h2>
+          <h2 class="card-title">🎯 Matriz GUT - Priorização de Problemas da Fábrica</h2>
         </div>
 
         <form id="form-gut" class="grid-2col" style="margin-bottom: 1.5rem;">
           <div class="form-group" style="grid-column: span 2;">
             <label>Descrição do Problema 5S</label>
-            <input type="text" id="gut-problem" class="form-control" placeholder="Ex: Sobras de materiais sem identificação acumulados na bancada..." required>
+            <input type="text" id="gut-problem" class="form-control" placeholder="Ex: Sobras de materiais sem identificação acumulados na bancada de usinagem..." required>
           </div>
           <div class="form-group">
             <label>Gravidade (G: 1-5)</label>
@@ -409,7 +330,7 @@
       <!-- SUB-SEÇÃO: KANBAN 5W2H -->
       <div class="card">
         <div class="card-header">
-          <h2 class="card-title">📌 Quadro Kanban 5W2H - Plano de Ação da Empresa</h2>
+          <h2 class="card-title">📌 Quadro Kanban 5W2H - Plano de Ação IMPAK TTO</h2>
         </div>
 
         <form id="form-kanban" class="grid-2col" style="margin-bottom: 1.5rem;">
@@ -429,7 +350,7 @@
           </div>
           <div class="form-group">
             <label>Responsável (Quem?)</label>
-            <input type="text" id="kanban-owner" class="form-control" placeholder="Ex: Liderança do Setor">
+            <input type="text" id="kanban-owner" class="form-control" placeholder="Ex: Alexandre (Usinagem)">
           </div>
           <div class="form-group">
             <label>Prazo Limite (Quando?)</label>
@@ -542,15 +463,15 @@
         </div>
         
         <div style="font-size: 0.95rem; line-height: 1.8; color: #d1d5db; padding: 1rem; background: rgba(0,0,0,0.3); border-radius: var(--radius-md);">
-          <h3 style="color: var(--primary); margin-bottom: 1rem;">Visão Geral do Manual de Governança</h3>
+          <h3 style="color: var(--primary); margin-bottom: 1rem;">Visão Geral do Manual de Governança - IMPAK TTO</h3>
           <p>O Manual completo de implantação é de acesso estritamente restrito à gestão de projeto e diretoria (Auditores Sênior).</p>
           <hr style="border-color: var(--border-color); margin: 1.5rem 0;">
           
-          <h4 style="color: var(--accent-cyan); margin-bottom: 0.5rem;">Diretrizes da Governança em 3 Níveis:</h4>
+          <h4 style="color: var(--accent-cyan); margin-bottom: 0.5rem;">Diretrizes da Governança em 3 Níveis da Impaktto:</h4>
           <ul style="list-style: square inside; margin-left: 1rem;">
-            <li><strong>Nível 1 (Líderes Diários):</strong> Inspeção operacional contínua por setor.</li>
-            <li><strong>Nível 2 (Auditores Semanais):</strong> Validação de encarregados e equipe de RH.</li>
-            <li><strong>Nível 3 (Auditores Sênior):</strong> Consolidação mensal, relatórios executivos e auditoria mestre.</li>
+            <li><strong>Nível 1 (Líderes Diários):</strong> Alexandre (Usinagem), Marcos (Holter), Bruno (Armários), Elton (Portas/Cortinas), Giovanna (Acabamento), Fabio (Comercial Usinados), Andre (Comercial Portas/Armários/Cortinas).</li>
+            <li><strong>Nível 2 (Auditores Semanais):</strong> Diego (Encarregado Fábrica), Filipe (Encarregado RH - 5S).</li>
+            <li><strong>Nível 3 (Auditores Sênior):</strong> Kaio (Diretor), Alexandre Souza (Gerente de Projeto / Consultor Mestre).</li>
           </ul>
         </div>
       </div>

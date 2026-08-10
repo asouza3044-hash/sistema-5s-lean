@@ -1,26 +1,9 @@
 /* ==========================================================================
-   PORTAL DE CONSULTORIA 5S & QUALIDADE (ARQUITETURA DE GOVERNANÇA IMPAK TTO)
+   PORTAL DEDICADO IMPAK TTO PLÁSTICOS DE ENGENHARIA
+   PROJETO ESPECIAL DE IMPLANTAÇÃO 5S & QUALIDADE (SENAI)
    ========================================================================== */
 
-// 1. ENTRADA RÁPIDA MESTRE EM 1 CLIQUE (PARA REUNIÕES E APRESENTAÇÕES)
-window.quickMasterLogin = function() {
-  currentUser = DEFAULT_USERS.admin;
-  localStorage.setItem('5s_current_session', JSON.stringify(currentUser));
-  
-  const loginOverlay = document.getElementById('login-overlay');
-  if (loginOverlay) {
-    loginOverlay.style.display = 'none';
-    loginOverlay.classList.add('hidden');
-  }
-
-  try {
-    checkAuthSession();
-  } catch (err) {
-    console.error('Erro na entrada rápida:', err);
-  }
-};
-
-// 2. DECLARAÇÃO GLOBAL DO ALTERNADOR INSTANTÂNEO DE ABAS (LOGIN / CADASTRO)
+// DECLARAÇÃO GLOBAL DO ALTERNADOR INSTANTÂNEO DE ABAS (LOGIN / CADASTRO)
 window.switchAuthTab = function(mode) {
   const loginForm = document.getElementById('login-form');
   const registerForm = document.getElementById('register-form');
@@ -42,7 +25,25 @@ window.switchAuthTab = function(mode) {
 
 window.toggleAuthMode = window.switchAuthTab;
 
-// 3. FUNÇÃO GLOBAL DE LOGIN INFALÍVEL
+// ENTRADA RÁPIDA MESTRE EM 1 CLIQUE (IMPAK TTO)
+window.quickMasterLogin = function() {
+  currentUser = DEFAULT_USERS.admin;
+  localStorage.setItem('5s_impaktto_session', JSON.stringify(currentUser));
+  
+  const loginOverlay = document.getElementById('login-overlay');
+  if (loginOverlay) {
+    loginOverlay.style.display = 'none';
+    loginOverlay.classList.add('hidden');
+  }
+
+  try {
+    checkAuthSession();
+  } catch (err) {
+    console.error('Erro na entrada rápida:', err);
+  }
+};
+
+// FUNÇÃO GLOBAL DE LOGIN DIRETO IMPAK TTO
 window.handleLogin = function(e) {
   if (e) e.preventDefault();
   
@@ -53,7 +54,7 @@ window.handleLogin = function(e) {
   const u = uInput && uInput.value.trim() ? uInput.value.trim().toLowerCase() : 'admin';
   const p = pInput && pInput.value.trim() ? pInput.value.trim() : 'mestre5s';
 
-  // Buscar usuário na base com suporte a fallback mestre
+  // Buscar usuário na base
   let user = userDatabase[u] || DEFAULT_USERS[u];
 
   if (!user || u === 'admin' || u === 'impaktto') {
@@ -61,7 +62,7 @@ window.handleLogin = function(e) {
   }
 
   currentUser = user || DEFAULT_USERS.admin;
-  localStorage.setItem('5s_current_session', JSON.stringify(currentUser));
+  localStorage.setItem('5s_impaktto_session', JSON.stringify(currentUser));
   
   if (loginErr) loginErr.style.display = 'none';
 
@@ -85,7 +86,7 @@ window.clearSystemSession = function() {
   location.reload();
 };
 
-// Base de Dados Oficial de Perguntas dos 5 Sensos (50 Itens Oficiais)
+// 50 Perguntas Oficiais dos 5 Sensos
 const AUDIT_QUESTIONS = {
   seiri: [
     "Há objetos pessoais ou materiais no setor que não possuem relação com o processo?",
@@ -139,7 +140,7 @@ const AUDIT_QUESTIONS = {
     "Os colaboradores mantêm o hábito de organizar e limpar sem supervisão?",
     "Os colaboradores cumprem espontaneamente os padrões definidos no setor?",
     "A equipe demonstra comprometimento ativo com o Programa 5S?",
-    "As não conformidades apontadas na anterior foram sanadas?",
+    "As não conformidades apontadas na auditoria anterior foram sanadas?",
     "Os líderes dão o exemplo, praticando e incentivando o 5S diariamente?",
     "Os colaboradores conhecem a Política da Qualidade e objetivos da empresa?",
     "O uso de uniformes e EPIs é mantido sem necessidade de lembretes?",
@@ -149,7 +150,7 @@ const AUDIT_QUESTIONS = {
   ]
 };
 
-// Setores Oficiais da Impaktto
+// Setores Oficiais da Impaktto Plásticos de Engenharia
 const IMPAKTTO_SECTORS = [
   "Usinagem",
   "Holter",
@@ -160,48 +161,28 @@ const IMPAKTTO_SECTORS = [
   "Comercial Portas, Armários e Cortinas"
 ];
 
-// Base de Empresas Inicial
-const DEFAULT_COMPANIES = {
-  impaktto: {
-    id: 'impaktto',
-    name: 'IMPAK TTO Plásticos de Engenharia',
-    subtitle: 'Projeto Especial de Implantação 5S & SENAI',
-    logo: 'logo_impaktto.png',
-    sectors: IMPAKTTO_SECTORS
-  },
-  sohipren: {
-    id: 'sohipren',
-    name: 'Sohipren S.A. Oleohidráulica',
-    subtitle: 'Metodologia 5S & Gestão da Qualidade ISO 9001',
-    logo: '',
-    sectors: ["Usinagem", "Montagem", "Estoque", "Qualidade"]
-  }
-};
-
-// Base de Usuários Inicial com Credenciais Garantidas
+// Usuários Oficiais Pré-Configurados da Impaktto
 const DEFAULT_USERS = {
-  admin: { username: 'admin', password: 'mestre5s', name: 'Alexandre Souza', role: 'administrador', level: 'senior', title: 'Gerente de Projeto / Consultor Mestre', companyId: 'impaktto' },
-  kaio: { username: 'kaio.diretor', password: '5s2026', name: 'Kaio', role: 'administrador', level: 'senior', title: 'Diretor', companyId: 'impaktto' },
-  diego: { username: 'diego.fabrica', password: '5s2026', name: 'Diego', role: 'auditor_semanal', level: 'semanal', title: 'Encarregado de Fábrica', companyId: 'impaktto' },
-  filipe: { username: 'filipe.rh', password: '5s2026', name: 'Filipe', role: 'auditor_semanal', level: 'semanal', title: 'Encarregado RH - 5S', companyId: 'impaktto' },
-  alexandre_u: { username: 'alexandre.usinagem', password: '5s2026', name: 'Alexandre', role: 'lider_diario', level: 'diario', sector: 'Usinagem', title: 'Líder de Usinagem', companyId: 'impaktto' },
-  marcos: { username: 'marcos.holter', password: '5s2026', name: 'Marcos', role: 'lider_diario', level: 'diario', sector: 'Holter', title: 'Líder de Holter', companyId: 'impaktto' },
-  bruno: { username: 'bruno.armarios', password: '5s2026', name: 'Bruno', role: 'lider_diario', level: 'diario', sector: 'Armários', title: 'Líder de Armários', companyId: 'impaktto' },
-  elton: { username: 'elton.portas', password: '5s2026', name: 'Elton', role: 'lider_diario', level: 'diario', sector: 'Portas / Cortinas', title: 'Líder de Portas / Cortinas', companyId: 'impaktto' },
-  giovanna: { username: 'giovanna.acabamento', password: '5s2026', name: 'Giovanna', role: 'lider_diario', level: 'diario', sector: 'Acabamento', title: 'Líder de Acabamento', companyId: 'impaktto' },
-  fabio: { username: 'fabio.comercial', password: '5s2026', name: 'Fabio', role: 'lider_diario', level: 'diario', sector: 'Comercial Usinados', title: 'Líder Comercial Usinados', companyId: 'impaktto' },
-  andre: { username: 'andre.comercial', password: '5s2026', name: 'Andre', role: 'lider_diario', level: 'diario', sector: 'Comercial Portas, Armários e Cortinas', title: 'Líder Comercial Portas/Armários/Cortinas', companyId: 'impaktto' }
+  admin: { username: 'admin', password: 'mestre5s', name: 'Alexandre Souza', role: 'administrador', level: 'senior', title: 'Gerente de Projeto / Consultor Mestre' },
+  kaio: { username: 'kaio.diretor', password: '5s2026', name: 'Kaio', role: 'administrador', level: 'senior', title: 'Diretor' },
+  diego: { username: 'diego.fabrica', password: '5s2026', name: 'Diego', role: 'auditor_semanal', level: 'semanal', title: 'Encarregado de Fábrica' },
+  filipe: { username: 'filipe.rh', password: '5s2026', name: 'Filipe', role: 'auditor_semanal', level: 'semanal', title: 'Encarregado RH - 5S' },
+  alexandre_u: { username: 'alexandre.usinagem', password: '5s2026', name: 'Alexandre', role: 'lider_diario', level: 'diario', sector: 'Usinagem', title: 'Líder de Usinagem' },
+  marcos: { username: 'marcos.holter', password: '5s2026', name: 'Marcos', role: 'lider_diario', level: 'diario', sector: 'Holter', title: 'Líder de Holter' },
+  bruno: { username: 'bruno.armarios', password: '5s2026', name: 'Bruno', role: 'lider_diario', level: 'diario', sector: 'Armários', title: 'Líder de Armários' },
+  elton: { username: 'elton.portas', password: '5s2026', name: 'Elton', role: 'lider_diario', level: 'diario', sector: 'Portas / Cortinas', title: 'Líder de Portas / Cortinas' },
+  giovanna: { username: 'giovanna.acabamento', password: '5s2026', name: 'Giovanna', role: 'lider_diario', level: 'diario', sector: 'Acabamento', title: 'Líder de Acabamento' },
+  fabio: { username: 'fabio.comercial', password: '5s2026', name: 'Fabio', role: 'lider_diario', level: 'diario', sector: 'Comercial Usinados', title: 'Líder Comercial Usinados' },
+  andre: { username: 'andre.comercial', password: '5s2026', name: 'Andre', role: 'lider_diario', level: 'diario', sector: 'Comercial Portas, Armários e Cortinas', title: 'Líder Comercial Portas/Armários/Cortinas' }
 };
 
 // Estado Global
-let userDatabase = { ...DEFAULT_USERS, ...(JSON.parse(localStorage.getItem('5s_user_database')) || {}) };
-userDatabase.admin = DEFAULT_USERS.admin; // Garantir admin intacto
+let userDatabase = { ...DEFAULT_USERS, ...(JSON.parse(localStorage.getItem('5s_impaktto_users')) || {}) };
+userDatabase.admin = DEFAULT_USERS.admin;
 
-let companyDatabase = { ...DEFAULT_COMPANIES, ...(JSON.parse(localStorage.getItem('5s_company_database')) || {}) };
-let currentUser = JSON.parse(localStorage.getItem('5s_current_session')) || null;
-let selectedClientId = JSON.parse(localStorage.getItem('5s_active_client_id')) || 'impaktto';
+let currentUser = JSON.parse(localStorage.getItem('5s_impaktto_session')) || null;
 
-// Dados da Empresa Ativa
+// Dados da Impaktto
 let clientAuditScores = {};
 let clientGutMatrix = [];
 let clientKanbanTasks = [];
@@ -213,7 +194,6 @@ let radarChartInstance = null;
 // Inicialização de Eventos
 document.addEventListener('DOMContentLoaded', () => {
   initTabs();
-  checkURLParams();
   checkAuthSession();
 
   // Escutadores Específicos para Toque em Dispositivos Móveis
@@ -232,29 +212,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
   document.getElementById('login-form')?.addEventListener('submit', handleLogin);
   document.getElementById('register-form')?.addEventListener('submit', handleSelfRegister);
-  document.getElementById('form-new-company')?.addEventListener('submit', handleAdminCreateCompany);
-  document.getElementById('form-new-user')?.addEventListener('submit', handleCreateNewUser);
   document.getElementById('form-gut')?.addEventListener('submit', handleAddGUT);
   document.getElementById('form-kanban')?.addEventListener('submit', handleAddKanban);
   document.getElementById('form-ishikawa')?.addEventListener('submit', handleUpdateIshikawa);
 });
 
-function checkURLParams() {
-  const urlParams = new URLSearchParams(window.location.search);
-  const companyParam = urlParams.get('empresa');
-  
-  const targetCompanyId = (companyParam && companyDatabase[companyParam]) ? companyParam : 'impaktto';
-  selectedClientId = targetCompanyId;
-
-  const regCompanyLockedId = document.getElementById('reg-company-locked-id');
-  if (regCompanyLockedId) regCompanyLockedId.value = targetCompanyId;
-}
-
 function handleSelfRegister(e) {
   if (e) e.preventDefault();
   
   const name = document.getElementById('reg-name').value.trim();
-  const companyId = document.getElementById('reg-company-locked-id')?.value || 'impaktto';
   const username = document.getElementById('reg-username').value.trim().toLowerCase();
   const password = document.getElementById('reg-password').value.trim();
   const userSector = document.getElementById('reg-sector')?.value || 'Usinagem';
@@ -272,15 +238,14 @@ function handleSelfRegister(e) {
     name,
     role: 'lider_diario',
     level: 'diario',
-    sector: userSector,
-    companyId
+    sector: userSector
   };
 
   userDatabase[username] = newUser;
-  localStorage.setItem('5s_user_database', JSON.stringify(userDatabase));
+  localStorage.setItem('5s_impaktto_users', JSON.stringify(userDatabase));
 
   currentUser = newUser;
-  localStorage.setItem('5s_current_session', JSON.stringify(currentUser));
+  localStorage.setItem('5s_impaktto_session', JSON.stringify(currentUser));
 
   const loginOverlay = document.getElementById('login-overlay');
   if (loginOverlay) {
@@ -297,42 +262,7 @@ function handleSelfRegister(e) {
   logActivity(`Novo integrante registrado (${name} - Setor: ${userSector})`);
 }
 
-function handleAdminCreateCompany(e) {
-  if (e) e.preventDefault();
-  const name = document.getElementById('admin-comp-name').value.trim();
-  const code = document.getElementById('admin-comp-code').value.trim().toLowerCase().replace(/\s+/g, '-');
-  const subtitle = document.getElementById('admin-comp-subtitle').value.trim();
-
-  if (!name || !code) return;
-
-  companyDatabase[code] = {
-    id: code,
-    name: name,
-    subtitle: subtitle || 'Projeto de Implantação 5S & Qualidade',
-    logo: ''
-  };
-
-  localStorage.setItem('5s_company_database', JSON.stringify(companyDatabase));
-  populateAdminClientDropdown();
-
-  const generatedLink = `${window.location.origin}${window.location.pathname}?empresa=${code}`;
-  
-  document.getElementById('generated-link-display').style.display = 'block';
-  document.getElementById('generated-link-input').value = generatedLink;
-
-  alert(`Empresa "${name}" cadastrada com sucesso! Link exclusivo gerado!`);
-}
-
-window.copyGeneratedLink = function() {
-  const input = document.getElementById('generated-link-input');
-  if (input) {
-    input.select();
-    navigator.clipboard.writeText(input.value);
-    alert('Link exclusivo copiado com sucesso! Você já pode enviar para a equipe!');
-  }
-};
-
-// CONTROLE DE SESSÃO E CARREGAMENTO DA MARCA DA EMPRESA
+// CONTROLE DE SESSÃO DA IMPAKTTO
 function checkAuthSession() {
   const loginOverlay = document.getElementById('login-overlay');
 
@@ -354,22 +284,11 @@ function checkAuthSession() {
 
   const navBtnTools = document.querySelector('.nav-btn[data-tab="tab-tools"]');
   const navBtnManual = document.querySelector('.nav-btn[data-tab="tab-manual"]');
-  const adminClientSelector = document.getElementById('admin-client-selector-container');
-  const adminAddUserCard = document.getElementById('admin-add-user-card');
 
   if (isAdmin) {
-    selectedClientId = selectedClientId || 'impaktto';
-    if (adminClientSelector) adminClientSelector.style.display = 'block';
-    if (adminAddUserCard) adminAddUserCard.style.display = 'block';
     if (navBtnTools) navBtnTools.style.display = 'flex';
     if (navBtnManual) navBtnManual.style.display = 'flex';
-
-    populateAdminClientDropdown();
   } else {
-    selectedClientId = currentUser.companyId || 'impaktto';
-    if (adminClientSelector) adminClientSelector.style.display = 'none';
-    if (adminAddUserCard) adminAddUserCard.style.display = 'none';
-    
     if (navBtnTools) navBtnTools.style.display = 'none';
     if (navBtnManual) navBtnManual.style.display = 'none';
 
@@ -379,19 +298,15 @@ function checkAuthSession() {
     document.getElementById('tab-dashboard')?.classList.add('active');
   }
 
-  localStorage.setItem('5s_active_client_id', JSON.stringify(selectedClientId));
-  
-  const activeCompanyObj = companyDatabase[selectedClientId] || { name: 'IMPAK TTO Plásticos de Engenharia' };
-  
-  // Atualizar Logotipo da Empresa no Cabeçalho
+  // Garantir Logotipo da Impaktto no Cabeçalho
   const headerLogoImg = document.getElementById('header-company-logo');
   if (headerLogoImg) {
-    headerLogoImg.src = activeCompanyObj.logo || 'logo_impaktto.png';
+    headerLogoImg.src = 'logo_impaktto.png';
   }
 
   const activeClientNameEl = document.getElementById('active-client-name');
   if (activeClientNameEl) {
-    activeClientNameEl.innerText = `🏢 ${activeCompanyObj.name}`;
+    activeClientNameEl.innerText = `🏢 IMPAK TTO Plásticos de Engenharia`;
   }
   
   const levelLabels = {
@@ -407,72 +322,27 @@ function checkAuthSession() {
   }
 
   try {
-    loadClientData(selectedClientId);
+    loadImpakttoData();
   } catch (err) {
-    console.error('Erro ao carregar dados do cliente:', err);
+    console.error('Erro ao carregar dados da Impaktto:', err);
   }
 }
 
 window.handleLogout = function() {
   currentUser = null;
-  selectedClientId = null;
-  localStorage.removeItem('5s_current_session');
-  localStorage.removeItem('5s_active_client_id');
+  localStorage.removeItem('5s_impaktto_session');
   location.reload();
 };
 
-function populateAdminClientDropdown() {
-  const select = document.getElementById('admin-client-select');
-  if (!select) return;
-
-  select.innerHTML = Object.values(companyDatabase)
-    .map(c => `<option value="${c.id}" ${c.id === selectedClientId ? 'selected' : ''}>${c.name}</option>`)
-    .join('');
-}
-
-window.changeActiveClientAdmin = function(newClientId) {
-  selectedClientId = newClientId;
-  localStorage.setItem('5s_active_client_id', JSON.stringify(selectedClientId));
-  checkAuthSession();
-};
-
-function handleCreateNewUser(e) {
-  if (e) e.preventDefault();
-  const companyName = document.getElementById('new-company-name').value.trim();
-  const name = document.getElementById('new-user-name').value.trim();
-  const username = document.getElementById('new-user-name-user').value.trim().toLowerCase();
-  const password = document.getElementById('new-user-pass').value.trim();
-
-  if (!username || !password || !name) return;
-
-  const companyId = username.split('.')[1] || username;
-
-  if (!companyDatabase[companyId]) {
-    companyDatabase[companyId] = { id: companyId, name: companyName || name, subtitle: 'Projeto de Implantação 5S' };
-    localStorage.setItem('5s_company_database', JSON.stringify(companyDatabase));
-  }
-
-  userDatabase[username] = { username, password, name, role: 'auditor_semanal', companyId };
-  localStorage.setItem('5s_user_database', JSON.stringify(userDatabase));
-
-  alert(`Integrante registrado!\nNome: ${name}\nUsuário: ${username}`);
-  document.getElementById('new-company-name').value = '';
-  document.getElementById('new-user-name').value = '';
-  document.getElementById('new-user-name-user').value = '';
-  document.getElementById('new-user-pass').value = '';
-
-  populateAdminClientDropdown();
-}
-
-function loadClientData(clientId) {
-  clientAuditScores = JSON.parse(localStorage.getItem(`5s_audit_scores_${clientId}`)) || {};
-  clientGutMatrix = JSON.parse(localStorage.getItem(`5s_gut_matrix_${clientId}`)) || [];
-  clientKanbanTasks = JSON.parse(localStorage.getItem(`5s_kanban_tasks_${clientId}`)) || [
+function loadImpakttoData() {
+  clientAuditScores = JSON.parse(localStorage.getItem('5s_audit_scores_impaktto')) || {};
+  clientGutMatrix = JSON.parse(localStorage.getItem('5s_gut_matrix_impaktto')) || [];
+  clientKanbanTasks = JSON.parse(localStorage.getItem('5s_kanban_tasks_impaktto')) || [
     { id: '1', title: 'Demarcar corredores de circulação no chão de fábrica', senso: 'seiton', status: 'a-fazer', owner: 'Diego (Encarregado Fábrica)', date: '2026-08-20', createdBy: 'Alexandre Souza' },
     { id: '2', title: 'Implantar quadro shadowboard para ferramentas de usinagem', senso: 'seiri', status: 'em-andamento', owner: 'Alexandre (Usinagem)', date: '2026-08-15', createdBy: 'Kaio' }
   ];
-  clientIshikawaData = JSON.parse(localStorage.getItem(`5s_ishikawa_${clientId}`)) || {
-    problem: `Auditoria de Campo 5S - ${companyDatabase[clientId]?.name || 'Impaktto'}`,
+  clientIshikawaData = JSON.parse(localStorage.getItem('5s_ishikawa_impaktto')) || {
+    problem: 'Auditoria de Campo 5S - IMPAK TTO Plásticos de Engenharia',
     maoObra: ['Rotina de limpeza diária a estruturar'],
     metodo: ['Procedimentos visuais de organização nas bancadas'],
     maquina: ['Identificação dos pontos de lubrificação'],
@@ -480,8 +350,8 @@ function loadClientData(clientId) {
     meioAmbiente: ['Organização de fiação elétrica e pneumática'],
     medicao: ['Rondas semanais dos auditores']
   };
-  clientActivityLogs = JSON.parse(localStorage.getItem(`5s_activity_logs_${clientId}`)) || [];
-  clientFactoryBoard = JSON.parse(localStorage.getItem(`5s_factory_board_${clientId}`)) || {};
+  clientActivityLogs = JSON.parse(localStorage.getItem('5s_activity_logs_impaktto')) || [];
+  clientFactoryBoard = JSON.parse(localStorage.getItem('5s_factory_board_impaktto')) || {};
 
   renderAuditForms();
   calculateAuditResults();
@@ -506,7 +376,7 @@ function logActivity(actionText) {
   clientActivityLogs.unshift(logEntry);
   if (clientActivityLogs.length > 50) clientActivityLogs.pop();
 
-  localStorage.setItem(`5s_activity_logs_${selectedClientId}`, JSON.stringify(clientActivityLogs));
+  localStorage.setItem('5s_activity_logs_impaktto', JSON.stringify(clientActivityLogs));
   renderActivityLogs();
 }
 
@@ -605,7 +475,7 @@ function renderAuditForms() {
 
 window.selectScore3Level = function(sensoName, qNum, qKey, level) {
   clientAuditScores[qKey] = level;
-  localStorage.setItem(`5s_audit_scores_${selectedClientId}`, JSON.stringify(clientAuditScores));
+  localStorage.setItem('5s_audit_scores_impaktto', JSON.stringify(clientAuditScores));
 
   const optionsDiv = document.querySelector(`.score-options-3level[data-qkey="${qKey}"]`);
   if (optionsDiv) {
@@ -684,7 +554,7 @@ window.cycleFactoryBoard = function(boardKey, sensoName, day) {
   const next = nextMap[current];
 
   clientFactoryBoard[boardKey] = next;
-  localStorage.setItem(`5s_factory_board_${selectedClientId}`, JSON.stringify(clientFactoryBoard));
+  localStorage.setItem('5s_factory_board_impaktto', JSON.stringify(clientFactoryBoard));
 
   renderFactoryBoard();
   const labelMap = { bom: '🟢 BOM', regular: '🟡 REGULAR', ruim: '🔴 RUIM' };
@@ -791,9 +661,9 @@ function renderRadarChart(scoresData) {
 }
 
 window.resetAudit = function() {
-  if (confirm(`Deseja redefinir a auditoria de "${companyDatabase[selectedClientId]?.name}"?`)) {
+  if (confirm('Deseja redefinir a auditoria da IMPAK TTO?')) {
     clientAuditScores = {};
-    localStorage.removeItem(`5s_audit_scores_${selectedClientId}`);
+    localStorage.removeItem('5s_audit_scores_impaktto');
     logActivity('Redefiniu todas as respostas da auditoria');
     renderAuditForms();
     calculateAuditResults();
@@ -813,7 +683,7 @@ function handleAddGUT(e) {
   const score = g * u * t;
   const item = { id: Date.now(), problem, g, u, t, score, createdBy: currentUser ? currentUser.name : 'Usuário' };
   clientGutMatrix.push(item);
-  localStorage.setItem(`5s_gut_matrix_${selectedClientId}`, JSON.stringify(clientGutMatrix));
+  localStorage.setItem('5s_gut_matrix_impaktto', JSON.stringify(clientGutMatrix));
 
   logActivity(`Adicionou o problema "${problem}" na Matriz GUT (Pontuação: ${score})`);
   document.getElementById('gut-problem').value = '';
@@ -827,7 +697,7 @@ function renderGUTTable() {
   clientGutMatrix.sort((a, b) => b.score - a.score);
 
   if (clientGutMatrix.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color: var(--text-muted); padding: 1rem;">Nenhum problema cadastrado para esta empresa.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color: var(--text-muted); padding: 1rem;">Nenhum problema cadastrado.</td></tr>`;
     return;
   }
 
@@ -851,7 +721,7 @@ window.removeGUT = function(id) {
   if (item) logActivity(`Removeu o problema "${item.problem}" da Matriz GUT`);
 
   clientGutMatrix = clientGutMatrix.filter(i => i.id !== id);
-  localStorage.setItem(`5s_gut_matrix_${selectedClientId}`, JSON.stringify(clientGutMatrix));
+  localStorage.setItem('5s_gut_matrix_impaktto', JSON.stringify(clientGutMatrix));
   renderGUTTable();
 };
 
@@ -875,7 +745,7 @@ function handleAddKanban(e) {
     createdBy: currentUser ? currentUser.name : 'Usuário'
   });
 
-  localStorage.setItem(`5s_kanban_tasks_${selectedClientId}`, JSON.stringify(clientKanbanTasks));
+  localStorage.setItem('5s_kanban_tasks_impaktto', JSON.stringify(clientKanbanTasks));
   logActivity(`Criou a tarefa no Kanban: "${title}" (Resp: ${owner || 'Não atribuído'})`);
   document.getElementById('kanban-title').value = '';
   renderKanban();
@@ -923,17 +793,17 @@ window.moveKanban = function(id, dir) {
   if (dir === 'prev' && currentIdx > 0) currentIdx--;
 
   task.status = flow[currentIdx];
-  localStorage.setItem(`5s_kanban_tasks_${selectedClientId}`, JSON.stringify(clientKanbanTasks));
+  localStorage.setItem('5s_kanban_tasks_impaktto', JSON.stringify(clientKanbanTasks));
   logActivity(`Moveu a tarefa "${task.title}" para ${task.status.toUpperCase()}`);
   renderKanban();
 };
 
 window.deleteKanban = function(id) {
-  const task = task => task.id === id;
+  const task = clientKanbanTasks.find(t => t.id === id);
   if (task) logActivity(`Excluiu a tarefa "${task.title}" do Kanban`);
 
   clientKanbanTasks = clientKanbanTasks.filter(t => t.id !== id);
-  localStorage.setItem(`5s_kanban_tasks_${selectedClientId}`, JSON.stringify(clientKanbanTasks));
+  localStorage.setItem('5s_kanban_tasks_impaktto', JSON.stringify(clientKanbanTasks));
   renderKanban();
 };
 
@@ -950,7 +820,7 @@ function handleUpdateIshikawa(e) {
     logActivity(`Adicionou a causa "${cause}" no Diagrama de Ishikawa (${mType.toUpperCase()})`);
   }
 
-  localStorage.setItem(`5s_ishikawa_${selectedClientId}`, JSON.stringify(clientIshikawaData));
+  localStorage.setItem('5s_ishikawa_impaktto', JSON.stringify(clientIshikawaData));
   document.getElementById('ishikawa-cause-input').value = '';
   renderIshikawa();
 }
