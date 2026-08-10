@@ -48,19 +48,9 @@
 
         <div class="form-group" style="text-align: left;">
           <label>Empresa / Projeto</label>
-
-          <!-- DROPDOWN DE SELEÇÃO (USADO QUANDO NÃO HÁ LINK RESTRITO) -->
-          <select id="reg-company-id" class="form-control" onchange="handleRegCompanyChange(this.value)">
-          </select>
-
-          <!-- EXIBIÇÃO BLOQUEADA (USADO QUANDO O LINK É DEDICADO À EMPRESA) -->
-          <input type="text" id="reg-company-locked-name" class="form-control" style="display: none; background: rgba(99, 102, 241, 0.15); font-weight: bold; border-color: var(--primary); color: #a5b4fc;" readonly>
-          <input type="hidden" id="reg-company-locked-id">
-        </div>
-
-        <div class="form-group" id="reg-new-company-container" style="text-align: left; display: none;">
-          <label>Nome da Nova Empresa</label>
-          <input type="text" id="reg-new-company-name" class="form-control" placeholder="Ex: Minha Empresa Ltda">
+          <!-- CAMPO BLOQUEADO DE EMPRESA (SEM NENHUMA OPÇÃO DE TROCA) -->
+          <input type="text" id="reg-company-locked-name" class="form-control" value="🔒 IMPAK TTO Plásticos de Engenharia" style="background: rgba(99, 102, 241, 0.15); font-weight: bold; border-color: var(--primary); color: #a5b4fc;" readonly>
+          <input type="hidden" id="reg-company-locked-id" value="impaktto">
         </div>
 
         <div class="form-group" style="text-align: left;">
@@ -120,7 +110,7 @@
     <!-- PAINEL DE SESSÃO DO USUÁRIO & SELETOR DE EMPRESA ADMIN -->
     <div class="user-session-bar">
       
-      <!-- SELETOR DE EMPRESAS PARA O ADMIN/CONSULTOR -->
+      <!-- SELETOR DE EMPRESAS APENAS PARA O ADMIN/CONSULTOR NO PAINEL MESTRE -->
       <div id="admin-client-selector-container" style="display: none;">
         <select id="admin-client-select" class="form-control" onchange="changeActiveClientAdmin(this.value)" style="padding: 0.4rem 0.6rem; font-size: 0.8rem; background: rgba(99, 102, 241, 0.2); border-color: var(--primary);">
         </select>

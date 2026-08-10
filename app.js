@@ -1,5 +1,5 @@
 /* ==========================================================================
-   PORTAL DE CONSULTORIA 5S & QUALIDADE (EXCLUSIVIDADE CORPORATIVA)
+   PORTAL DE CONSULTORIA 5S & QUALIDADE (SISTEMA EXCLUSIVO IMPAK TTO)
    ========================================================================== */
 
 // Base de Dados Oficial de Perguntas dos 5 Sensos (50 Itens Oficiais)
@@ -66,13 +66,13 @@ const AUDIT_QUESTIONS = {
   ]
 };
 
-// Base de Empresas Inicial (Exclusividade Total - Sem a palavra "Cliente")
+// Base de Empresas (Com Impaktto como Padrão Fixo)
 const DEFAULT_COMPANIES = {
   impaktto: {
     id: 'impaktto',
     name: 'IMPAK TTO Plásticos de Engenharia',
-    subtitle: 'Projeto de Implantação 5S & Lean - Parceria SENAI',
-    logo: ''
+    subtitle: 'Projeto Especial de Implantação 5S & SENAI',
+    logo: 'logo_impaktto.png'
   },
   sohipren: {
     id: 'sohipren',
@@ -115,7 +115,6 @@ document.addEventListener('DOMContentLoaded', () => {
   initTabs();
   checkURLParams();
   checkAuthSession();
-  populateCompanyDropdowns();
 
   document.getElementById('login-form')?.addEventListener('submit', handleLogin);
   document.getElementById('register-form')?.addEventListener('submit', handleSelfRegister);
@@ -126,32 +125,27 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('form-ishikawa')?.addEventListener('submit', handleUpdateIshikawa);
 });
 
-// Checar Parâmetros de URL (?empresa=impaktto) e Travar a Empresa no Auto-Cadastro
+// Checar Parâmetros de URL ou Manter Impaktto como Empresa Única Travada no Cadastro
 function checkURLParams() {
   const urlParams = new URLSearchParams(window.location.search);
   const companyParam = urlParams.get('empresa');
   
-  const regCompanySelect = document.getElementById('reg-company-id');
+  const targetCompanyId = (companyParam && companyDatabase[companyParam]) ? companyParam : 'impaktto';
+  selectedClientId = targetCompanyId;
+  const targetCompany = companyDatabase[targetCompanyId] || companyDatabase['impaktto'];
+
+  // Definir empresa travada de forma estática
   const regCompanyLockedName = document.getElementById('reg-company-locked-name');
   const regCompanyLockedId = document.getElementById('reg-company-locked-id');
 
-  if (companyParam && companyDatabase[companyParam]) {
-    selectedClientId = companyParam;
-    const targetCompany = companyDatabase[companyParam];
-
-    if (regCompanySelect) regCompanySelect.style.display = 'none';
-    if (regCompanyLockedName) {
-      regCompanyLockedName.style.display = 'block';
-      regCompanyLockedName.value = `🔒 ${targetCompany.name}`;
-    }
-    if (regCompanyLockedId) regCompanyLockedId.value = targetCompany.id;
-
-    updateWelcomeBanner(companyParam);
-  } else {
-    if (regCompanySelect) regCompanySelect.style.display = 'block';
-    if (regCompanyLockedName) regCompanyLockedName.style.display = 'none';
-    updateWelcomeBanner(selectedClientId || 'impaktto');
+  if (regCompanyLockedName) {
+    regCompanyLockedName.value = `🔒 ${targetCompany.name}`;
   }
+  if (regCompanyLockedId) {
+    regCompanyLockedId.value = targetCompany.id;
+  }
+
+  updateWelcomeBanner(targetCompanyId);
 }
 
 function updateWelcomeBanner(companyId) {
@@ -161,15 +155,6 @@ function updateWelcomeBanner(companyId) {
 
   if (welcomeTitle) welcomeTitle.innerText = company.name;
   if (welcomeSub) welcomeSub.innerText = company.subtitle || 'Projeto de Implantação 5S & Qualidade';
-}
-
-function populateCompanyDropdowns() {
-  const regSelect = document.getElementById('reg-company-id');
-  if (regSelect) {
-    regSelect.innerHTML = Object.values(companyDatabase)
-      .map(c => `<option value="${c.id}">${c.name}</option>`)
-      .join('') + `<option value="nova_empresa">+ Cadastrar Nova Empresa</option>`;
-  }
 }
 
 window.toggleAuthMode = function(mode) {
@@ -191,38 +176,14 @@ window.toggleAuthMode = function(mode) {
   }
 };
 
-window.handleRegCompanyChange = function(val) {
-  const newCompanyInputContainer = document.getElementById('reg-new-company-container');
-  if (val === 'nova_empresa') {
-    newCompanyInputContainer.style.display = 'block';
-  } else {
-    newCompanyInputContainer.style.display = 'none';
-    updateWelcomeBanner(val);
-  }
-};
-
 function handleSelfRegister(e) {
   e.preventDefault();
   const name = document.getElementById('reg-name').value.trim();
-  
-  const lockedId = document.getElementById('reg-company-locked-id').value;
-  let companyId = lockedId || document.getElementById('reg-company-id').value;
-  
-  const newCompanyName = document.getElementById('reg-new-company-name').value.trim();
+  const companyId = document.getElementById('reg-company-locked-id').value || 'impaktto';
   const username = document.getElementById('reg-username').value.trim().toLowerCase();
   const password = document.getElementById('reg-password').value.trim();
 
   if (!name || !username || !password) return;
-
-  if (companyId === 'nova_empresa') {
-    if (!newCompanyName) {
-      alert('Por favor, informe o nome da nova empresa.');
-      return;
-    }
-    companyId = username.split('.')[1] || username;
-    companyDatabase[companyId] = { id: companyId, name: newCompanyName, subtitle: 'Projeto de Implantação 5S & Qualidade' };
-    localStorage.setItem('5s_company_database', JSON.stringify(companyDatabase));
-  }
 
   if (userDatabase[username]) {
     alert('Este nome de usuário já está em uso. Escolha outro usuário (ex: joao.impaktto).');
@@ -256,7 +217,6 @@ function handleAdminCreateCompany(e) {
   };
 
   localStorage.setItem('5s_company_database', JSON.stringify(companyDatabase));
-  populateCompanyDropdowns();
   populateAdminClientDropdown();
 
   const generatedLink = `${window.location.origin}${window.location.pathname}?empresa=${code}`;
@@ -388,7 +348,6 @@ function handleCreateNewUser(e) {
   document.getElementById('new-user-name-user').value = '';
   document.getElementById('new-user-pass').value = '';
 
-  populateCompanyDropdowns();
   populateAdminClientDropdown();
 }
 
