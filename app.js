@@ -54,6 +54,18 @@ const IMPAKTTO_SECTORS = [
   "Comercial Portas, Armários e Cortinas"
 ];
 
+// MATRIZ DE RODÍZIO DE AUDITORIA CRUZADA (PRINCÍPIO DA IMPARCIALIDADE 5S)
+// O Líder de um setor NÃO pode auditar a sua própria área. É alocado no setor vizinho!
+const SECTOR_ROTATION_MAP = {
+  "Usinagem": "Holter",
+  "Holter": "Armários",
+  "Armários": "Portas / Cortinas",
+  "Portas / Cortinas": "Acabamento",
+  "Acabamento": "Comercial Usinados",
+  "Comercial Usinados": "Comercial Portas, Armários e Cortinas",
+  "Comercial Portas, Armários e Cortinas": "Usinagem"
+};
+
 // Usuários Oficiais Pré-Configurados da Equipe Impaktto (Arquitetura 3 Grupos de Governança)
 const DEFAULT_USERS = {
   admin: { username: 'admin', password: 'mestre5s', name: 'Alexandre Souza', role: 'administrador', level: 'senior', title: 'Grupo 3: Gerente de Projeto / Consultor Mestre' },
@@ -82,7 +94,7 @@ let clientKanbanTasks = [];
 let clientIshikawaData = {};
 let clientActivityLogs = [];
 let clientFactoryBoard = {};
-let activeFactorySectorFilter = 'ALL'; // 'ALL' para visão geral consolidada
+let activeFactorySectorFilter = 'ALL';
 let radarChartInstance = null;
 
 // 3. FUNÇÃO GLOBAL DE LOGIN DIRETO IMPAK TTO (SUPORTE A TODOS OS INTEGRANTES)
@@ -241,7 +253,6 @@ function handleSelfRegister(e) {
     return;
   }
 
-  // Novos cadastros pertencem por padrão ao GRUPO 1 (Líder Diário do Setor selecionado)
   const newUser = {
     username,
     password,
@@ -269,7 +280,7 @@ function handleSelfRegister(e) {
     console.error('Erro ao carregar sessão pós-registro:', err);
   }
 
-  logActivity(`Novo integrante registrado (${name} - Setor: ${userSector} - Grupo 1)`);
+  logActivity(`Novo integrante registrado (${name} - Setor Origem: ${userSector} - Grupo 1)`);
 }
 
 // 4. CONTROLE ESTRITO DE SESSÃO E VISIBILIDADE POR GRUPO (1, 2 E 3)
@@ -308,9 +319,7 @@ function checkAuthSession() {
   const navBtnManual = document.querySelector('.nav-btn[data-tab="tab-manual"]');
 
   if (isDiario) {
-    // ---------------------------------------------------------------------
-    // GRUPO 1: SOMENTE E SOMENTE DEVERÁ APARECER O QUADRO DO SEU SETOR
-    // ---------------------------------------------------------------------
+    // GRUPO 1: SOMENTE O QUADRO DE AUDITORIA CRUZADA DO SETOR DESTINO
     if (cardFactoryBoard) cardFactoryBoard.style.display = 'block';
     if (cardMaturity) cardMaturity.style.display = 'none';
     if (cardActivityFeed) cardActivityFeed.style.display = 'none';
@@ -324,9 +333,7 @@ function checkAuthSession() {
     document.getElementById('tab-dashboard')?.classList.add('active');
 
   } else if (isSemanal) {
-    // ---------------------------------------------------------------------
     // GRUPO 2 (AUDITORES SEMANAIS): QUADRO + CHECKLIST + MATURIDADE + FEED
-    // ---------------------------------------------------------------------
     if (cardFactoryBoard) cardFactoryBoard.style.display = 'block';
     if (cardMaturity) cardMaturity.style.display = 'block';
     if (cardActivityFeed) cardActivityFeed.style.display = 'block';
@@ -342,9 +349,7 @@ function checkAuthSession() {
     document.getElementById('tab-dashboard')?.classList.add('active');
 
   } else {
-    // ---------------------------------------------------------------------
     // GRUPO 3 (AUDITORES SÊNIOR / ADM): ACESSO TOTAL COMPLETO
-    // ---------------------------------------------------------------------
     if (cardFactoryBoard) cardFactoryBoard.style.display = 'block';
     if (cardMaturity) cardMaturity.style.display = 'block';
     if (cardActivityFeed) cardActivityFeed.style.display = 'block';
@@ -364,10 +369,13 @@ function checkAuthSession() {
     activeClientNameEl.innerText = `🏢 IMPAK TTO Plásticos de Engenharia`;
   }
   
+  const userSector = currentUser.sector || 'Usinagem';
+  const targetAuditSector = SECTOR_ROTATION_MAP[userSector] || 'Holter';
+
   const levelLabels = {
     senior: '👑 Grupo 3: Auditor Sênior (Adm/Diretoria)',
     semanal: '🔍 Grupo 2: Auditor Semanal (Encarregado)',
-    diario: `📋 Grupo 1: Líder do Setor ${currentUser.sector || 'Usinagem'}`
+    diario: `📋 Grupo 1: Líder (Origem: ${userSector} ➔ Destino Auditoria: ${targetAuditSector})`
   };
 
   const levelBadgeText = levelLabels[level] || '📋 Grupo 1: Líder Diário';
@@ -549,7 +557,7 @@ window.selectScore3Level = function(sensoName, qNum, qKey, level) {
   logActivity(`Avaliou o item ${sensoName.toUpperCase()} #${qNum} como ${labelMap[level]}`);
 };
 
-// 5. RENDEREZAÇÃO DO QUADRO INDIVIDUAL POR SETOR E CONSOLIDAÇÃO GERAL DA FÁBRICA
+// 5. RENDEREZAÇÃO DO QUADRO COM REGRA DE AUDITORIA CRUZADA E SELEÇÃO DE DESTINO
 function renderFactoryBoard() {
   const container = document.getElementById('factory-board-container');
   const titleEl = document.getElementById('factory-board-title');
@@ -559,29 +567,48 @@ function renderFactoryBoard() {
   const userSector = currentUser ? (currentUser.sector || 'Usinagem') : 'Usinagem';
   const isDiario = (currentUser && currentUser.level === 'diario');
 
-  // Definir setor ativo para exibição
-  let selectedSector = isDiario ? userSector : (activeFactorySectorFilter || 'ALL');
+  // Aplicar regra da Auditoria Cruzada: O Líder do Grupo 1 NUNCA audita seu próprio setor!
+  const targetAuditSector = SECTOR_ROTATION_MAP[userSector] || 'Holter';
+  
+  // Setor selecionado para a exibição
+  let selectedSector = isDiario ? targetAuditSector : (activeFactorySectorFilter || 'ALL');
 
   // Atualizar Título Dinâmico do Card
   if (titleEl) {
     if (isDiario) {
-      titleEl.innerHTML = `📋 Quadro do Setor: <span style="color:var(--primary); font-weight:800;">${userSector}</span> (COMO ESTÁ NOSSA ÁREA?)`;
+      titleEl.innerHTML = `📋 Quadro da Fábrica: COMO ESTÁ NOSSA ÁREA?`;
     } else if (selectedSector === 'ALL') {
       titleEl.innerHTML = `📋 Quadro Geral Consolidado (COMO ESTÁ A IMPAK TTO?)`;
     } else {
-      titleEl.innerHTML = `📋 Quadro do Setor: <span style="color:var(--primary); font-weight:800;">${selectedSector}</span> (COMO ESTÁ NOSSA ÁREA?)`;
+      titleEl.innerHTML = `📋 Quadro do Setor: <span style="color:var(--primary); font-weight:800;">${selectedSector}</span>`;
     }
   }
 
-  // Renderizar Seletor de Filtro apenas para Grupo 2 e Grupo 3
+  // Banner e Sinalização Visual de Auditoria Cruzada (Rodízio)
   if (filterSelectContainer) {
     if (isDiario) {
-      filterSelectContainer.style.display = 'none';
+      filterSelectContainer.style.display = 'block';
+      filterSelectContainer.innerHTML = `
+        <div style="background: rgba(99, 102, 241, 0.15); border: 1px solid var(--border-highlight); padding: 0.85rem 1.1rem; border-radius: var(--radius-md); margin-bottom: 1.25rem; display: flex; align-items: center; justify-content: space-between; flex-wrap:wrap; gap:0.5rem;">
+          <div>
+            <div style="font-size:0.75rem; font-weight:800; color:var(--accent-cyan); text-transform:uppercase; letter-spacing:0.05em;">
+              🔄 REGRA DA AUDITORIA CRUZADA (PRINCÍPIO DA IMPARCIALIDADE 5S):
+            </div>
+            <div style="font-size:0.92rem; font-weight:700; color:var(--text-main); margin-top:0.2rem;">
+              Seu Setor de Origem: <span style="color:var(--text-muted);">${userSector}</span> ➔ 
+              <span style="color:var(--status-bom); font-weight:800;">📍 SEU DESTINO DE AUDITORIA: ${targetAuditSector}</span>
+            </div>
+          </div>
+          <span class="badge-seiton" style="padding:0.35rem 0.75rem; font-size:0.75rem; font-weight:700;">
+            🔒 Imparcialidade Garantida
+          </span>
+        </div>
+      `;
     } else {
       filterSelectContainer.style.display = 'block';
       filterSelectContainer.innerHTML = `
         <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:1rem; flex-wrap:wrap;">
-          <span style="font-size:0.82rem; font-weight:700; color:var(--accent-cyan);">🔍 Visualização do Gestor / Auditor:</span>
+          <span style="font-size:0.82rem; font-weight:700; color:var(--accent-cyan);">🔍 Visualização da Gestão / Auditores:</span>
           <select class="form-control" style="width:auto; padding:0.4rem 0.8rem; font-size:0.85rem;" onchange="changeFactorySectorFilter(this.value)">
             <option value="ALL" ${selectedSector === 'ALL' ? 'selected' : ''}>🌐 Visão Geral Consolidada (Consolidação dos 7 Setores)</option>
             ${IMPAKTTO_SECTORS.map(s => `<option value="${s}" ${selectedSector === s ? 'selected' : ''}>📍 Setor: ${s}</option>`).join('')}
@@ -622,7 +649,7 @@ function renderFactoryBoard() {
         </td>
         ${days.map(day => {
           if (selectedSector === 'ALL') {
-            // VISÃO GERAL CONSOLIDADA: Acumula a pior nota dos 7 setores para alerta imediato
+            // VISÃO GERAL CONSOLIDADA: Acumula status dos 7 setores
             let hasRuim = false;
             let hasRegular = false;
             let countRuim = 0;
@@ -655,7 +682,7 @@ function renderFactoryBoard() {
             `;
 
           } else {
-            // VISÃO INDIVIDUAL DO SETOR
+            // VISÃO INDIVIDUAL DO SETOR AVALIADO NA AUDITORIA CRUZADA
             const boardKey = `${selectedSector}_${s.key}_${day}`;
             const currentStatus = clientFactoryBoard[boardKey] || 'bom';
             const iconMap = { bom: '🟢 Bom', regular: '🟡 Regular', ruim: '🔴 Ruim' };
@@ -692,7 +719,10 @@ window.cycleFactoryBoard = function(sectorName, boardKey, sensoName, day) {
 
   renderFactoryBoard();
   const labelMap = { bom: '🟢 BOM', regular: '🟡 REGULAR', ruim: '🔴 RUIM' };
-  logActivity(`Marcou ${sensoName} na ${day} como ${labelMap[next]} no Setor ${sectorName}`);
+  const auditorName = currentUser ? currentUser.name : 'Líder';
+  const originSector = currentUser ? (currentUser.sector || 'Fábrica') : 'Fábrica';
+
+  logActivity(`Marcou ${sensoName} na ${day} como ${labelMap[next]} no Setor ${sectorName} (Auditoria Cruzada por ${auditorName} - Origem: ${originSector})`);
 };
 
 function calculateAuditResults() {
