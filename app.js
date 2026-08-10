@@ -321,10 +321,10 @@ function checkAuthSession() {
   const level = currentUser.level || 'diario';
   const role = currentUser.role || 'lider_diario';
 
-  const isMonitor = (role === 'monitor' || level === 'monitor'); // CONTA TV MONITOR 16:9
-  const isSenior = (role === 'administrador' || level === 'senior'); // GRUPO 3
-  const isSemanal = (role === 'auditor_semanal' || level === 'semanal'); // GRUPO 2
-  const isDiario = (!isSenior && !isSemanal && !isMonitor); // GRUPO 1
+  const isMonitor = (role === 'monitor' || level === 'monitor');
+  const isSenior = (role === 'administrador' || level === 'senior');
+  const isSemanal = (role === 'auditor_semanal' || level === 'semanal');
+  const isDiario = (!isSenior && !isSemanal && !isMonitor);
 
   const cardFactoryBoard = document.getElementById('card-factory-board');
   const cardMaturity = document.getElementById('card-maturity-dashboard');
@@ -336,14 +336,10 @@ function checkAuthSession() {
   const navBtnManual = document.querySelector('.nav-btn[data-tab="tab-manual"]');
 
   if (isMonitor) {
-    // ---------------------------------------------------------------------
-    // CONTA MONITOR (TV FÁBRICA & ESCRITÓRIO): RADAR + QUADRO EM 16:9
-    // SINALIZAÇÃO DE PRÊMIO EM DINHEIRO REMOVIDA PARA CONFIDENCIALIDADE
-    // ---------------------------------------------------------------------
     document.body.classList.add('monitor-mode');
     activeFactorySectorFilter = 'ALL';
 
-    if (cardMaturity) cardMaturity.style.display = 'block'; // CARD RESTAURADO NA TV
+    if (cardMaturity) cardMaturity.style.display = 'block'; // RADAR RESTAURADO NA TV
     if (cardFactoryBoard) cardFactoryBoard.style.display = 'block';
     if (cardActivityFeed) cardActivityFeed.style.display = 'none'; // REMOVIDO PARA ANONIMATO
     if (cardAuditChecklist) cardAuditChecklist.style.display = 'none';
@@ -900,8 +896,13 @@ window.cycleFactoryBoard = function(sectorName, boardKey, sensoName, day) {
   const labelMap = { bom: '🟢 BOM', regular: '🟡 REGULAR', ruim: '🔴 RUIM' };
   const auditorName = currentUser ? currentUser.name : 'Líder';
   const originSector = currentUser ? (currentUser.sector || 'Fábrica') : 'Fábrica';
+  const isSeniorOrSemanal = (currentUser && (currentUser.level === 'senior' || currentUser.level === 'semanal' || currentUser.role === 'administrador' || currentUser.role === 'auditor_semanal'));
 
-  logActivity(`Marcou ${sensoName} na ${day} como ${labelMap[next]} no Setor ${sectorName} (Auditoria Cruzada por ${auditorName} - Origem: ${originSector})`);
+  if (isSeniorOrSemanal) {
+    logActivity(`⚖️ Calibração de Auditoria (por ${auditorName}): Marcou ${sensoName} na ${day} como ${labelMap[next]} no Setor ${sectorName}`);
+  } else {
+    logActivity(`Marcou ${sensoName} na ${day} como ${labelMap[next]} no Setor ${sectorName} (Auditoria Cruzada por ${auditorName} - Origem: ${originSector})`);
+  }
 };
 
 // 6. CÁLCULO DE RESULTADOS E CONTROLE ESTRITO DA SINALIZAÇÃO DE PREMIAÇÃO (CONFIDENCIAL GRUPO 2 E 3)

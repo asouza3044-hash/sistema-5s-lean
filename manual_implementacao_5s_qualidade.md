@@ -13,7 +13,8 @@
 4. **Metodologia de Auditoria de Campo & Auditoria Cruzada**
    - 4.1 Rondas Diárias e Avaliação de 3 Níveis
    - 4.2 Matriz GUT & Priorização de Ações
-   - **4.3 Diretriz Obrigatória da Auditoria Cruzada & Rodízio entre Setores**
+   - 4.3 Diretriz Obrigatória da Auditoria Cruzada & Rodízio entre Setores
+   - **4.4 Trativas para Faltas de Auditores e Calibração de Notas Não Condizentes**
 5. **Critérios de Maturidade e Métricas Globais**
 
 ---
@@ -44,6 +45,28 @@ Cada Líder Diário (Grupo 1) é escalado automaticamente no Portal para auditar
 
 ---
 
+### 4.4 Tratativas de Governança para Faltas de Auditores e Calibração de Notas (Grupo 2 e 3)
+
+> [!CAUTION]
+> **GARANTIA DA INTEGRIDADE DOS DADOS DA FÁBRICA:**  
+> Como a avaliação mensal pode resultar no **Prêmio em Dinheiro (Meta ≥90%)**, o processo de auditoria exige 100% de precisão e controle. Nenhuma ausência ou nota irreal comprometerá o resultado da empresa.
+
+#### 🔄 1. Protocolo de Faltas ou Ausências de Líderes (Suplência de Auditoria):
+- **O que acontece se o Líder do Grupo 1 faltar, estiver em treinamento ou de férias?**
+- **Regra de Suplência:** O **Encarregado da Fábrica (Grupo 2 - Diego)** assume automaticamente a ronda do setor ausente ou escala o substituto imediato daquele departamento.
+- **Acesso no Sistema:** Os usuários dos Grupos 2 e 3 possuem acesso para lançar a nota de qualquer setor caso o líder titular não esteja presente no dia.
+
+#### ⚖️ 2. Mecanismo de Calibração e Ajuste de Notas (Combate à Notação Irreal ou Viciada):
+- **O que acontece se um Líder der "🟢 Bom" em uma área visivelmente desorganizada (ou "🔴 Ruim" por conflito pessoal)?**
+- **Auditoria de Calibração da Gestão:** Durante a ronda de verificação semanal/mensal, o **Grupo 2 ou Grupo 3** inspeciona o ambiente e tem a autoridade de **sobrescrever/ajustar a nota para a realidade de campo**.
+- **Rastreabilidade no Feed:** O sistema registra a calibração com transparência:  
+  `"⚖️ Calibração de Auditoria (por Diego - Encarregado): Marcou SEITON na TER como 🟡 REGULAR no Setor Usinagem"`.
+
+#### 🎓 3. Alinhamento de Padrão Visual (Conversa de Calibração 5S):
+- Caso um líder apresente divergência de critérios frequente em relação aos Encarregados/Diretoria, o Encarregado realiza um **Alinhamento Visual de 5 Minutos em Campo**, comparando a bancada real com o padrão de referência (O que é Bom, Regular e Ruim).
+
+---
+
 ## 2. ARQUITETURA DE GOVERNANÇA EM 3 NÍVEIS DE ACESSO
 
 ### 🟢 Nível 1 / Grupo 1 (Líderes Diários de Setor)
@@ -51,9 +74,9 @@ Cada Líder Diário (Grupo 1) é escalado automaticamente no Portal para auditar
 - **Visibilidade no Portal:** Visualizam **única e exclusivamente** o Quadro da Fábrica do setor designado no rodízio.
 
 ### 🟡 Nível 2 / Grupo 2 (Auditores Semanais / Encarregados)
-- **Atribuição:** Diego (Fábrica) e Filipe (RH) realizam a validação semanal, acompanhamento de tendências e checklist completo de 50 perguntas.
+- **Atribuição:** Diego (Fábrica) e Filipe (RH) realizam a validação semanal, acompanhamento de tendências, calibração de notas e checklist completo de 50 perguntas.
 - **Visibilidade no Portal:** Visualizam o Quadro da Fábrica, o Checklist de 50 perguntas, o Radar de Maturidade e o Feed de lançamentos ao vivo.
 
 ### 👑 Nível 3 / Grupo 3 (Auditores Sênior / Gerência & Diretoria - ADM)
 - **Atribuição:** Alexandre Souza (Gerente de Projeto / Consultor Mestre) e Kaio (Diretor) possuem governança total do programa.
-- **Visibilidade no Portal:** Acesso irrestrito a todos os quadros, Matriz GUT, Kanban 5W2H, Diagrama de Ishikawa 6M e este Manual Corporativo de Governança.
+- **Visibilidade no Portal:** Acesso irrestrito a todos os quadros, calibração de auditoria, Matriz GUT, Kanban 5W2H, Diagrama de Ishikawa 6M e este Manual Corporativo de Governança.
