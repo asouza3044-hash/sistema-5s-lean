@@ -37,7 +37,7 @@ window.switchAuthTab = function(mode) {
     if (loginForm) loginForm.style.display = 'block';
     if (registerForm) registerForm.style.display = 'none';
     if (btnTabLogin) btnTabLogin.classList.remove('active');
-    if (btnTabRegister) btnTabRegister.classList.add('active');
+    if (btnTabRegister) btnTabRegister.classList.remove('active');
   }
 };
 
@@ -85,6 +85,7 @@ const DEFAULT_USERS = {
   // CLAYTON: AUDITOR VOLANTE / CORINGA 5S (GRUPO 2 - SUPLÊNCIA & CALIBRAÇÃO RÁPIDA)
   clayton: { username: 'clayton.auditor', password: '5s2026', name: 'Clayton', role: 'auditor_semanal', level: 'semanal', title: 'Grupo 2: Auditor Volante 5S / Suplência & Calibração' },
 
+  // OS 7 LÍDERES DIÁRIOS OFICIAIS DE SETOR (GRUPO 1 - LÍDERES)
   alexandre_u: { username: 'alexandre.usinagem', password: '5s2026', name: 'Alexandre', role: 'lider_diario', level: 'diario', sector: 'Usinagem', title: 'Grupo 1: Líder de Usinagem' },
   marcos: { username: 'marcos.holter', password: '5s2026', name: 'Marcos', role: 'lider_diario', level: 'diario', sector: 'Holter', title: 'Grupo 1: Líder de Holter' },
   bruno: { username: 'bruno.armarios', password: '5s2026', name: 'Bruno', role: 'lider_diario', level: 'diario', sector: 'Armários', title: 'Grupo 1: Líder de Armários' },
@@ -166,6 +167,53 @@ window.handleLogin = function(e) {
   return true;
 };
 
+// AUTO-CADASTRO DE NOVOS INTEGRANTES (ENTRAM COMO GRUPO 1: COLABORADOR POR PADRÃO)
+function handleSelfRegister(e) {
+  if (e) e.preventDefault();
+  
+  const name = document.getElementById('reg-name').value.trim();
+  const username = document.getElementById('reg-username').value.trim().toLowerCase();
+  const password = document.getElementById('reg-password').value.trim();
+  const userSector = document.getElementById('reg-sector')?.value || 'Usinagem';
+
+  if (!name || !username || !password) return;
+
+  if (userDatabase[username]) {
+    alert('Este nome de usuário já está em uso. Escolha outro usuário (ex: joao.impaktto).');
+    return;
+  }
+
+  const newUser = {
+    username,
+    password,
+    name,
+    role: 'colaborador',
+    level: 'colaborador',
+    sector: userSector,
+    title: `Grupo 1: Colaborador (${userSector})`
+  };
+
+  userDatabase[username] = newUser;
+  localStorage.setItem('5s_impaktto_users', JSON.stringify(userDatabase));
+
+  currentUser = newUser;
+  localStorage.setItem('5s_impaktto_session', JSON.stringify(currentUser));
+
+  const loginOverlay = document.getElementById('login-overlay');
+  if (loginOverlay) {
+    loginOverlay.style.display = 'none';
+    loginOverlay.classList.add('hidden');
+  }
+
+  try {
+    checkAuthSession();
+  } catch (err) {
+    console.error('Erro ao carregar sessão pós-registro:', err);
+  }
+
+  logActivity(`Novo integrante registrado (${name} - Setor Origem: ${userSector} - Grupo 1: Colaborador)`);
+}
+
 // 3. CONTROLE DE TROCA DE SENHA PESSOAL E SEGURANÇA
 window.openChangePasswordModal = function() {
   const modal = document.getElementById('modal-change-password');
@@ -215,7 +263,6 @@ window.handleChangePassword = function(e) {
     return;
   }
 
-  // Atualizar a senha no banco de usuários e na sessão do colaborador
   const usernameKey = currentUser.username;
   if (userDatabase[usernameKey]) {
     userDatabase[usernameKey].password = newPassInput;
@@ -328,52 +375,6 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('form-ishikawa')?.addEventListener('submit', handleUpdateIshikawa);
 });
 
-function handleSelfRegister(e) {
-  if (e) e.preventDefault();
-  
-  const name = document.getElementById('reg-name').value.trim();
-  const username = document.getElementById('reg-username').value.trim().toLowerCase();
-  const password = document.getElementById('reg-password').value.trim();
-  const userSector = document.getElementById('reg-sector')?.value || 'Usinagem';
-
-  if (!name || !username || !password) return;
-
-  if (userDatabase[username]) {
-    alert('Este nome de usuário já está em uso. Escolha outro usuário (ex: joao.impaktto).');
-    return;
-  }
-
-  const newUser = {
-    username,
-    password,
-    name,
-    role: 'lider_diario',
-    level: 'diario',
-    sector: userSector,
-    title: `Grupo 1: Líder de ${userSector}`
-  };
-
-  userDatabase[username] = newUser;
-  localStorage.setItem('5s_impaktto_users', JSON.stringify(userDatabase));
-
-  currentUser = newUser;
-  localStorage.setItem('5s_impaktto_session', JSON.stringify(currentUser));
-
-  const loginOverlay = document.getElementById('login-overlay');
-  if (loginOverlay) {
-    loginOverlay.style.display = 'none';
-    loginOverlay.classList.add('hidden');
-  }
-
-  try {
-    checkAuthSession();
-  } catch (err) {
-    console.error('Erro ao carregar sessão pós-registro:', err);
-  }
-
-  logActivity(`Novo integrante registrado (${name} - Setor Origem: ${userSector} - Grupo 1)`);
-}
-
 // 4. CONTROLE ESTRITO DE SESSÃO E VISIBILIDADE POR GRUPO (1, 2, 3 E MODO MONITOR TV 16:9)
 function checkAuthSession() {
   const loginOverlay = document.getElementById('login-overlay');
@@ -401,13 +402,14 @@ function checkAuthSession() {
     secAlert.style.display = isDefaultPassword ? 'block' : 'none';
   }
 
-  const level = currentUser.level || 'diario';
-  const role = currentUser.role || 'lider_diario';
+  const level = currentUser.level || 'colaborador';
+  const role = currentUser.role || 'colaborador';
 
   const isMonitor = (role === 'monitor' || level === 'monitor');
   const isSenior = (role === 'administrador' || level === 'senior');
   const isSemanal = (role === 'auditor_semanal' || level === 'semanal');
-  const isDiario = (!isSenior && !isSemanal && !isMonitor);
+  const isLider = (role === 'lider_diario' || level === 'diario');
+  const isColaborador = (!isSenior && !isSemanal && !isMonitor && !isLider);
 
   const cardFactoryBoard = document.getElementById('card-factory-board');
   const cardMaturity = document.getElementById('card-maturity-dashboard');
@@ -423,7 +425,7 @@ function checkAuthSession() {
     document.body.classList.add('monitor-mode');
     activeFactorySectorFilter = 'ALL';
 
-    if (cardMaturity) cardMaturity.style.display = 'block'; // RADAR RESTAURADO NA TV
+    if (cardMaturity) cardMaturity.style.display = 'block';
     if (cardFactoryBoard) cardFactoryBoard.style.display = 'block';
     if (cardActivityFeed) cardActivityFeed.style.display = 'none';
     if (cardAuditChecklist) cardAuditChecklist.style.display = 'none';
@@ -449,7 +451,7 @@ function checkAuthSession() {
       autoRefreshTimer = null;
     }
 
-    if (isDiario) {
+    if (isLider || isColaborador) {
       if (cardFactoryBoard) cardFactoryBoard.style.display = 'block';
       if (cardMaturity) cardMaturity.style.display = 'none';
       if (cardActivityFeed) cardActivityFeed.style.display = 'none';
@@ -508,10 +510,11 @@ function checkAuthSession() {
     monitor: '📺 Painel de Gestão Visual 16:9 (TV Fábrica & Escritório)',
     senior: '👑 Grupo 3: Auditor Sênior (Adm / Gerência & Diretoria)',
     semanal: '🔍 Grupo 2: Auditor Volante / Encarregado',
-    diario: `📋 Grupo 1: Líder (Origem: ${userSector} ➔ Auditoria Cruzada: ${targetAuditSector})`
+    diario: `📋 Grupo 1: Líder de ${userSector} (Auditoria Cruzada ➔ ${targetAuditSector})`,
+    colaborador: `📋 Grupo 1: Colaborador de ${userSector}`
   };
 
-  const levelBadgeText = levelLabels[level] || '📋 Grupo 1: Líder Diário';
+  const levelBadgeText = levelLabels[level] || `📋 Grupo 1: Colaborador de ${userSector}`;
   const loggedUserNameEl = document.getElementById('logged-user-name');
   if (loggedUserNameEl) {
     loggedUserNameEl.innerText = `👤 ${currentUser.name} (${levelBadgeText})`;
@@ -561,7 +564,7 @@ function loadImpakttoData() {
   renderUserManagementTable();
 }
 
-// 7. RENDERIZAÇÃO DO PAINEL DE GESTÃO DE COLABORADORES E NÍVEIS (1, 2, 3)
+// 7. RENDERIZAÇÃO DO PAINEL DE GESTÃO DE COLABORADORES E NÍVEIS (1: Colaborador / 1: Líder / 2: Volante / 3: ADM)
 function renderUserManagementTable() {
   const container = document.getElementById('user-management-table-container');
   if (!container) return;
@@ -572,10 +575,10 @@ function renderUserManagementTable() {
     <table style="width:100%; border-collapse:collapse; font-size:0.85rem;">
       <thead>
         <tr style="background:rgba(255,255,255,0.05); border-bottom:1px solid var(--border-color); text-align:left;">
-          <th style="padding:0.6rem;">Nome do Colaborador</th>
+          <th style="padding:0.6rem;">Nome do Integrante</th>
           <th style="padding:0.6rem;">Usuário</th>
           <th style="padding:0.6rem;">Setor Origem</th>
-          <th style="padding:0.6rem;">Nível de Governança (1, 2 ou 3)</th>
+          <th style="padding:0.6rem;">Classificação & Governança</th>
           <th style="padding:0.6rem; text-align:center;">Ação</th>
         </tr>
       </thead>
@@ -584,6 +587,7 @@ function renderUserManagementTable() {
 
   usersList.forEach(u => {
     const isSelfAdmin = (u.username === 'admin');
+    const uLevel = u.level || (u.role === 'colaborador' ? 'colaborador' : 'diario');
 
     html += `
       <tr style="border-bottom:1px solid rgba(255,255,255,0.04);">
@@ -598,9 +602,10 @@ function renderUserManagementTable() {
         </td>
         <td style="padding:0.6rem;">
           <select class="form-control" style="font-size:0.78rem; padding:0.25rem 0.5rem; width:auto;" onchange="updateUserLevel('${u.username}', this.value)" ${isSelfAdmin ? 'disabled' : ''}>
-            <option value="diario" ${u.level === 'diario' ? 'selected' : ''}>🟢 Nível 1: Grupo 1 (Líder Diário)</option>
-            <option value="semanal" ${u.level === 'semanal' ? 'selected' : ''}>🟡 Nível 2: Grupo 2 (Auditor Volante / Encarregado)</option>
-            <option value="senior" ${u.level === 'senior' ? 'selected' : ''}>👑 Nível 3: Grupo 3 (Gerência & Diretoria)</option>
+            <option value="colaborador" ${uLevel === 'colaborador' ? 'selected' : ''}>🟢 Grupo 1: Colaborador de Setor</option>
+            <option value="diario" ${uLevel === 'diario' ? 'selected' : ''}>⭐ Grupo 1: Líder Diário de Setor</option>
+            <option value="semanal" ${uLevel === 'semanal' ? 'selected' : ''}>🟡 Grupo 2: Auditor Volante / Encarregado</option>
+            <option value="senior" ${uLevel === 'senior' ? 'selected' : ''}>👑 Grupo 3: Gerência & Diretoria</option>
           </select>
         </td>
         <td style="padding:0.6rem; text-align:center;">
@@ -617,36 +622,52 @@ function renderUserManagementTable() {
 window.updateUserLevel = function(username, newLevel) {
   if (!userDatabase[username]) return;
 
-  const roleMap = { diario: 'lider_diario', semanal: 'auditor_semanal', senior: 'administrador' };
+  const roleMap = {
+    colaborador: 'colaborador',
+    diario: 'lider_diario',
+    semanal: 'auditor_semanal',
+    senior: 'administrador'
+  };
+
+  const sector = userDatabase[username].sector || 'Setor';
   const titleMap = {
-    diario: `Grupo 1: Líder de ${userDatabase[username].sector || 'Setor'}`,
+    colaborador: `Grupo 1: Colaborador (${sector})`,
+    diario: `Grupo 1: Líder de ${sector}`,
     semanal: `Grupo 2: Auditor Volante / Encarregado`,
     senior: `Grupo 3: Gerência & Diretoria`
   };
 
   userDatabase[username].level = newLevel;
-  userDatabase[username].role = roleMap[newLevel] || 'lider_diario';
-  userDatabase[username].title = titleMap[newLevel] || 'Grupo 1: Líder Diário';
+  userDatabase[username].role = roleMap[newLevel] || 'colaborador';
+  userDatabase[username].title = titleMap[newLevel] || `Grupo 1: Colaborador (${sector})`;
 
   localStorage.setItem('5s_impaktto_users', JSON.stringify(userDatabase));
 
-  const levelText = { diario: 'Grupo 1 (Líder Diário)', semanal: 'Grupo 2 (Auditor Volante/Encarregado)', senior: 'Grupo 3 (Gerência & Diretoria)' };
-  logActivity(`👤 Alterou permissão do colaborador "${userDatabase[username].name}" para ${levelText[newLevel]}`);
+  const levelText = {
+    colaborador: 'Grupo 1 (Colaborador de Setor)',
+    diario: 'Grupo 1 (Líder Diário de Setor)',
+    semanal: 'Grupo 2 (Auditor Volante/Encarregado)',
+    senior: 'Grupo 3 (Gerência & Diretoria)'
+  };
+
+  logActivity(`👤 Alterou classificação do integrante "${userDatabase[username].name}" para ${levelText[newLevel]}`);
 
   renderUserManagementTable();
-  alert(`Permissão de "${userDatabase[username].name}" atualizada com sucesso para ${levelText[newLevel]}!`);
+  alert(`Classificação de "${userDatabase[username].name}" atualizada para ${levelText[newLevel]}!`);
 };
 
 window.updateUserSector = function(username, newSector) {
   if (!userDatabase[username]) return;
 
   userDatabase[username].sector = newSector;
-  if (userDatabase[username].level === 'diario') {
+  if (userDatabase[username].level === 'colaborador') {
+    userDatabase[username].title = `Grupo 1: Colaborador (${newSector})`;
+  } else if (userDatabase[username].level === 'diario') {
     userDatabase[username].title = `Grupo 1: Líder de ${newSector}`;
   }
 
   localStorage.setItem('5s_impaktto_users', JSON.stringify(userDatabase));
-  logActivity(`📍 Alterou setor do colaborador "${userDatabase[username].name}" para ${newSector}`);
+  logActivity(`📍 Alterou setor do integrante "${userDatabase[username].name}" para ${newSector}`);
 
   renderUserManagementTable();
 };
@@ -654,7 +675,7 @@ window.updateUserSector = function(username, newSector) {
 window.deleteUserAccount = function(username) {
   if (!userDatabase[username]) return;
 
-  if (confirm(`Deseja realmente excluir o acesso do colaborador "${userDatabase[username].name}"?`)) {
+  if (confirm(`Deseja realmente excluir o acesso de "${userDatabase[username].name}"?`)) {
     const deletedName = userDatabase[username].name;
     delete userDatabase[username];
     localStorage.setItem('5s_impaktto_users', JSON.stringify(userDatabase));
@@ -804,12 +825,13 @@ function renderFactoryBoard() {
   if (!container) return;
 
   const userSector = currentUser ? (currentUser.sector || 'Usinagem') : 'Usinagem';
-  const isDiario = (currentUser && currentUser.level === 'diario');
+  const isDiarioOrColab = (currentUser && (currentUser.level === 'diario' || currentUser.level === 'colaborador' || currentUser.role === 'colaborador' || currentUser.role === 'lider_diario'));
+  const isLider = (currentUser && (currentUser.level === 'diario' || currentUser.role === 'lider_diario'));
   const isMonitor = (currentUser && currentUser.level === 'monitor');
 
-  // Aplicar regra da Auditoria Cruzada
-  const targetAuditSector = SECTOR_ROTATION_MAP[userSector] || 'Holter';
-  let selectedSector = isDiario ? targetAuditSector : (activeFactorySectorFilter || 'ALL');
+  // Aplicar regra da Auditoria Cruzada para Líderes, ou Setor Próprio para Colaboradores
+  const targetAuditSector = isLider ? (SECTOR_ROTATION_MAP[userSector] || 'Holter') : userSector;
+  let selectedSector = isDiarioOrColab ? targetAuditSector : (activeFactorySectorFilter || 'ALL');
 
   // Identificar Dia Atual da Semana (SEG, TER, QUA, QUI, SEX, SAB)
   const dayNames = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
@@ -825,7 +847,7 @@ function renderFactoryBoard() {
   if (titleEl) {
     if (isMonitor) {
       titleEl.innerHTML = `📺 Matriz dos Setores Individuais & Fechamento Coletivo da Semana`;
-    } else if (isDiario) {
+    } else if (isDiarioOrColab) {
       titleEl.innerHTML = `📋 Quadro da Fábrica: COMO ESTÁ NOSSA ÁREA?`;
     } else if (selectedSector === 'ALL') {
       titleEl.innerHTML = `📋 Quadro Geral Consolidado (COMO ESTÁ A IMPAK TTO?)`;
@@ -847,19 +869,27 @@ function renderFactoryBoard() {
           <span class="badge-seiso" style="padding:0.25rem 0.5rem; font-size:0.72rem; font-weight:700;">🟢 DIA ATUAL: ${currentDayCode}</span>
         </div>
       `;
-    } else if (isDiario) {
+    } else if (isDiarioOrColab) {
       filterSelectContainer.style.display = 'block';
+      
+      const bannerSubtext = isLider ? `
+        <span style="font-size:0.75rem; font-weight:800; color:var(--accent-cyan); text-transform:uppercase; letter-spacing:0.05em;">🔄 RODÍZIO COMPETENTE 5X5 DE AUDITORIA CRUZADA:</span>
+        <div style="font-size:0.95rem; font-weight:700; color:var(--text-main); margin-top:0.15rem;">
+          Seu Setor Origem: <span style="color:var(--text-muted);">${userSector}</span> ➔ 
+          <span style="color:var(--status-bom); font-weight:800;">📍 SEU DESTINO DE AUDITORIA: ${targetAuditSector}</span>
+        </div>
+      ` : `
+        <span style="font-size:0.75rem; font-weight:800; color:var(--accent-cyan); text-transform:uppercase; letter-spacing:0.05em;">📍 PAINEL DO COLABORADOR DE CAMPO:</span>
+        <div style="font-size:0.95rem; font-weight:700; color:var(--text-main); margin-top:0.15rem;">
+          Setor de Atuação: <span style="color:var(--status-bom); font-weight:800;">📍 ${userSector}</span>
+        </div>
+      `;
+
       filterSelectContainer.innerHTML = `
         <div style="background: rgba(99, 102, 241, 0.12); border: 1px solid var(--border-highlight); padding: 0.9rem 1.1rem; border-radius: var(--radius-md); margin-bottom: 1.25rem;">
           <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem; margin-bottom:0.5rem;">
             <div>
-              <span style="font-size:0.75rem; font-weight:800; color:var(--accent-cyan); text-transform:uppercase; letter-spacing:0.05em;">
-                🔄 RODÍZIO COMPETENTE 5X5 DE AUDITORIA CRUZADA:
-              </span>
-              <div style="font-size:0.95rem; font-weight:700; color:var(--text-main); margin-top:0.15rem;">
-                Seu Setor Origem: <span style="color:var(--text-muted);">${userSector}</span> ➔ 
-                <span style="color:var(--status-bom); font-weight:800;">📍 SEU DESTINO DE AUDITORIA: ${targetAuditSector}</span>
-              </div>
+              ${bannerSubtext}
             </div>
             <span class="badge-seiton" style="padding:0.35rem 0.75rem; font-size:0.75rem; font-weight:700;">
               🗓️ HOJE É ${currentDayCode}
@@ -1087,14 +1117,17 @@ window.cycleFactoryBoard = function(sectorName, boardKey, sensoName, day) {
 
   renderFactoryBoard();
   const labelMap = { bom: '🟢 BOM', regular: '🟡 REGULAR', ruim: '🔴 RUIM' };
-  const auditorName = currentUser ? currentUser.name : 'Líder';
+  const auditorName = currentUser ? currentUser.name : 'Integrante';
   const originSector = currentUser ? (currentUser.sector || 'Fábrica') : 'Fábrica';
   const isSeniorOrSemanal = (currentUser && (currentUser.level === 'senior' || currentUser.level === 'semanal' || currentUser.role === 'administrador' || currentUser.role === 'auditor_semanal'));
+  const isLider = (currentUser && (currentUser.level === 'diario' || currentUser.role === 'lider_diario'));
 
   if (isSeniorOrSemanal) {
     logActivity(`⚖️ Calibração de Auditoria (por ${auditorName}): Marcou ${sensoName} na ${day} como ${labelMap[next]} no Setor ${sectorName}`);
+  } else if (isLider) {
+    logActivity(`Marcou ${sensoName} na ${day} como ${labelMap[next]} no Setor ${sectorName} (Auditoria Cruzada por Líder ${auditorName} - Origem: ${originSector})`);
   } else {
-    logActivity(`Marcou ${sensoName} na ${day} como ${labelMap[next]} no Setor ${sectorName} (Auditoria Cruzada por ${auditorName} - Origem: ${originSector})`);
+    logActivity(`Marcou ${sensoName} na ${day} como ${labelMap[next]} no Setor ${sectorName} (Apontamento por Colaborador ${auditorName} - ${originSector})`);
   }
 };
 
