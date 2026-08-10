@@ -75,7 +75,7 @@ const IMPAKTTO_SECTORS = [
   "Comercial Portas, Armários e Cortinas"
 ];
 
-// MATRIZ DE RODÍZIO DE AUDITORIA CRUZADA (REGRA SOBERANA: NINGUÉM AVALIA A PRÓPRIA ÁREA)
+// MATRIZ DE RODÍZIO DE AUDITORIA CRUZADA (MATRIZ BASE 5X5 DOS LÍDERES)
 const SECTOR_ROTATION_MAP = {
   "Usinagem": "Holter",
   "Holter": "Armários",
@@ -85,6 +85,34 @@ const SECTOR_ROTATION_MAP = {
   "Comercial Usinados": "Comercial Portas, Armários e Cortinas",
   "Comercial Portas, Armários e Cortinas": "Usinagem"
 };
+
+// ALGORITMO DE BALANCEMENTO UNIFORME DE AUDITORIA CRUZADA ENTRE OS COLABORADORES DO SETOR
+// Garante 2 Regras Soberanas:
+// 1. Ninguém avalia a própria área onde trabalha.
+// 2. Os colaboradores do mesmo setor são distribuídos (Round-Robin) entre os outros setores para não sobrecarregar nenhum departamento!
+function getBalancedTargetSector(user) {
+  if (!user) return 'Holter';
+  const userSector = user.sector || 'Usinagem';
+
+  // Os 6 setores elegíveis fora da própria área de atuação
+  const eligibleSectors = IMPAKTTO_SECTORS.filter(s => s !== userSector);
+
+  // Se for Líder Diário oficial do setor, segue a matriz base 5x5 do setor
+  if (user.level === 'diario' || user.role === 'lider_diario') {
+    return SECTOR_ROTATION_MAP[userSector] || eligibleSectors[0];
+  }
+
+  // Para Colaboradores Cidadãos do mesmo setor, distribuímos de forma sequencial (Round-Robin)
+  const sectorUsers = Object.values(userDatabase)
+    .filter(u => (u.sector || 'Usinagem') === userSector && u.role !== 'administrador' && u.role !== 'auditor_semanal' && u.username !== 'monitor')
+    .sort((a, b) => (a.username || '').localeCompare(b.username || ''));
+
+  const userIndex = sectorUsers.findIndex(u => u.username === user.username);
+  const safeIdx = userIndex >= 0 ? userIndex : 0;
+
+  // Seleciona de forma balanceada um dos 6 setores externos elegíveis
+  return eligibleSectors[safeIdx % eligibleSectors.length];
+}
 
 // ESTRUTURA DO RODÍZIO COMPETENTE 5X5 (1 SENSO POR DIA DA SEMANA DE TRABALHO)
 const DAILY_SENSO_FOCUS = {
@@ -404,7 +432,7 @@ window.openVoteChoiceModal = function(sectorName, boardKey, sensoName, day) {
       <div style="background:rgba(99,102,241,0.1); border:1px solid var(--primary); padding:0.55rem 0.85rem; border-radius:8px; margin-bottom:1.1rem; font-size:0.82rem;">
         👤 <strong>Avaliador:</strong> ${currentUser.name} <span style="color:var(--text-muted);">(Origem: ${currentUser.sector || 'Fábrica'})</span>
         <div style="font-size:0.72rem; color:var(--accent-cyan); margin-top:0.2rem;">
-          🛡️ <strong>Regra Soberana 5S:</strong> Avaliando o setor de destino <strong>${sectorName}</strong> (ninguém avalia a própria área).
+          🛡️ <strong>Rodízio Balanceado 5S:</strong> Avaliando <strong>${sectorName}</strong> (distribuição uniforme sem sobrecarregar setores).
         </div>
       </div>
 
@@ -549,7 +577,7 @@ window.confirmVoteChoiceModal = function() {
   if (isSeniorOrSemanal) {
     logActivity(`⚖️ Calibração (por ${auditorName}): Marcou ${sensoName} na ${day} como ${labelMap[scoreChoice]} no Setor ${sectorName} (Média: ${Math.round(avgPts * 10) / 10} com ${totalVotesCount} v)${commentSuffix}`);
   } else {
-    logActivity(`Marcou ${sensoName} na ${day} como ${labelMap[scoreChoice]} no Setor ${sectorName} (Auditoria Cruzada por ${auditorName} - Origem: ${originSector} ➔ Destino: ${sectorName} • Média: ${Math.round(avgPts * 10) / 10})${commentSuffix}`);
+    logActivity(`Marcou ${sensoName} na ${day} como ${labelMap[scoreChoice]} no Setor ${sectorName} (Rodízio Balanceado por ${auditorName} - Origem: ${originSector} ➔ Destino: ${sectorName} • Média: ${Math.round(avgPts * 10) / 10})${commentSuffix}`);
   }
 
   pushDataToServer();
@@ -999,17 +1027,17 @@ function checkAuthSession() {
   }
   
   const userSector = currentUser.sector || 'Usinagem';
-  const targetAuditSector = SECTOR_ROTATION_MAP[userSector] || 'Holter';
+  const targetAuditSector = getBalancedTargetSector(currentUser);
 
   const levelLabels = {
     monitor: '📺 Painel de Gestão Visual 16:9 (TV Fábrica & Escritório)',
     senior: '👑 Grupo 3: Auditor Sênior (Adm / Gerência & Diretoria)',
     semanal: '🔍 Grupo 2: Auditor Volante / Encarregado',
     diario: `📋 Grupo 1: Líder de ${userSector} (Rodízio ➔ ${targetAuditSector})`,
-    colaborador: `📋 Grupo 1: Colaborador de ${userSector} (Rodízio ➔ ${targetAuditSector})`
+    colaborador: `📋 Grupo 1: Colaborador de ${userSector} (Rodízio Balanceado ➔ ${targetAuditSector})`
   };
 
-  const levelBadgeText = levelLabels[level] || `📋 Grupo 1: Colaborador de ${userSector} (Rodízio ➔ ${targetAuditSector})`;
+  const levelBadgeText = levelLabels[level] || `📋 Grupo 1: Colaborador de ${userSector} (Rodízio Balanceado ➔ ${targetAuditSector})`;
   const loggedUserNameEl = document.getElementById('logged-user-name');
   if (loggedUserNameEl) {
     loggedUserNameEl.innerText = `👤 ${currentUser.name} (${levelBadgeText})`;
@@ -1109,6 +1137,7 @@ function renderUserManagementTable() {
           <th style="padding:0.6rem;">Nome do Integrante</th>
           <th style="padding:0.6rem;">Usuário</th>
           <th style="padding:0.6rem;">Setor Origem</th>
+          <th style="padding:0.6rem;">Destino no Rodízio</th>
           <th style="padding:0.6rem;">Classificação & Governança</th>
           <th style="padding:0.6rem; text-align:center;">Ações de Teste / Gestão</th>
         </tr>
@@ -1121,6 +1150,7 @@ function renderUserManagementTable() {
     const uLevel = u.level || (u.role === 'colaborador' ? 'colaborador' : 'diario');
     const uVoteKey = `5s_user_voted_${u.username}_${todayDateStr}`;
     const votedToday = (localStorage.getItem(uVoteKey) === 'true');
+    const uTarget = getBalancedTargetSector(u);
 
     html += `
       <tr style="border-bottom:1px solid rgba(255,255,255,0.04);">
@@ -1134,9 +1164,12 @@ function renderUserManagementTable() {
             ${IMPAKTTO_SECTORS.map(s => `<option value="${s}" ${u.sector === s ? 'selected' : ''}>📍 ${s}</option>`).join('')}
           </select>
         </td>
+        <td style="padding:0.6rem; color:var(--accent-cyan); font-weight:700;">
+          🎯 ${uTarget}
+        </td>
         <td style="padding:0.6rem;">
           <select class="form-control" style="font-size:0.78rem; padding:0.25rem 0.5rem; width:auto;" onchange="updateUserLevel('${u.username}', this.value)" ${isSelfAdmin ? 'disabled' : ''}>
-            <option value="colaborador" ${uLevel === 'colaborador' ? 'selected' : ''}>🟢 Grupo 1: Colaborador de Setor (Rodízio)</option>
+            <option value="colaborador" ${uLevel === 'colaborador' ? 'selected' : ''}>🟢 Grupo 1: Colaborador (Rodízio Balanceado)</option>
             <option value="diario" ${uLevel === 'diario' ? 'selected' : ''}>⭐ Grupo 1: Líder Diário de Setor (Rodízio)</option>
             <option value="semanal" ${uLevel === 'semanal' ? 'selected' : ''}>🟡 Grupo 2: Auditor Volante / Encarregado (Calibração)</option>
             <option value="senior" ${uLevel === 'senior' ? 'selected' : ''}>👑 Grupo 3: Gerência & Diretoria (Gestão Mestre)</option>
@@ -1181,7 +1214,7 @@ window.updateUserLevel = function(username, newLevel) {
   };
 
   const sector = userDatabase[username].sector || 'Setor';
-  const targetSector = SECTOR_ROTATION_MAP[sector] || 'Holter';
+  const targetSector = getBalancedTargetSector(userDatabase[username]);
   const titleMap = {
     colaborador: `Grupo 1: Colaborador (${sector} ➔ ${targetSector})`,
     diario: `Grupo 1: Líder de ${sector} ➔ ${targetSector}`,
@@ -1212,8 +1245,8 @@ window.updateUserLevel = function(username, newLevel) {
 window.updateUserSector = function(username, newSector) {
   if (!userDatabase[username]) return;
 
-  const targetSector = SECTOR_ROTATION_MAP[newSector] || 'Holter';
   userDatabase[username].sector = newSector;
+  const targetSector = getBalancedTargetSector(userDatabase[username]);
   if (userDatabase[username].level === 'colaborador') {
     userDatabase[username].title = `Grupo 1: Colaborador (${newSector} ➔ ${targetSector})`;
   } else if (userDatabase[username].level === 'diario') {
@@ -1379,7 +1412,7 @@ window.selectScore3Level = function(sensoName, qNum, qKey, level) {
   pushDataToServer();
 };
 
-// 5. RENDERIZAÇÃO DO QUADRO COM APLICAÇÃO ESTRITA DA REGRA SOBERANA DE RODÍZIO IMPARCIAL
+// 5. RENDERIZAÇÃO DO QUADRO COM APLICAÇÃO ESTRITA DA REGRA SOBERANA DE RODÍZIO BALANCEADO
 function renderFactoryBoard() {
   const container = document.getElementById('factory-board-container');
   const titleEl = document.getElementById('factory-board-title');
@@ -1390,8 +1423,9 @@ function renderFactoryBoard() {
   const isDiarioOrColab = (currentUser && (currentUser.level === 'diario' || currentUser.level === 'colaborador' || currentUser.role === 'colaborador' || currentUser.role === 'lider_diario'));
   const isMonitor = (currentUser && currentUser.level === 'monitor');
 
-  // REGRA SOBERANA: NINGUÉM AVALIA O SEU PRÓPRIO SETOR DE ORIGEM!
-  const targetAuditSector = SECTOR_ROTATION_MAP[userSector] || 'Holter';
+  // REGRA SOBERANA & RODÍZIO BALANCEADO:
+  // NINGUÉM AVALIA O SEU PRÓPRIO SETOR DE ORIGEM E OS COLABORADORES SÃO DISTRIBUÍDOS ENTRE OS OUTROS SETORES!
+  const targetAuditSector = getBalancedTargetSector(currentUser);
   let selectedSector = isDiarioOrColab ? targetAuditSector : (activeFactorySectorFilter || 'ALL');
 
   const dayNames = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
@@ -1411,7 +1445,7 @@ function renderFactoryBoard() {
     if (isMonitor) {
       titleEl.innerHTML = `📺 Matriz dos Setores Individuais & Fechamento Coletivo da Semana`;
     } else if (isDiarioOrColab) {
-      titleEl.innerHTML = `📋 Quadro da Fábrica (Rodízio 5S): Avaliando <span style="color:var(--status-bom); font-weight:800;">📍 ${targetAuditSector}</span>`;
+      titleEl.innerHTML = `📋 Quadro da Fábrica (Rodízio Balanceado): Avaliando <span style="color:var(--status-bom); font-weight:800;">📍 ${targetAuditSector}</span>`;
     } else if (selectedSector === 'ALL') {
       titleEl.innerHTML = `📋 Quadro Geral Consolidado (COMO ESTÁ A IMPAK TTO?)`;
     } else {
@@ -1435,13 +1469,13 @@ function renderFactoryBoard() {
       filterSelectContainer.style.display = 'block';
       
       const bannerSubtext = `
-        <span style="font-size:0.75rem; font-weight:800; color:var(--accent-cyan); text-transform:uppercase; letter-spacing:0.05em;">🛡️ REGRA SOBERANA 5S: RODÍZIO DE AUDITORIA CRUZADA IMPARCIAL</span>
+        <span style="font-size:0.75rem; font-weight:800; color:var(--accent-cyan); text-transform:uppercase; letter-spacing:0.05em;">⚖️ LEAN SIX SIGMA: BALANCEMENTO DE CARGA DE AUDITORIA 5S</span>
         <div style="font-size:0.95rem; font-weight:700; color:var(--text-main); margin-top:0.15rem;">
           Seu Setor Origem: <span style="color:var(--text-muted);">${userSector}</span> ➔ 
-          <span style="color:var(--status-bom); font-weight:800;">📍 SEU DESTINO DE AUDITORIA: ${targetAuditSector}</span>
+          <span style="color:var(--status-bom); font-weight:800;">📍 SEU DESTINO NO RODÍZIO BALANCEADO: ${targetAuditSector}</span>
         </div>
         <div style="font-size:0.75rem; color:var(--text-dim); margin-top:0.15rem;">
-          <i>⚠️ Por diretriz soberana de governança, ninguém avalia o setor em que trabalha.</i>
+          <i>⚠️ Integrantes do mesmo setor são distribuídos entre os 6 setores externos para garantir auditoria 100% equilibrada em toda a empresa.</i>
         </div>
       `;
 
