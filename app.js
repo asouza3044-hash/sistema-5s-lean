@@ -148,7 +148,6 @@ async function pushDataToServer() {
     users: userDatabase
   };
 
-  // 1. Enviar para API local /api/sync se disponível
   try {
     fetch(LOCAL_API_SYNC, {
       method: 'POST',
@@ -157,7 +156,6 @@ async function pushDataToServer() {
     }).catch(() => {});
   } catch (e) {}
 
-  // 2. Enviar para a Nuvem KVDB (para sincronização instantânea entre celulares via GitHub Pages)
   try {
     fetch(CLOUD_SYNC_URL, {
       method: 'POST',
@@ -176,7 +174,6 @@ async function pushDataToServer() {
 async function pullDataFromServer() {
   let fetchedData = null;
 
-  // Tentar API local primeiro
   try {
     const res = await fetch(LOCAL_API_SYNC + '?t=' + Date.now());
     if (res.ok) {
@@ -184,7 +181,6 @@ async function pullDataFromServer() {
     }
   } catch (e) {}
 
-  // Se não funcionou, tentar nuvem KVDB
   if (!fetchedData || !fetchedData.activity_logs) {
     try {
       const res = await fetch(CLOUD_SYNC_URL + '?t=' + Date.now());
@@ -197,7 +193,6 @@ async function pullDataFromServer() {
   if (fetchedData && typeof fetchedData === 'object') {
     let updated = false;
 
-    // Merge de Logs
     if (Array.isArray(fetchedData.activity_logs) && fetchedData.activity_logs.length > 0) {
       const existingLogs = JSON.parse(localStorage.getItem('5s_activity_logs_impaktto')) || clientActivityLogs;
       const existingIds = new Set(existingLogs.map(l => l.id));
@@ -220,7 +215,6 @@ async function pullDataFromServer() {
       }
     }
 
-    // Merge do Quadro da Fábrica
     if (fetchedData.factory_board && typeof fetchedData.factory_board === 'object') {
       const mergedBoard = { ...clientFactoryBoard, ...fetchedData.factory_board };
       if (JSON.stringify(mergedBoard) !== JSON.stringify(clientFactoryBoard)) {
@@ -231,7 +225,6 @@ async function pullDataFromServer() {
       }
     }
 
-    // Merge de Usuários
     if (fetchedData.users && typeof fetchedData.users === 'object') {
       const mergedUsers = { ...userDatabase, ...fetchedData.users };
       if (JSON.stringify(mergedUsers) !== JSON.stringify(userDatabase)) {
@@ -437,7 +430,7 @@ const AUDIT_QUESTIONS = {
     "Os materiais estão armazenados de forma a facilitar o acesso e evitar acidentes?",
     "As áreas livres de circulação de pessoas e empilhadeiras estão sem obstrução?",
     "A coleta seletiva de resíduos/recicláveis está identificada e funcionando?",
-    "Os cabos elétricos, mangueiras e fios estão devidamente organizados e seguros?",
+    "Os cabos elétricos, mangueiras e fios estão devidamente organizedos e seguros?",
     "Os colaboradores conhecem e respeitam o padrão de organização do setor?",
     "Equipamentos e máquinas desligados ao final do expediente conforme padrão?"
   ],
@@ -549,7 +542,6 @@ function checkAuthSession() {
   const navBtnTools = document.querySelector('.nav-btn[data-tab="tab-tools"]');
   const navBtnManual = document.querySelector('.nav-btn[data-tab="tab-manual"]');
 
-  // BUSCA AUTOMÁTICA RECORRENTE EM NUVEM E API LOCAL A CADA 3 SEGUNDOS
   if (!autoRefreshTimer) {
     autoRefreshTimer = setInterval(() => {
       pullDataFromServer();
@@ -689,12 +681,13 @@ function loadImpakttoData() {
   renderUserManagementTable();
 }
 
-// 7. RENDERIZAÇÃO DO PAINEL DE GESTÃO DE COLABORADORES E NÍVEIS
+// 7. RENDERIZAÇÃO DO PAINEL DE GESTÃO DE COLABORADORES E NÍVEIS (INCLUINDO BOTÃO DE LIBERAÇÃO DE VOTO DE TESTE)
 function renderUserManagementTable() {
   const container = document.getElementById('user-management-table-container');
   if (!container) return;
 
   const usersList = Object.values(userDatabase).filter(u => u.username !== 'monitor');
+  const todayDateStr = new Date().toISOString().split('T')[0];
 
   let html = `
     <table style="width:100%; border-collapse:collapse; font-size:0.85rem;">
@@ -704,7 +697,7 @@ function renderUserManagementTable() {
           <th style="padding:0.6rem;">Usuário</th>
           <th style="padding:0.6rem;">Setor Origem</th>
           <th style="padding:0.6rem;">Classificação & Governança</th>
-          <th style="padding:0.6rem; text-align:center;">Ação</th>
+          <th style="padding:0.6rem; text-align:center;">Ações de Teste / Gestão</th>
         </tr>
       </thead>
       <tbody>
@@ -713,11 +706,14 @@ function renderUserManagementTable() {
   usersList.forEach(u => {
     const isSelfAdmin = (u.username === 'admin');
     const uLevel = u.level || (u.role === 'colaborador' ? 'colaborador' : 'diario');
+    const uVoteKey = `5s_user_voted_${u.username}_${todayDateStr}`;
+    const votedToday = (localStorage.getItem(uVoteKey) === 'true');
 
     html += `
       <tr style="border-bottom:1px solid rgba(255,255,255,0.04);">
         <td style="padding:0.6rem; font-weight:700; color:var(--text-main);">
           👤 ${u.name} ${isSelfAdmin ? '<span style="color:var(--accent-cyan); font-size:0.7rem;">(ADM Mestre)</span>' : ''}
+          ${votedToday ? '<span style="color:#34d399; font-size:0.7rem; display:block;">✅ Já Votou Hoje</span>' : ''}
         </td>
         <td style="padding:0.6rem; color:var(--text-muted);"><code>${u.username}</code></td>
         <td style="padding:0.6rem;">
@@ -733,8 +729,11 @@ function renderUserManagementTable() {
             <option value="senior" ${uLevel === 'senior' ? 'selected' : ''}>👑 Grupo 3: Gerência & Diretoria (Gestão Mestre)</option>
           </select>
         </td>
-        <td style="padding:0.6rem; text-align:center;">
-          ${!isSelfAdmin ? `<button class="btn btn-danger" style="padding:0.2rem 0.5rem; font-size:0.72rem;" onclick="deleteUserAccount('${u.username}')">Excluir</button>` : '<span style="color:var(--text-muted); font-size:0.7rem;">Protegido</span>'}
+        <td style="padding:0.6rem; text-align:center; display:flex; gap:0.3rem; justify-content:center;">
+          <button class="btn btn-secondary" style="padding:0.2rem 0.45rem; font-size:0.7rem;" onclick="resetUserDailyVote('${u.username}')" title="Liberar usuário para dar novo voto de teste hoje">
+            🔄 Liberar Novo Voto
+          </button>
+          ${!isSelfAdmin ? `<button class="btn btn-danger" style="padding:0.2rem 0.45rem; font-size:0.7rem;" onclick="deleteUserAccount('${u.username}')">Excluir</button>` : ''}
         </td>
       </tr>
     `;
@@ -743,6 +742,20 @@ function renderUserManagementTable() {
   html += `</tbody></table>`;
   container.innerHTML = html;
 }
+
+window.resetUserDailyVote = function(username) {
+  const todayDateStr = new Date().toISOString().split('T')[0];
+  const userVoteKey = `5s_user_voted_${username}_${todayDateStr}`;
+  localStorage.removeItem(userVoteKey);
+  
+  const uObj = userDatabase[username];
+  const uName = uObj ? uObj.name : username;
+
+  alert(`🎉 O voto diário de "${uName}" foi LIBERADO com sucesso! Ele(a) já pode realizar um novo voto de teste agora.`);
+  renderUserManagementTable();
+  renderFactoryBoard();
+  pushDataToServer();
+};
 
 window.updateUserLevel = function(username, newLevel) {
   if (!userDatabase[username]) return;
@@ -1295,7 +1308,7 @@ window.cycleFactoryBoard = function(sectorName, boardKey, sensoName, day) {
   pushDataToServer();
 };
 
-// 7. CÁLCULO DE RESULTADOS E CONTROLE ESTRITO DA SINALIZAÇÃO DE PREMIAÇÃO (CONFIDENCIAL GRUPO 2 E 3)
+// 7. CÁLCULO DE RESULTADOS E CONTROLE ESTRITO DA SINALIZAÇÃO DE PREMIAÇÃO
 function calculateAuditResults() {
   const totals = { seiri: 0, seiton: 0, seiso: 0, seiketsu: 0, shitsuke: 0 };
   const maxPerSenso = 30;
@@ -1347,7 +1360,6 @@ function calculateAuditResults() {
     }
   }
 
-  // REGRAS ESTRITAS DE SINALIZAÇÃO DO PRÊMIO MENSAL EM DINHEIRO (META >= 90% CONFIDENCIAL GRUPO 2 E 3)
   const rewardBadgeEl = document.getElementById('monthly-reward-badge');
   if (rewardBadgeEl) {
     const isSeniorOrSemanal = (currentUser && (currentUser.level === 'senior' || currentUser.level === 'semanal' || currentUser.role === 'administrador' || currentUser.role === 'auditor_semanal'));
