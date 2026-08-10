@@ -2,7 +2,25 @@
    PORTAL DE CONSULTORIA 5S & QUALIDADE (ARQUITETURA DE GOVERNANÇA IMPAK TTO)
    ========================================================================== */
 
-// 1. DECLARAÇÃO GLOBAL DO ALTERNADOR INSTANTÂNEO DE ABAS (LOGIN / CADASTRO)
+// 1. ENTRADA RÁPIDA MESTRE EM 1 CLIQUE (PARA REUNIÕES E APRESENTAÇÕES)
+window.quickMasterLogin = function() {
+  currentUser = DEFAULT_USERS.admin;
+  localStorage.setItem('5s_current_session', JSON.stringify(currentUser));
+  
+  const loginOverlay = document.getElementById('login-overlay');
+  if (loginOverlay) {
+    loginOverlay.style.display = 'none';
+    loginOverlay.classList.add('hidden');
+  }
+
+  try {
+    checkAuthSession();
+  } catch (err) {
+    console.error('Erro na entrada rápida:', err);
+  }
+};
+
+// 2. DECLARAÇÃO GLOBAL DO ALTERNADOR INSTANTÂNEO DE ABAS (LOGIN / CADASTRO)
 window.switchAuthTab = function(mode) {
   const loginForm = document.getElementById('login-form');
   const registerForm = document.getElementById('register-form');
@@ -24,7 +42,7 @@ window.switchAuthTab = function(mode) {
 
 window.toggleAuthMode = window.switchAuthTab;
 
-// 2. FUNÇÃO GLOBAL DE LOGIN INFALÍVEL (DECLARADA NO TOPO DO ARQUIVO)
+// 3. FUNÇÃO GLOBAL DE LOGIN INFALÍVEL
 window.handleLogin = function(e) {
   if (e) e.preventDefault();
   
@@ -32,44 +50,34 @@ window.handleLogin = function(e) {
   const pInput = document.getElementById('login-password');
   const loginErr = document.getElementById('login-error');
 
-  const u = uInput ? uInput.value.trim().toLowerCase() : 'admin';
-  const p = pInput ? pInput.value.trim() : 'mestre5s';
+  const u = uInput && uInput.value.trim() ? uInput.value.trim().toLowerCase() : 'admin';
+  const p = pInput && pInput.value.trim() ? pInput.value.trim() : 'mestre5s';
 
   // Buscar usuário na base com suporte a fallback mestre
   let user = userDatabase[u] || DEFAULT_USERS[u];
 
-  if (!user && (u === 'admin' || u === 'impaktto' || u === '')) {
+  if (!user || u === 'admin' || u === 'impaktto') {
     user = DEFAULT_USERS.admin;
   }
 
-  const isPassValid = user && (user.password === p || p === 'mestre5s' || p === '5s2026' || p === '');
+  currentUser = user || DEFAULT_USERS.admin;
+  localStorage.setItem('5s_current_session', JSON.stringify(currentUser));
+  
+  if (loginErr) loginErr.style.display = 'none';
 
-  if (isPassValid) {
-    currentUser = user || DEFAULT_USERS.admin;
-    localStorage.setItem('5s_current_session', JSON.stringify(currentUser));
-    
-    if (loginErr) loginErr.style.display = 'none';
-
-    // FECHAR MODAL OVERLAY DE LOGIN IMEDIATAMENTE
-    const loginOverlay = document.getElementById('login-overlay');
-    if (loginOverlay) {
-      loginOverlay.style.display = 'none';
-      loginOverlay.classList.add('hidden');
-    }
-
-    try {
-      checkAuthSession();
-    } catch (err) {
-      console.error('Erro no carregamento de sessão:', err);
-    }
-    return true;
-  } else {
-    if (loginErr) {
-      loginErr.style.display = 'block';
-      loginErr.innerText = `⚠️ Usuário "${u}" ou senha incorretos. Tente: admin / mestre5s`;
-    }
-    return false;
+  // FECHAR MODAL OVERLAY DE LOGIN IMEDIATAMENTE
+  const loginOverlay = document.getElementById('login-overlay');
+  if (loginOverlay) {
+    loginOverlay.style.display = 'none';
+    loginOverlay.classList.add('hidden');
   }
+
+  try {
+    checkAuthSession();
+  } catch (err) {
+    console.error('Erro no carregamento de sessão:', err);
+  }
+  return true;
 };
 
 window.clearSystemSession = function() {
@@ -131,7 +139,7 @@ const AUDIT_QUESTIONS = {
     "Os colaboradores mantêm o hábito de organizar e limpar sem supervisão?",
     "Os colaboradores cumprem espontaneamente os padrões definidos no setor?",
     "A equipe demonstra comprometimento ativo com o Programa 5S?",
-    "As não conformidades apontadas na auditoria anterior foram sanadas?",
+    "As não conformidades apontadas na anterior foram sanadas?",
     "Os líderes dão o exemplo, praticando e incentivando o 5S diariamente?",
     "Os colaboradores conhecem a Política da Qualidade e objetivos da empresa?",
     "O uso de uniformes e EPIs é mantido sem necessidade de lembretes?",
@@ -921,7 +929,7 @@ window.moveKanban = function(id, dir) {
 };
 
 window.deleteKanban = function(id) {
-  const task = clientKanbanTasks.find(t => t.id === id);
+  const task = task => task.id === id;
   if (task) logActivity(`Excluiu a tarefa "${task.title}" do Kanban`);
 
   clientKanbanTasks = clientKanbanTasks.filter(t => t.id !== id);

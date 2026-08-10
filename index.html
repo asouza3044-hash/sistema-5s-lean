@@ -10,20 +10,33 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
   <!-- Chart.js para o Gráfico Radar dos 5 Sensos -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <!-- Local Styles com Cache Busting -->
-  <link rel="stylesheet" href="styles.css?v=3.0">
-  <!-- JavaScript Principal Carregado no Head para Garantir que handleLogin Exista Imediatamente -->
-  <script src="app.js?v=3.0"></script>
+  <!-- Local Styles com Cache Busting v3.5 -->
+  <link rel="stylesheet" href="styles.css?v=3.5">
+  <!-- JavaScript Principal Carregado no Head -->
+  <script src="app.js?v=3.5"></script>
 </head>
 <body>
 
-  <!-- TELA DE LOGIN INSTITUCIONAL ULTRA-CLEAN (SEM LOGOS ANTES DO LOGIN) -->
+  <!-- TELA DE LOGIN INSTITUCIONAL ULTRA-CLEAN COM ACESSO RÁPIDO INSTANTÂNEO -->
   <div id="login-overlay" class="login-overlay">
     <div class="login-card">
       
       <div class="login-header">
         <h2>Consultoria da Qualidade & 5S</h2>
         <p>Acesso ao Portal Corporativo de Auditoria</p>
+      </div>
+
+      <!-- BOTAO DE ACESSO DIRETO EM 1 CLIQUE PARA REUNIÃO E DEMONSTRAÇÃO -->
+      <div style="margin-bottom: 1.25rem;">
+        <button type="button" class="btn btn-primary" onclick="quickMasterLogin()" style="width: 100%; padding: 0.95rem; font-size: 1.05rem; font-weight: 800; background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4); border: 1px solid rgba(255,255,255,0.2);">
+          🚀 ENTRAR DIRETO NO PORTAL 5S
+        </button>
+      </div>
+
+      <div style="display: flex; align-items: center; margin: 1rem 0; color: var(--text-dim); font-size: 0.75rem;">
+        <div style="flex: 1; height: 1px; background: rgba(255,255,255,0.1);"></div>
+        <span style="padding: 0 0.5rem;">ou selecione seu perfil abaixo</span>
+        <div style="flex: 1; height: 1px; background: rgba(255,255,255,0.1);"></div>
       </div>
 
       <!-- ALTERNADOR MINIMALISTA ENTRE LOGIN E CADASTRO -->
@@ -36,29 +49,29 @@
         </button>
       </div>
 
-      <!-- FORMULÁRIO 1: LOGIN DIRETO E ULTRA-CLEAN (APENAS 2 CAMPOS) -->
+      <!-- FORMULÁRIO 1: LOGIN DIRETO E ULTRA-CLEAN -->
       <form id="login-form" onsubmit="handleLogin(event)">
         <div class="form-group" style="text-align: left;">
           <label>Usuário de Acesso</label>
-          <input type="text" id="login-username" class="form-control" placeholder="Ex: alexandre.usinagem ou admin" autocomplete="username">
+          <input type="text" id="login-username" class="form-control" placeholder="admin ou alexandre.usinagem" value="admin" autocomplete="username">
         </div>
 
         <div class="form-group" style="text-align: left;">
           <label>Senha</label>
-          <input type="password" id="login-password" class="form-control" placeholder="••••••••" autocomplete="current-password">
+          <input type="password" id="login-password" class="form-control" placeholder="••••••••" value="mestre5s" autocomplete="current-password">
         </div>
 
         <div id="login-error" style="color: var(--status-ruim); font-size: 0.8rem; margin-bottom: 1rem; display: none;">
           ⚠️ Usuário ou senha incorretos. Tente novamente!
         </div>
 
-        <button type="button" class="btn btn-primary" onclick="handleLogin(event)" style="width: 100%; padding: 0.85rem; font-size: 1rem; margin-bottom: 0.75rem;">
-          🔑 Entrar no Portal 5S
+        <button type="button" class="btn btn-secondary" onclick="handleLogin(event)" style="width: 100%; padding: 0.75rem; font-size: 0.9rem; margin-bottom: 0.75rem;">
+          🔑 Entrar com Usuário Acima
         </button>
 
         <div style="text-align: center;">
           <button type="button" onclick="clearSystemSession()" style="background: none; border: none; color: var(--text-dim); font-size: 0.75rem; cursor: pointer; text-decoration: underline;">
-            🔄 Recarregar Dados Limpos / Resetar Sessão
+            🔄 Recarregar Dados / Resetar Cache
           </button>
         </div>
       </form>
