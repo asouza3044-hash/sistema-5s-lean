@@ -55,7 +55,6 @@ const IMPAKTTO_SECTORS = [
 ];
 
 // MATRIZ DE RODÍZIO DE AUDITORIA CRUZADA (PRINCÍPIO DA IMPARCIALIDADE 5S)
-// O Líder de um setor NÃO pode auditar a sua própria área. É alocado no setor vizinho!
 const SECTOR_ROTATION_MAP = {
   "Usinagem": "Holter",
   "Holter": "Armários",
@@ -66,7 +65,17 @@ const SECTOR_ROTATION_MAP = {
   "Comercial Portas, Armários e Cortinas": "Usinagem"
 };
 
-// Usuários Oficiais Pré-Configurados da Equipe Impaktto (Arquitetura 3 Grupos de Governança)
+// ESTRUTURA DO RODÍZIO COMPETENTE 5X5 (1 SENSO POR DIA DA SEMANA DE TRABALHO)
+const DAILY_SENSO_FOCUS = {
+  'SEG': { senso: 'seiri', name: '1. SEIRI (Utilização & Descarte)', desc: 'Foco de Segunda: Separar o útil do inútil e descartar desnecessários.' },
+  'TER': { senso: 'seiton', name: '2. SEITON (Organização)', desc: 'Foco de Terça: Um lugar para cada coisa e identificação visual.' },
+  'QUA': { senso: 'seiso', name: '3. SEISO (Limpeza)', desc: 'Foco de Quarta: Inspeção, higiene e conservação das máquinas/bancadas.' },
+  'QUI': { senso: 'seiketsu', name: '4. SEIKETSU (Padronização & EPIs)', desc: 'Foco de Quinta: Padronização visual, saúde, segurança e uso de EPIs.' },
+  'SEX': { senso: 'shitsuke', name: '5. SHITSUKE (Disciplina & Consolidação)', desc: 'Foco de Sexta: Autodisciplina, cumprimento de regras e fechamento.' },
+  'SAB': { senso: 'shitsuke', name: '5. SHITSUKE (Revisão de Fim de Semana)', desc: 'Foco de Sábado: Manutenção geral dos padrões.' }
+};
+
+// Usuários Oficiais Pré-Configurados da Equipe Impaktto
 const DEFAULT_USERS = {
   admin: { username: 'admin', password: 'mestre5s', name: 'Alexandre Souza', role: 'administrador', level: 'senior', title: 'Grupo 3: Gerente de Projeto / Consultor Mestre' },
   kaio: { username: 'kaio.diretor', password: '5s2026', name: 'Kaio', role: 'administrador', level: 'senior', title: 'Grupo 3: Diretor' },
@@ -97,7 +106,7 @@ let clientFactoryBoard = {};
 let activeFactorySectorFilter = 'ALL';
 let radarChartInstance = null;
 
-// 3. FUNÇÃO GLOBAL DE LOGIN DIRETO IMPAK TTO (SUPORTE A TODOS OS INTEGRANTES)
+// FUNÇÃO GLOBAL DE LOGIN DIRETO IMPAK TTO
 window.handleLogin = function(e) {
   if (e) e.preventDefault();
   
@@ -217,7 +226,6 @@ document.addEventListener('DOMContentLoaded', () => {
   initTabs();
   checkAuthSession();
 
-  // Escutadores Específicos para Toque em Dispositivos Móveis
   const btnRegisterTab = document.getElementById('auth-tab-register');
   const btnLoginTab = document.getElementById('auth-tab-login');
 
@@ -305,21 +313,18 @@ function checkAuthSession() {
 
   const isSenior = (role === 'administrador' || level === 'senior');
   const isSemanal = (role === 'auditor_semanal' || level === 'semanal');
-  const isDiario = (!isSenior && !isSemanal); // GRUPO 1: LÍDER DIÁRIO DE SETOR
+  const isDiario = (!isSenior && !isSemanal);
 
-  // Cards da Tela Principal
   const cardFactoryBoard = document.getElementById('card-factory-board');
   const cardMaturity = document.getElementById('card-maturity-dashboard');
   const cardActivityFeed = document.getElementById('card-activity-feed');
   const cardAuditChecklist = document.getElementById('card-audit-checklist');
 
-  // Elementos da Navegação Superior
   const navTabsContainer = document.querySelector('.nav-tabs');
   const navBtnTools = document.querySelector('.nav-btn[data-tab="tab-tools"]');
   const navBtnManual = document.querySelector('.nav-btn[data-tab="tab-manual"]');
 
   if (isDiario) {
-    // GRUPO 1: SOMENTE O QUADRO DE AUDITORIA CRUZADA DO SETOR DESTINO
     if (cardFactoryBoard) cardFactoryBoard.style.display = 'block';
     if (cardMaturity) cardMaturity.style.display = 'none';
     if (cardActivityFeed) cardActivityFeed.style.display = 'none';
@@ -333,7 +338,6 @@ function checkAuthSession() {
     document.getElementById('tab-dashboard')?.classList.add('active');
 
   } else if (isSemanal) {
-    // GRUPO 2 (AUDITORES SEMANAIS): QUADRO + CHECKLIST + MATURIDADE + FEED
     if (cardFactoryBoard) cardFactoryBoard.style.display = 'block';
     if (cardMaturity) cardMaturity.style.display = 'block';
     if (cardActivityFeed) cardActivityFeed.style.display = 'block';
@@ -349,7 +353,6 @@ function checkAuthSession() {
     document.getElementById('tab-dashboard')?.classList.add('active');
 
   } else {
-    // GRUPO 3 (AUDITORES SÊNIOR / ADM): ACESSO TOTAL COMPLETO
     if (cardFactoryBoard) cardFactoryBoard.style.display = 'block';
     if (cardMaturity) cardMaturity.style.display = 'block';
     if (cardActivityFeed) cardActivityFeed.style.display = 'block';
@@ -360,7 +363,6 @@ function checkAuthSession() {
     if (navBtnManual) navBtnManual.style.display = 'flex';
   }
 
-  // Logotipo e Identificação
   const headerLogoImg = document.getElementById('header-company-logo');
   if (headerLogoImg) headerLogoImg.src = 'logo_impaktto.png';
 
@@ -375,7 +377,7 @@ function checkAuthSession() {
   const levelLabels = {
     senior: '👑 Grupo 3: Auditor Sênior (Adm/Diretoria)',
     semanal: '🔍 Grupo 2: Auditor Semanal (Encarregado)',
-    diario: `📋 Grupo 1: Líder (Origem: ${userSector} ➔ Destino Auditoria: ${targetAuditSector})`
+    diario: `📋 Grupo 1: Líder (Origem: ${userSector} ➔ Auditoria Cruzada: ${targetAuditSector})`
   };
 
   const levelBadgeText = levelLabels[level] || '📋 Grupo 1: Líder Diário';
@@ -557,7 +559,7 @@ window.selectScore3Level = function(sensoName, qNum, qKey, level) {
   logActivity(`Avaliou o item ${sensoName.toUpperCase()} #${qNum} como ${labelMap[level]}`);
 };
 
-// 5. RENDEREZAÇÃO DO QUADRO COM REGRA DE AUDITORIA CRUZADA E SELEÇÃO DE DESTINO
+// 5. RENDEREZAÇÃO DO QUADRO COM RODÍZIO COMPETENTE 5X5 (1 SENSO POR DIA DE TRABALHO)
 function renderFactoryBoard() {
   const container = document.getElementById('factory-board-container');
   const titleEl = document.getElementById('factory-board-title');
@@ -567,11 +569,15 @@ function renderFactoryBoard() {
   const userSector = currentUser ? (currentUser.sector || 'Usinagem') : 'Usinagem';
   const isDiario = (currentUser && currentUser.level === 'diario');
 
-  // Aplicar regra da Auditoria Cruzada: O Líder do Grupo 1 NUNCA audita seu próprio setor!
+  // Aplicar regra da Auditoria Cruzada
   const targetAuditSector = SECTOR_ROTATION_MAP[userSector] || 'Holter';
-  
-  // Setor selecionado para a exibição
   let selectedSector = isDiario ? targetAuditSector : (activeFactorySectorFilter || 'ALL');
+
+  // Identificar Dia Atual da Semana (SEG, TER, QUA, QUI, SEX)
+  const dayNames = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
+  const todayIdx = new Date().getDay();
+  const currentDayCode = dayNames[todayIdx] === 'DOM' ? 'SEG' : dayNames[todayIdx];
+  const todayFocus = DAILY_SENSO_FOCUS[currentDayCode] || DAILY_SENSO_FOCUS['SEG'];
 
   // Atualizar Título Dinâmico do Card
   if (titleEl) {
@@ -584,24 +590,29 @@ function renderFactoryBoard() {
     }
   }
 
-  // Banner e Sinalização Visual de Auditoria Cruzada (Rodízio)
+  // Banner do Rodízio Competente (Sinalização do Setor Destino + Foco do Senso do Dia)
   if (filterSelectContainer) {
     if (isDiario) {
       filterSelectContainer.style.display = 'block';
       filterSelectContainer.innerHTML = `
-        <div style="background: rgba(99, 102, 241, 0.15); border: 1px solid var(--border-highlight); padding: 0.85rem 1.1rem; border-radius: var(--radius-md); margin-bottom: 1.25rem; display: flex; align-items: center; justify-content: space-between; flex-wrap:wrap; gap:0.5rem;">
-          <div>
-            <div style="font-size:0.75rem; font-weight:800; color:var(--accent-cyan); text-transform:uppercase; letter-spacing:0.05em;">
-              🔄 REGRA DA AUDITORIA CRUZADA (PRINCÍPIO DA IMPARCIALIDADE 5S):
+        <div style="background: rgba(99, 102, 241, 0.12); border: 1px solid var(--border-highlight); padding: 0.9rem 1.1rem; border-radius: var(--radius-md); margin-bottom: 1.25rem;">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem; margin-bottom:0.5rem;">
+            <div>
+              <span style="font-size:0.75rem; font-weight:800; color:var(--accent-cyan); text-transform:uppercase; letter-spacing:0.05em;">
+                🔄 RODÍZIO COMPETENTE 5X5 DE AUDITORIA CRUZADA:
+              </span>
+              <div style="font-size:0.95rem; font-weight:700; color:var(--text-main); margin-top:0.15rem;">
+                Seu Setor Origem: <span style="color:var(--text-muted);">${userSector}</span> ➔ 
+                <span style="color:var(--status-bom); font-weight:800;">📍 SEU DESTINO DE AUDITORIA: ${targetAuditSector}</span>
+              </div>
             </div>
-            <div style="font-size:0.92rem; font-weight:700; color:var(--text-main); margin-top:0.2rem;">
-              Seu Setor de Origem: <span style="color:var(--text-muted);">${userSector}</span> ➔ 
-              <span style="color:var(--status-bom); font-weight:800;">📍 SEU DESTINO DE AUDITORIA: ${targetAuditSector}</span>
-            </div>
+            <span class="badge-seiton" style="padding:0.35rem 0.75rem; font-size:0.75rem; font-weight:700;">
+              🗓️ HOJE É ${currentDayCode}
+            </span>
           </div>
-          <span class="badge-seiton" style="padding:0.35rem 0.75rem; font-size:0.75rem; font-weight:700;">
-            🔒 Imparcialidade Garantida
-          </span>
+          <div style="background: rgba(0,0,0,0.25); padding: 0.5rem 0.75rem; border-radius: 8px; border-left: 3px solid var(--primary); font-size: 0.82rem; color: #e2e8f0;">
+            💡 <strong>${todayFocus.name}:</strong> ${todayFocus.desc}
+          </div>
         </div>
       `;
     } else {
@@ -620,27 +631,29 @@ function renderFactoryBoard() {
 
   const days = ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
   const sensos = [
-    { key: 'seiri', name: 'UTILIZAÇÃO', class: 'badge-seiri', desc: 'Separar o útil do inútil • Descarte de desnecessários' },
-    { key: 'seiton', name: 'ORGANIZAÇÃO', class: 'badge-seiton', desc: 'Um lugar para cada coisa • Identificação visual' },
-    { key: 'seiso', name: 'LIMPEZA', class: 'badge-seiso', desc: 'Manter o setor limpo • Inspecionar e conservar' },
-    { key: 'seiketsu', name: 'PADRONIZAÇÃO', class: 'badge-seiketsu', desc: 'Manter padrões • Saúde, higiene e segurança' },
-    { key: 'shitsuke', name: 'DISCIPLINA', class: 'badge-shitsuke', desc: 'Seguir regras • Cultivar hábitos diariamente' }
+    { key: 'seiri', dayCode: 'SEG', name: 'UTILIZAÇÃO (SEIRI)', class: 'badge-seiri', desc: 'Segunda: Separar o útil do inútil • Descarte de desnecessários' },
+    { key: 'seiton', dayCode: 'TER', name: 'ORGANIZAÇÃO (SEITON)', class: 'badge-seiton', desc: 'Terça: Um lugar para cada coisa • Identificação visual' },
+    { key: 'seiso', dayCode: 'QUA', name: 'LIMPEZA (SEISO)', class: 'badge-seiso', desc: 'Quarta: Manter o setor limpo • Inspecionar e conservar' },
+    { key: 'seiketsu', dayCode: 'QUI', name: 'PADRONIZAÇÃO (SEIKETSU)', class: 'badge-seiketsu', desc: 'Quinta: Manter padrões • Saúde, higiene e EPIs' },
+    { key: 'shitsuke', dayCode: 'SEX', name: 'DISCIPLINA (SHITSUKE)', class: 'badge-shitsuke', desc: 'Sexta: Seguir regras • Fechamento da Semana' }
   ];
 
   let html = `
     <table class="factory-board-table">
       <thead>
         <tr>
-          <th style="text-align:left; width: 280px;">CONCEITO 5S</th>
-          ${days.map(d => `<th>${d}</th>`).join('')}
+          <th style="text-align:left; width: 280px;">CONCEITO 5S (RODÍZIO 5X5)</th>
+          ${days.map(d => `<th style="${d === currentDayCode ? 'background:rgba(99,102,241,0.3); color:#fff; border-bottom:2px solid var(--primary);' : ''}">${d} ${d === currentDayCode ? '⭐ (Hoje)' : ''}</th>`).join('')}
         </tr>
       </thead>
       <tbody>
   `;
 
   sensos.forEach(s => {
+    const isFocusToday = (s.dayCode === currentDayCode);
+
     html += `
-      <tr>
+      <tr style="${isFocusToday ? 'background: rgba(99,102,241,0.06);' : ''}">
         <td style="text-align:left; vertical-align:middle; padding: 0.85rem;">
           <span class="senso-badge-title ${s.class}" style="margin:0 0 0.25rem 0;">${s.name}</span>
           <div style="font-size:0.75rem; color:#9ca3af; line-height:1.25; font-weight: 500;">
@@ -649,7 +662,6 @@ function renderFactoryBoard() {
         </td>
         ${days.map(day => {
           if (selectedSector === 'ALL') {
-            // VISÃO GERAL CONSOLIDADA: Acumula status dos 7 setores
             let hasRuim = false;
             let hasRegular = false;
             let countRuim = 0;
@@ -682,13 +694,12 @@ function renderFactoryBoard() {
             `;
 
           } else {
-            // VISÃO INDIVIDUAL DO SETOR AVALIADO NA AUDITORIA CRUZADA
             const boardKey = `${selectedSector}_${s.key}_${day}`;
             const currentStatus = clientFactoryBoard[boardKey] || 'bom';
             const iconMap = { bom: '🟢 Bom', regular: '🟡 Regular', ruim: '🔴 Ruim' };
 
             return `
-              <td style="vertical-align:middle;">
+              <td style="vertical-align:middle; ${day === currentDayCode ? 'background:rgba(99,102,241,0.1);' : ''}">
                 <button class="btn btn-secondary" style="padding:0.3rem 0.6rem; font-size:0.78rem;" onclick="cycleFactoryBoard('${selectedSector}', '${boardKey}', '${s.name}', '${day}')">
                   ${iconMap[currentStatus]}
                 </button>
