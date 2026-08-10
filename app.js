@@ -451,7 +451,6 @@ function checkAuthSession() {
   const navBtnTools = document.querySelector('.nav-btn[data-tab="tab-tools"]');
   const navBtnManual = document.querySelector('.nav-btn[data-tab="tab-manual"]');
 
-  // TIMER RECORRENTE AUTOMÁTICO DE REFRESH DINÂMICO PARA TODOS OS USUÁRIOS (A CADA 4 SEGUNDOS)
   if (!autoRefreshTimer) {
     autoRefreshTimer = setInterval(() => {
       loadImpakttoData();
@@ -481,7 +480,7 @@ function checkAuthSession() {
     if (isLider || isColaborador) {
       if (cardFactoryBoard) cardFactoryBoard.style.display = 'block';
       if (cardMaturity) cardMaturity.style.display = 'none';
-      if (cardActivityFeed) cardActivityFeed.style.display = 'block'; // AGORA O FEED FICA VISÍVEL PARA O GRUPO 1 VER OS APONTAMENTOS AO VIVO!
+      if (cardActivityFeed) cardActivityFeed.style.display = 'block';
       if (cardAuditChecklist) cardAuditChecklist.style.display = 'none';
       if (cardUserManagement) cardUserManagement.style.display = 'none';
 
@@ -509,7 +508,6 @@ function checkAuthSession() {
       document.getElementById('tab-dashboard')?.classList.add('active');
 
     } else {
-      // GRUPO 3 (ADM): ACESSO TOTAL INCLUINDO GESTÃO DE USUÁRIOS E NÍVEIS
       if (cardFactoryBoard) cardFactoryBoard.style.display = 'block';
       if (cardMaturity) cardMaturity.style.display = 'block';
       if (cardActivityFeed) cardActivityFeed.style.display = 'block';
@@ -591,7 +589,7 @@ function loadImpakttoData() {
   renderUserManagementTable();
 }
 
-// 7. RENDERIZAÇÃO DO PAINEL DE GESTÃO DE COLABORADORES E NÍVEIS (1: Colaborador / 1: Líder / 2: Volante / 3: ADM)
+// 7. RENDERIZAÇÃO DO PAINEL DE GESTÃO DE COLABORADORES E NÍVEIS
 function renderUserManagementTable() {
   const container = document.getElementById('user-management-table-container');
   if (!container) return;
@@ -726,7 +724,6 @@ function logActivity(actionText) {
     timestamp: timestamp
   };
 
-  // RE-LEITURA DINÂMICA DO LOCALSTORAGE PARA PRESERVAR LANÇAMENTOS DE OUTROS DISPOSITIVOS
   let currentLogs = JSON.parse(localStorage.getItem('5s_activity_logs_impaktto')) || [];
   currentLogs.unshift(logEntry);
   if (currentLogs.length > 60) currentLogs.pop();
@@ -854,7 +851,7 @@ window.selectScore3Level = function(sensoName, qNum, qKey, level) {
   notifyGlobalSync();
 };
 
-// 5. RENDEREZAÇÃO COM LÓGICA DE PROTEÇÃO TEMPORAL (BLOQUEIO DE DIAS FUTUROS)
+// 5. RENDEREZAÇÃO COM LÓGICA DE PROTEÇÃO TEMPORAL E VOTO ÚNICO DIÁRIO POR COLABORADOR/LÍDER
 function renderFactoryBoard() {
   const container = document.getElementById('factory-board-container');
   const titleEl = document.getElementById('factory-board-title');
@@ -865,6 +862,7 @@ function renderFactoryBoard() {
   const isDiarioOrColab = (currentUser && (currentUser.level === 'diario' || currentUser.level === 'colaborador' || currentUser.role === 'colaborador' || currentUser.role === 'lider_diario'));
   const isLider = (currentUser && (currentUser.level === 'diario' || currentUser.role === 'lider_diario'));
   const isMonitor = (currentUser && currentUser.level === 'monitor');
+  const isSeniorOrSemanal = (currentUser && (currentUser.level === 'senior' || currentUser.level === 'semanal' || currentUser.role === 'administrador' || currentUser.role === 'auditor_semanal'));
 
   const targetAuditSector = isLider ? (SECTOR_ROTATION_MAP[userSector] || 'Holter') : userSector;
   let selectedSector = isDiarioOrColab ? targetAuditSector : (activeFactorySectorFilter || 'ALL');
@@ -877,6 +875,11 @@ function renderFactoryBoard() {
   const todayIndexInWeek = daysOrder.indexOf(currentDayCode);
 
   const todayFocus = DAILY_SENSO_FOCUS[currentDayCode] || DAILY_SENSO_FOCUS['SEG'];
+
+  // VERIFICAR SE O USUÁRIO JÁ DEU O SEU VOTO ÚNICO DO DIA
+  const todayDateStr = new Date().toISOString().split('T')[0];
+  const userVoteKey = currentUser ? `5s_user_voted_${currentUser.username}_${todayDateStr}` : null;
+  const hasVotedToday = userVoteKey ? (localStorage.getItem(userVoteKey) === 'true') : false;
 
   if (titleEl) {
     if (isMonitor) {
@@ -918,15 +921,23 @@ function renderFactoryBoard() {
         </div>
       `;
 
+      const voteStatusBadge = hasVotedToday ? `
+        <span style="background: rgba(16, 185, 129, 0.2); border: 1px solid #10b981; color: #34d399; padding: 0.35rem 0.75rem; border-radius: 20px; font-size: 0.75rem; font-weight: 800; display: inline-flex; align-items: center; gap: 0.3rem;">
+          ✅ Voto Registrado Hoje (${currentDayCode})
+        </span>
+      ` : `
+        <span class="badge-seiton" style="padding:0.35rem 0.75rem; font-size:0.75rem; font-weight:700;">
+          🗓️ HOJE É ${currentDayCode} • Aguardando Sua Nota
+        </span>
+      `;
+
       filterSelectContainer.innerHTML = `
         <div style="background: rgba(99, 102, 241, 0.12); border: 1px solid var(--border-highlight); padding: 0.9rem 1.1rem; border-radius: var(--radius-md); margin-bottom: 1.25rem;">
           <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem; margin-bottom:0.5rem;">
             <div>
               ${bannerSubtext}
             </div>
-            <span class="badge-seiton" style="padding:0.35rem 0.75rem; font-size:0.75rem; font-weight:700;">
-              🗓️ HOJE É ${currentDayCode}
-            </span>
+            ${voteStatusBadge}
           </div>
           <div style="background: rgba(0,0,0,0.25); padding: 0.5rem 0.75rem; border-radius: 8px; border-left: 3px solid var(--primary); font-size: 0.82rem; color: #e2e8f0;">
             💡 <strong>${todayFocus.name}:</strong> ${todayFocus.desc}
@@ -1140,7 +1151,25 @@ window.changeFactorySectorFilter = function(val) {
   renderFactoryBoard();
 };
 
+// 6. CICLO DE AVALIAÇÃO COM REGRA ESTRITA DE 1 VOTO POR DIA POR COLABORADOR/LÍDER
 window.cycleFactoryBoard = function(sectorName, boardKey, sensoName, day) {
+  if (!currentUser) return;
+
+  const todayDateStr = new Date().toISOString().split('T')[0];
+  const userVoteKey = `5s_user_voted_${currentUser.username}_${todayDateStr}`;
+
+  const isSeniorOrSemanal = (currentUser && (currentUser.level === 'senior' || currentUser.level === 'semanal' || currentUser.role === 'administrador' || currentUser.role === 'auditor_semanal'));
+  const isLider = (currentUser && (currentUser.level === 'diario' || currentUser.role === 'lider_diario'));
+
+  // SE NÃO FOR AUDITOR DO GRUPO 2/3 (OU SEJA, É COLABORADOR OU LÍDER DO GRUPO 1), VERIFICA SE JÁ VOTOU HOJE
+  if (!isSeniorOrSemanal) {
+    const hasVotedToday = (localStorage.getItem(userVoteKey) === 'true');
+    if (hasVotedToday) {
+      alert('⚠️ Você já deu sua nota do dia, obrigado. Amanhã tem mais!');
+      return;
+    }
+  }
+
   const current = clientFactoryBoard[boardKey] || 'bom';
   const nextMap = { bom: 'regular', regular: 'ruim', ruim: 'bom' };
   const next = nextMap[current];
@@ -1148,12 +1177,15 @@ window.cycleFactoryBoard = function(sectorName, boardKey, sensoName, day) {
   clientFactoryBoard[boardKey] = next;
   localStorage.setItem('5s_factory_board_impaktto', JSON.stringify(clientFactoryBoard));
 
+  // SE FOR GRUPO 1 (COLABORADOR OU LÍDER), MARCA O REGISTRO DO VOTO DO DIA PARA BLOQUEAR VOTOS DUPLICADOS
+  if (!isSeniorOrSemanal) {
+    localStorage.setItem(userVoteKey, 'true');
+  }
+
   renderFactoryBoard();
   const labelMap = { bom: '🟢 BOM', regular: '🟡 REGULAR', ruim: '🔴 RUIM' };
-  const auditorName = currentUser ? currentUser.name : 'Integrante';
-  const originSector = currentUser ? (currentUser.sector || 'Fábrica') : 'Fábrica';
-  const isSeniorOrSemanal = (currentUser && (currentUser.level === 'senior' || currentUser.level === 'semanal' || currentUser.role === 'administrador' || currentUser.role === 'auditor_semanal'));
-  const isLider = (currentUser && (currentUser.level === 'diario' || currentUser.role === 'lider_diario'));
+  const auditorName = currentUser.name;
+  const originSector = currentUser.sector || 'Fábrica';
 
   if (isSeniorOrSemanal) {
     logActivity(`⚖️ Calibração de Auditoria (por ${auditorName}): Marcou ${sensoName} na ${day} como ${labelMap[next]} no Setor ${sectorName}`);
@@ -1165,7 +1197,7 @@ window.cycleFactoryBoard = function(sectorName, boardKey, sensoName, day) {
   notifyGlobalSync();
 };
 
-// 6. CÁLCULO DE RESULTADOS E CONTROLE ESTRITO DA SINALIZAÇÃO DE PREMIAÇÃO (CONFIDENCIAL GRUPO 2 E 3)
+// 7. CÁLCULO DE RESULTADOS E CONTROLE ESTRITO DA SINALIZAÇÃO DE PREMIAÇÃO (CONFIDENCIAL GRUPO 2 E 3)
 function calculateAuditResults() {
   const totals = { seiri: 0, seiton: 0, seiso: 0, seiketsu: 0, shitsuke: 0 };
   const maxPerSenso = 30;
