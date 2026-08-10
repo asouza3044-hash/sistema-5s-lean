@@ -311,9 +311,9 @@ function checkAuthSession() {
   const level = currentUser.level || 'diario';
   const role = currentUser.role || 'lider_diario';
 
-  const isSenior = (role === 'administrador' || level === 'senior');
-  const isSemanal = (role === 'auditor_semanal' || level === 'semanal');
-  const isDiario = (!isSenior && !isSemanal);
+  const isSenior = (role === 'administrador' || level === 'senior'); // GRUPO 3
+  const isSemanal = (role === 'auditor_semanal' || level === 'semanal'); // GRUPO 2
+  const isDiario = (!isSenior && !isSemanal); // GRUPO 1
 
   const cardFactoryBoard = document.getElementById('card-factory-board');
   const cardMaturity = document.getElementById('card-maturity-dashboard');
@@ -325,6 +325,9 @@ function checkAuthSession() {
   const navBtnManual = document.querySelector('.nav-btn[data-tab="tab-manual"]');
 
   if (isDiario) {
+    // ---------------------------------------------------------------------
+    // GRUPO 1 (LÍDERES DIÁRIOS): SOMENTE O QUADRO DO SETOR DESTINO NO RODÍZIO
+    // ---------------------------------------------------------------------
     if (cardFactoryBoard) cardFactoryBoard.style.display = 'block';
     if (cardMaturity) cardMaturity.style.display = 'none';
     if (cardActivityFeed) cardActivityFeed.style.display = 'none';
@@ -338,6 +341,9 @@ function checkAuthSession() {
     document.getElementById('tab-dashboard')?.classList.add('active');
 
   } else if (isSemanal) {
+    // ---------------------------------------------------------------------
+    // GRUPO 2 (AUDITORES SEMANAIS / ENCARREGADOS): QUADRO + CHECKLIST + MATURIDADE + FEED
+    // ---------------------------------------------------------------------
     if (cardFactoryBoard) cardFactoryBoard.style.display = 'block';
     if (cardMaturity) cardMaturity.style.display = 'block';
     if (cardActivityFeed) cardActivityFeed.style.display = 'block';
@@ -353,6 +359,9 @@ function checkAuthSession() {
     document.getElementById('tab-dashboard')?.classList.add('active');
 
   } else {
+    // ---------------------------------------------------------------------
+    // GRUPO 3 (AUDITORES SÊNIOR / ADM & GERÊNCIA/DIRETORIA): ACESSO TOTAL COMPLETO
+    // ---------------------------------------------------------------------
     if (cardFactoryBoard) cardFactoryBoard.style.display = 'block';
     if (cardMaturity) cardMaturity.style.display = 'block';
     if (cardActivityFeed) cardActivityFeed.style.display = 'block';
@@ -375,7 +384,7 @@ function checkAuthSession() {
   const targetAuditSector = SECTOR_ROTATION_MAP[userSector] || 'Holter';
 
   const levelLabels = {
-    senior: '👑 Grupo 3: Auditor Sênior (Adm/Diretoria)',
+    senior: '👑 Grupo 3: Auditor Sênior (Adm / Gerência & Diretoria)',
     semanal: '🔍 Grupo 2: Auditor Semanal (Encarregado)',
     diario: `📋 Grupo 1: Líder (Origem: ${userSector} ➔ Auditoria Cruzada: ${targetAuditSector})`
   };
