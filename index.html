@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sistema de Gestão 5S & Ferramentas da Qualidade</title>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Local Styles -->
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- APP HEADER -->
+  <header class="app-header">
+    <div class="brand">
+      <div class="brand-icon">5S</div>
+      <div class="brand-text">
+        <h1>Gestão da Qualidade & 5S</h1>
+        <p>Sistema Interativo de Auditoria e Melhores Práticas</p>
+      </div>
+    </div>
+
+    <!-- TABS NAVIGATION -->
+    <nav class="nav-tabs">
+      <button class="nav-btn active" data-tab="tab-dashboard">
+        📊 Dashboard & Auditoria
+      </button>
+      <button class="nav-btn" data-tab="tab-tools">
+        🛠️ Ferramentas da Qualidade
+      </button>
+      <button class="nav-btn" data-tab="tab-manual">
+        📖 Manual de Implantação
+      </button>
+    </nav>
+  </header>
+
+  <!-- MAIN CONTAINER -->
+  <main class="main-container">
+
+    <!-- ===================================================================
+         ABA 1: DASHBOARD & AUDITORIA 5S
+         =================================================================== -->
+    <section id="tab-dashboard" class="tab-content active">
+      
+      <!-- PAINEL DE MATURIDADE GLOBAL -->
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title">🏆 Nível de Maturidade do Programa 5S</h2>
+          <button class="btn btn-secondary" onclick="window.print()">🖨️ Exportar / Imprimir</button>
+        </div>
+
+        <div class="grid-metrics">
+          <div class="metric-card seiri">
+            <div class="metric-label">1. Seiri (Utilização)</div>
+            <div class="metric-value" id="score-seiri">100%</div>
+            <div class="progress-bar-container">
+              <div class="progress-bar-fill" id="bar-seiri"></div>
+            </div>
+            <div class="metric-sub">Meta: &ge; 95% para evolução</div>
+          </div>
+
+          <div class="metric-card seiton">
+            <div class="metric-label">2. Seiton (Organização)</div>
+            <div class="metric-value" id="score-seiton">100%</div>
+            <div class="progress-bar-container">
+              <div class="progress-bar-fill" id="bar-seiton"></div>
+            </div>
+            <div class="metric-sub">Meta: &ge; 95% para evolução</div>
+          </div>
+
+          <div class="metric-card seiso">
+            <div class="metric-label">3. Seiso (Limpeza)</div>
+            <div class="metric-value" id="score-seiso">100%</div>
+            <div class="progress-bar-container">
+              <div class="progress-bar-fill" id="bar-seiso"></div>
+            </div>
+            <div class="metric-sub">Meta: &ge; 95% para evolução</div>
+          </div>
+
+          <div class="metric-card seiketsu">
+            <div class="metric-label">4. Seiketsu (Padronização)</div>
+            <div class="metric-value" id="score-seiketsu">100%</div>
+            <div class="progress-bar-container">
+              <div class="progress-bar-fill" id="bar-seiketsu"></div>
+            </div>
+            <div class="metric-sub">Meta: &ge; 95% para evolução</div>
+          </div>
+
+          <div class="metric-card shitsuke">
+            <div class="metric-label">5. Shitsuke (Disciplina)</div>
+            <div class="metric-value" id="score-shitsuke">100%</div>
+            <div class="progress-bar-container">
+              <div class="progress-bar-fill" id="bar-shitsuke"></div>
+            </div>
+            <div class="metric-sub">Meta: &ge; 95% para evolução</div>
+          </div>
+        </div>
+
+        <div style="background: rgba(255,255,255,0.03); padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <span style="font-size: 0.85rem; color: var(--text-muted);">Índice Geral de Conformidade:</span>
+            <h3 id="global-maturity-score" style="font-size: 2rem; font-family: var(--font-display); color: var(--primary);">100%</h3>
+          </div>
+          <div>
+            <span style="font-size: 0.85rem; color: var(--text-muted);">Status de Avaliação:</span>
+            <div id="global-maturity-status" style="font-weight: 700; font-size: 1.1rem;">Excelente (Nível 5)</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- FORMULÁRIO DE AUDITORIA INTERATIVA -->
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title">📋 Checklist Oficial de Auditoria 5S (50 Itens)</h2>
+          <button class="btn btn-danger" onclick="resetAudit()">🔄 Redefinir Respostas</button>
+        </div>
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.5rem;">
+          Selecione a pontuação de <strong>1 (Insuficiente)</strong> a <strong>4 (Ótimo)</strong> para cada um dos itens abaixo. O cálculo da nota e percentual por senso é atualizado em tempo real.
+        </p>
+
+        <!-- Container das 50 Perguntas -->
+        <div id="audit-questions-container"></div>
+      </div>
+
+    </section>
+
+
+    <!-- ===================================================================
+         ABA 2: CENTRAL DE FERRAMENTAS DA QUALIDADE
+         =================================================================== -->
+    <section id="tab-tools" class="tab-content">
+      
+      <!-- SUB-SEÇÃO: MATRIZ GUT -->
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title">🎯 Matriz GUT - Priorização de Problemas</h2>
+        </div>
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">
+          Calcule a prioridade das Ações 5S multiplicando <strong>Gravidade (1-5) &times; Urgência (1-5) &times; Tendência (1-5)</strong>. A tabela ordena automaticamente as prioridades mais críticas!
+        </p>
+
+        <form id="form-gut" class="grid-2col" style="margin-bottom: 1.5rem;">
+          <div class="form-group" style="grid-column: span 2;">
+            <label>Descrição do Problema / Não Conformidade 5S</label>
+            <input type="text" id="gut-problem" class="form-control" placeholder="Ex: Material obsoleto acumulado no setor de montagem..." required>
+          </div>
+          <div class="form-group">
+            <label>Gravidade (G: 1=Mínima, 5=Gravíssima)</label>
+            <select id="gut-g" class="form-control">
+              <option value="1">1 - Mínima</option>
+              <option value="2">2 - Baixa</option>
+              <option value="3">3 - Média</option>
+              <option value="4">4 - Alta</option>
+              <option value="5" selected>5 - Gravíssima</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Urgência (U: 1=Pode aguardar, 5=Imediata)</label>
+            <select id="gut-u" class="form-control">
+              <option value="1">1 - Pode aguardar</option>
+              <option value="2">2 - Pouca urgência</option>
+              <option value="3">3 - Média</option>
+              <option value="4">4 - Urgente</option>
+              <option value="5" selected>5 - Imediata</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Tendência (T: 1=Não piora, 5=Piora rápido)</label>
+            <select id="gut-t" class="form-control">
+              <option value="1">1 - Sem tendência de piora</option>
+              <option value="2">2 - Piora a longo prazo</option>
+              <option value="3">3 - Piora a médio prazo</option>
+              <option value="4">4 - Piora rapidamente</option>
+              <option value="5" selected>5 - Piora imediatamente</option>
+            </select>
+          </div>
+          <div style="display: flex; align-items: flex-end;">
+            <button type="submit" class="btn btn-primary" style="width: 100%;">➕ Adicionar à Matriz GUT</button>
+          </div>
+        </form>
+
+        <div style="overflow-x: auto;">
+          <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
+            <thead>
+              <tr style="background: rgba(255,255,255,0.05); border-bottom: 1px solid var(--border-color);">
+                <th style="padding: 0.75rem; text-align: left;">Rank</th>
+                <th style="padding: 0.75rem; text-align: left;">Problema</th>
+                <th style="padding: 0.75rem; text-align: center;">G</th>
+                <th style="padding: 0.75rem; text-align: center;">U</th>
+                <th style="padding: 0.75rem; text-align: center;">T</th>
+                <th style="padding: 0.75rem; text-align: center;">Pontuação GUT</th>
+                <th style="padding: 0.75rem; text-align: center;">Ação</th>
+              </tr>
+            </thead>
+            <tbody id="gut-table-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- SUB-SEÇÃO: KANBAN 5W2H -->
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title">📌 Quadro Kanban de Planos de Ação 5W2H</h2>
+        </div>
+
+        <form id="form-kanban" class="grid-2col" style="margin-bottom: 1.5rem;">
+          <div class="form-group">
+            <label>Ação Corretiva (O quê?)</label>
+            <input type="text" id="kanban-title" class="form-control" placeholder="Ex: Pintar demarcações de piso na Fábrica..." required>
+          </div>
+          <div class="form-group">
+            <label>Senso Relacionado</label>
+            <select id="kanban-senso" class="form-control">
+              <option value="seiri">Seiri (Utilização)</option>
+              <option value="seiton" selected>Seiton (Organização)</option>
+              <option value="seiso">Seiso (Limpeza)</option>
+              <option value="seiketsu">Seiketsu (Padronização)</option>
+              <option value="shitsuke">Shitsuke (Disciplina)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Responsável (Quem?)</label>
+            <input type="text" id="kanban-owner" class="form-control" placeholder="Ex: Rodrigo / Equipe do Estoque">
+          </div>
+          <div class="form-group">
+            <label>Prazo Limite (Quando?)</label>
+            <input type="date" id="kanban-date" class="form-control">
+          </div>
+          <div style="grid-column: span 2;">
+            <button type="submit" class="btn btn-primary" style="width: 100%;">➕ Criar Ação no Kanban</button>
+          </div>
+        </form>
+
+        <div class="kanban-board">
+          <div class="kanban-col">
+            <div class="kanban-col-header" style="border-color: var(--danger);">
+              <span>📝 A Fazer</span>
+            </div>
+            <div id="kanban-col-todo"></div>
+          </div>
+
+          <div class="kanban-col">
+            <div class="kanban-col-header" style="border-color: var(--warning);">
+              <span>⚙️ Em Andamento</span>
+            </div>
+            <div id="kanban-col-doing"></div>
+          </div>
+
+          <div class="kanban-col">
+            <div class="kanban-col-header" style="border-color: var(--success);">
+              <span>✅ Concluído</span>
+            </div>
+            <div id="kanban-col-done"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SUB-SEÇÃO: ISHIKAWA 6M -->
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title">🐟 Diagrama de Ishikawa (Espinha de Peixe / 6M)</h2>
+        </div>
+
+        <form id="form-ishikawa" class="grid-2col" style="margin-bottom: 1.5rem;">
+          <div class="form-group" style="grid-column: span 2;">
+            <label>Efeito / Problema Principal</label>
+            <input type="text" id="ishikawa-problem-input" class="form-control" placeholder="Ex: Recorrência de ferramentas perdidas na Montagem">
+          </div>
+          <div class="form-group">
+            <label>Categoria do M</label>
+            <select id="ishikawa-m-type" class="form-control">
+              <option value="maoObra">Mão de Obra</option>
+              <option value="metodo">Método</option>
+              <option value="maquina">Máquina</option>
+              <option value="material">Material</option>
+              <option value="meioAmbiente">Meio Ambiente</option>
+              <option value="medicao">Medição</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Causa Identificada</label>
+            <input type="text" id="ishikawa-cause-input" class="form-control" placeholder="Ex: Falta de quadro de ferramentas shadowboard">
+          </div>
+          <div style="grid-column: span 2;">
+            <button type="submit" class="btn btn-primary" style="width: 100%;">➕ Adicionar Causa ao Diagrama</button>
+          </div>
+        </form>
+
+        <div class="ishikawa-container">
+          <div style="text-align: right; margin-bottom: 1rem;">
+            <span style="font-size: 0.85rem; color: var(--text-muted);">Problema sob análise:</span>
+            <h3 id="ishikawa-effect-title" style="color: var(--danger); font-family: var(--font-display);">Sem problema definido</h3>
+          </div>
+          <div class="ishikawa-grid">
+            <div class="ishikawa-m-box">
+              <div class="ishikawa-m-title">👷 Mão de Obra</div>
+              <ul class="ishikawa-causes-list" id="ishikawa-list-maoObra"></ul>
+            </div>
+            <div class="ishikawa-m-box">
+              <div class="ishikawa-m-title">📋 Método</div>
+              <ul class="ishikawa-causes-list" id="ishikawa-list-metodo"></ul>
+            </div>
+            <div class="ishikawa-m-box">
+              <div class="ishikawa-m-title">⚙️ Máquina</div>
+              <ul class="ishikawa-causes-list" id="ishikawa-list-maquina"></ul>
+            </div>
+            <div class="ishikawa-m-box">
+              <div class="ishikawa-m-title">📦 Material</div>
+              <ul class="ishikawa-causes-list" id="ishikawa-list-material"></ul>
+            </div>
+            <div class="ishikawa-m-box">
+              <div class="ishikawa-m-title">🌱 Meio Ambiente</div>
+              <ul class="ishikawa-causes-list" id="ishikawa-list-meioAmbiente"></ul>
+            </div>
+            <div class="ishikawa-m-box">
+              <div class="ishikawa-m-title">📏 Medição</div>
+              <ul class="ishikawa-causes-list" id="ishikawa-list-medicao"></ul>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ===================================================================
+         ABA 3: MANUAL DE IMPLANTAÇÃO COMPLETO (MARKDOWN READER)
+         =================================================================== -->
+    <section id="tab-manual" class="tab-content">
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title">📚 Manual Corporativo de Implantação 5S</h2>
+          <a href="manual_implementacao_5s_qualidade.md" target="_blank" class="btn btn-secondary">📥 Ver Arquivo Markdown Original</a>
+        </div>
+        
+        <div style="font-size: 0.95rem; line-height: 1.8; color: #d1d5db; padding: 1rem; background: rgba(0,0,0,0.3); border-radius: var(--radius-md);">
+          <h3 style="color: var(--primary); margin-bottom: 1rem;">Visão Geral do Manual</h3>
+          <p>O Manual completo está salvo no arquivo local <code>manual_implementacao_5s_qualidade.md</code>.</p>
+          <hr style="border-color: var(--border-color); margin: 1.5rem 0;">
+          
+          <h4 style="color: var(--accent-cyan); margin-bottom: 0.5rem;">Principais Tópicos Cobertos no Manual:</h4>
+          <ul style="list-style: square inside; margin-left: 1rem;">
+            <li><strong>Diretrizes de Implantação:</strong> Papéis da Alta Direção, Comitê Central e Líderes de Setor.</li>
+            <li><strong>Cronograma Passo a Passo:</strong> Do treinamento inicial ao evento do "Dia D" de descarte.</li>
+            <li><strong>Detalhamento dos 5 Sensos:</strong> Regras práticas para Seiri, Seiton, Seiso, Seiketsu e Shitsuke.</li>
+            <li><strong>Método de Avaliação das Auditorias:</strong> Escala de 1 a 4 pontos e exigência do critério de 95% para evolução de senso.</li>
+            <li><strong>Integração com Lean & ISO 9001:</strong> Aplicação combinada de PDCA, Ishikawa, 5 Porquês, Matriz GUT e Kanban 5W2H.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>

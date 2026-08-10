@@ -1,0 +1,10 @@
+# Node / Dependencies (se aplicavel no futuro)
+node_modules/
+npm-debug.log
+.DS_Store
+*.log
+
+# Temp files
+scratch/
+.env
+.env.local
