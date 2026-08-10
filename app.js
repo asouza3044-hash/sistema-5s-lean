@@ -154,8 +154,8 @@ async function pushDataToServer() {
     }
   } catch(e) {}
 
-  // Mesclar Usuários: Todos os locais + todos os remotos
-  userDatabase = { ...cloudState.users, ...userDatabase };
+  // Mesclar Usuários: Preservar DEFAULT_USERS + cloudState.users + userDatabase
+  userDatabase = { ...DEFAULT_USERS, ...cloudState.users, ...userDatabase };
   localStorage.setItem('5s_impaktto_users', JSON.stringify(userDatabase));
 
   // Mesclar Logs do Feed sem duplicações
@@ -207,15 +207,14 @@ async function pullDataFromServer() {
     if (res.ok) {
       const d = await res.json();
       if (d) {
-        // 1. Sincronizar Usuários (Cadastros feitos em qualquer celular)
+        // 1. Sincronizar Usuários (Garantir DEFAULT_USERS + cadastros novos da nuvem)
         if (d.users && typeof d.users === 'object') {
-          const cloudCount = Object.keys(d.users).length;
-          const localCount = Object.keys(userDatabase).length;
-          
-          userDatabase = { ...userDatabase, ...d.users };
+          const merged = { ...DEFAULT_USERS, ...userDatabase, ...d.users };
+          const previousCount = Object.keys(userDatabase).length;
+          userDatabase = merged;
           localStorage.setItem('5s_impaktto_users', JSON.stringify(userDatabase));
           
-          if (Object.keys(userDatabase).length !== localCount || cloudCount !== localCount) {
+          if (Object.keys(userDatabase).length !== previousCount) {
             renderUserManagementTable();
           }
         }
@@ -1704,7 +1703,7 @@ window.moveKanban = function(id, dir) {
 };
 
 window.deleteKanban = function(id) {
-  const task = clientKanbanTasks.find(t => t.id === id);
+  const task = task = clientKanbanTasks.find(t => t.id === id);
   if (task) logActivity(`Excluiu a tarefa "${task.title}" do Kanban`);
 
   clientKanbanTasks = clientKanbanTasks.filter(t => t.id !== id);
