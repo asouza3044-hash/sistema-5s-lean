@@ -1,5 +1,5 @@
 /* ==========================================================================
-   PORTAL DE CONSULTORIA 5S & QUALIDADE (MULTI-TENANT & AUTO-CADASTRO)
+   PORTAL DE CONSULTORIA 5S & QUALIDADE (100% EM PORTUGUÊS DO BRASIL)
    ========================================================================== */
 
 // Base de Dados Oficial de Pergunta dos 5 Sensos (50 Perguntas Oficiais)
@@ -68,11 +68,11 @@ const AUDIT_QUESTIONS = {
 
 // Base de Usuários
 const DEFAULT_USERS = {
-  admin: { username: 'admin', password: 'master5s', name: 'Consultor Mestre (Xandinho)', role: 'admin', companyId: 'sohipren' },
-  sohipren: { username: 'sohipren', password: '5s2026', name: 'Líder Sohipren', role: 'client', companyId: 'sohipren' },
-  'maria.sohipren': { username: 'maria.sohipren', password: '5s2026', name: 'Maria Silva (Auditora)', role: 'client', companyId: 'sohipren' },
-  logistica: { username: 'logistica', password: '5s2026', name: 'Gerente Logística', role: 'client', companyId: 'logistica' },
-  'ana.logistica': { username: 'ana.logistica', password: '5s2026', name: 'Ana Paula (Operações)', role: 'client', companyId: 'logistica' }
+  admin: { username: 'admin', password: 'mestre5s', name: 'Consultor Mestre (Xandinho)', role: 'administrador', companyId: 'sohipren' },
+  sohipren: { username: 'sohipren', password: '5s2026', name: 'Líder Sohipren', role: 'cliente', companyId: 'sohipren' },
+  'maria.sohipren': { username: 'maria.sohipren', password: '5s2026', name: 'Maria Silva (Auditora)', role: 'cliente', companyId: 'sohipren' },
+  logistica: { username: 'logistica', password: '5s2026', name: 'Gerente Logística', role: 'cliente', companyId: 'logistica' },
+  'ana.logistica': { username: 'ana.logistica', password: '5s2026', name: 'Ana Paula (Operações)', role: 'cliente', companyId: 'logistica' }
 };
 
 const DEFAULT_COMPANIES = {
@@ -119,17 +119,17 @@ function checkURLParams() {
   }
 }
 
-// Povoar Dropdowns de Empresas
+// Povoar Seleção de Empresas
 function populateCompanyDropdowns() {
   const regSelect = document.getElementById('reg-company-id');
   if (regSelect) {
     regSelect.innerHTML = Object.values(companyDatabase)
       .map(c => `<option value="${c.id}">${c.name}</option>`)
-      .join('') + `<option value="new">+ Cadastrar Nova Empresa</option>`;
+      .join('') + `<option value="nova_empresa">+ Cadastrar Nova Empresa</option>`;
   }
 }
 
-// Alternar entre Telas na Modal (Login vs Cadastro de Integrante)
+// Alternar entre Telas de Autenticação
 window.toggleAuthMode = function(mode) {
   const loginForm = document.getElementById('login-form');
   const registerForm = document.getElementById('register-form');
@@ -149,10 +149,10 @@ window.toggleAuthMode = function(mode) {
   }
 };
 
-// Ao alterar o Select de Empresa no Cadastro
+// Ao alterar a seleção de Empresa no Cadastro
 window.handleRegCompanyChange = function(val) {
   const newCompanyInputContainer = document.getElementById('reg-new-company-container');
-  if (val === 'new') {
+  if (val === 'nova_empresa') {
     newCompanyInputContainer.style.display = 'block';
   } else {
     newCompanyInputContainer.style.display = 'none';
@@ -170,7 +170,7 @@ function handleSelfRegister(e) {
 
   if (!name || !username || !password) return;
 
-  if (companyId === 'new') {
+  if (companyId === 'nova_empresa') {
     if (!newCompanyName) {
       alert('Por favor, informe o nome da nova empresa.');
       return;
@@ -185,11 +185,10 @@ function handleSelfRegister(e) {
     return;
   }
 
-  const newUser = { username, password, name, role: 'client', companyId };
+  const newUser = { username, password, name, role: 'cliente', companyId };
   userDatabase[username] = newUser;
   localStorage.setItem('5s_user_database', JSON.stringify(userDatabase));
 
-  // Logar o usuário automaticamente
   currentUser = newUser;
   localStorage.setItem('5s_current_session', JSON.stringify(currentUser));
   checkAuthSession();
@@ -197,7 +196,7 @@ function handleSelfRegister(e) {
   logActivity(`Novo integrante cadastrou-se no portal (${name})`);
 }
 
-// Checagem de Sessão do Usuário & Controle de Acesso do Admin
+// Checagem de Sessão e Controle de Acesso do Administrador
 function checkAuthSession() {
   const loginOverlay = document.getElementById('login-overlay');
   const adminAddUserCard = document.getElementById('admin-add-user-card');
@@ -209,8 +208,8 @@ function checkAuthSession() {
 
   if (loginOverlay) loginOverlay.classList.add('hidden');
 
-  // RIGOROSO CONTROLE DE ACESSO: Card de cadastro EXCLUSIVO para o Admin
-  if (currentUser.role === 'admin') {
+  // RIGOROSO CONTROLE DE ACESSO: Painel EXCLUSIVO para o Administrador
+  if (currentUser.role === 'administrador') {
     selectedClientId = selectedClientId || 'sohipren';
     document.getElementById('admin-client-selector-container')?.style.setProperty('display', 'block');
     if (adminAddUserCard) adminAddUserCard.style.setProperty('display', 'block');
@@ -218,7 +217,6 @@ function checkAuthSession() {
   } else {
     selectedClientId = currentUser.companyId || currentUser.username;
     document.getElementById('admin-client-selector-container')?.style.setProperty('display', 'none');
-    // ESCONDER COMPLETAMENTE PARA CLIENTES
     if (adminAddUserCard) adminAddUserCard.style.setProperty('display', 'none');
   }
 
@@ -258,7 +256,7 @@ window.handleLogout = function() {
   location.reload();
 };
 
-// Dropdown de Empresas para Admin
+// Dropdown de Empresas para o Administrador
 function populateAdminClientDropdown() {
   const select = document.getElementById('admin-client-select');
   if (!select) return;
@@ -268,14 +266,14 @@ function populateAdminClientDropdown() {
     .join('');
 }
 
-// Alternar Cliente pelo Admin
+// Alternar Cliente pelo Administrador
 window.changeActiveClientAdmin = function(newClientId) {
   selectedClientId = newClientId;
   localStorage.setItem('5s_active_client_id', JSON.stringify(selectedClientId));
   checkAuthSession();
 };
 
-// Cadastrar Novo Usuário pelo Admin
+// Cadastrar Novo Usuário pelo Administrador
 function handleCreateNewUser(e) {
   e.preventDefault();
   const companyName = document.getElementById('new-company-name').value.trim();
@@ -292,10 +290,10 @@ function handleCreateNewUser(e) {
     localStorage.setItem('5s_company_database', JSON.stringify(companyDatabase));
   }
 
-  userDatabase[username] = { username, password, name, role: 'client', companyId };
+  userDatabase[username] = { username, password, name, role: 'cliente', companyId };
   localStorage.setItem('5s_user_database', JSON.stringify(userDatabase));
 
-  alert(`Usuário registrado pelo Admin!\nNome: ${name}\nLogin: ${username}`);
+  alert(`Usuário registrado pelo Administrador!\nNome: ${name}\nUsuário: ${username}`);
   document.getElementById('new-company-name').value = '';
   document.getElementById('new-user-name').value = '';
   document.getElementById('new-user-name-user').value = '';
@@ -310,8 +308,8 @@ function loadClientData(clientId) {
   clientAuditScores = JSON.parse(localStorage.getItem(`5s_audit_scores_${clientId}`)) || {};
   clientGutMatrix = JSON.parse(localStorage.getItem(`5s_gut_matrix_${clientId}`)) || [];
   clientKanbanTasks = JSON.parse(localStorage.getItem(`5s_kanban_tasks_${clientId}`)) || [
-    { id: '1', title: 'Demarcar área de paletes no setor de Estoque', senso: 'seiton', status: 'todo', owner: 'Supervisão', date: '2026-08-20', createdBy: 'Consultor Mestre' },
-    { id: '2', title: 'Treinamento de EPIs para Operadores', senso: 'seiketsu', status: 'doing', owner: 'Qualidade', date: '2026-08-15', createdBy: 'Maria Silva' }
+    { id: '1', title: 'Demarcar área de paletes no setor de Estoque', senso: 'seiton', status: 'a-fazer', owner: 'Supervisão', date: '2026-08-20', createdBy: 'Consultor Mestre' },
+    { id: '2', title: 'Treinamento de EPIs para Operadores', senso: 'seiketsu', status: 'em-andamento', owner: 'Qualidade', date: '2026-08-15', createdBy: 'Maria Silva' }
   ];
   clientIshikawaData = JSON.parse(localStorage.getItem(`5s_ishikawa_${clientId}`)) || {
     problem: `Plano de Ação 5S - ${companyDatabase[clientId]?.name || 'Empresa'}`,
@@ -583,7 +581,7 @@ function handleAddKanban(e) {
     id: Date.now().toString(),
     title,
     senso,
-    status: 'todo',
+    status: 'a-fazer',
     owner: owner || 'Não atribuído',
     date: date || 'A definir',
     createdBy: currentUser ? currentUser.name : 'Usuário'
@@ -597,12 +595,12 @@ function handleAddKanban(e) {
 
 function renderKanban() {
   const cols = {
-    todo: document.getElementById('kanban-col-todo'),
-    doing: document.getElementById('kanban-col-doing'),
-    done: document.getElementById('kanban-col-done')
+    'a-fazer': document.getElementById('kanban-col-todo'),
+    'em-andamento': document.getElementById('kanban-col-doing'),
+    'concluido': document.getElementById('kanban-col-done')
   };
 
-  if (!cols.todo) return;
+  if (!cols['a-fazer']) return;
   Object.values(cols).forEach(col => col.innerHTML = '');
 
   clientKanbanTasks.forEach(task => {
@@ -616,8 +614,8 @@ function renderKanban() {
       </div>
       <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 0.25rem;">Criado por: ${task.createdBy || 'Usuário'}</div>
       <div style="margin-top: 0.5rem; display: flex; gap: 0.25rem; justify-content: flex-end;">
-        ${task.status !== 'todo' ? `<button class="btn btn-secondary" style="padding:0.15rem 0.4rem; font-size:0.7rem;" onclick="moveKanban('${task.id}', 'prev')">←</button>` : ''}
-        ${task.status !== 'done' ? `<button class="btn btn-primary" style="padding:0.15rem 0.4rem; font-size:0.7rem;" onclick="moveKanban('${task.id}', 'next')">→</button>` : ''}
+        ${task.status !== 'a-fazer' ? `<button class="btn btn-secondary" style="padding:0.15rem 0.4rem; font-size:0.7rem;" onclick="moveKanban('${task.id}', 'prev')">←</button>` : ''}
+        ${task.status !== 'concluido' ? `<button class="btn btn-primary" style="padding:0.15rem 0.4rem; font-size:0.7rem;" onclick="moveKanban('${task.id}', 'next')">→</button>` : ''}
         <button class="btn btn-danger" style="padding:0.15rem 0.4rem; font-size:0.7rem;" onclick="deleteKanban('${task.id}')">✕</button>
       </div>
     `;
@@ -630,7 +628,7 @@ window.moveKanban = function(id, dir) {
   const task = clientKanbanTasks.find(t => t.id === id);
   if (!task) return;
 
-  const flow = ['todo', 'doing', 'done'];
+  const flow = ['a-fazer', 'em-andamento', 'concluido'];
   let currentIdx = flow.indexOf(task.status);
 
   if (dir === 'next' && currentIdx < 2) currentIdx++;
