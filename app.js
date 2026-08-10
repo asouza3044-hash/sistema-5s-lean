@@ -156,11 +156,9 @@ async function pushDataToServer() {
     }
   } catch(e) {}
 
-  // Mesclar Usuários
   userDatabase = { ...remoteUsers, ...userDatabase };
   localStorage.setItem('5s_impaktto_users', JSON.stringify(userDatabase));
 
-  // Mesclar Logs do Feed
   const existingLogIds = new Set(clientActivityLogs.map(l => l.id));
   remoteLogs.forEach(rLog => {
     if (rLog && rLog.id && !existingLogIds.has(rLog.id)) {
@@ -172,11 +170,9 @@ async function pushDataToServer() {
   clientActivityLogs = clientActivityLogs.slice(0, 60);
   localStorage.setItem('5s_activity_logs_impaktto', JSON.stringify(clientActivityLogs));
 
-  // Mesclar Quadro da Fábrica
   clientFactoryBoard = { ...remoteBoard, ...clientFactoryBoard };
   localStorage.setItem('5s_factory_board_impaktto', JSON.stringify(clientFactoryBoard));
 
-  // Salvar Estado Mestre Atualizado na Nuvem
   const payload = {
     name: '5s_impaktto_master_db_prod',
     data: {
@@ -210,7 +206,6 @@ async function pullDataFromServer() {
       if (remoteData && remoteData.data) {
         const d = remoteData.data;
 
-        // 1. Sincronizar Usuários (Cadastros feitos em qualquer celular)
         if (d.users && typeof d.users === 'object') {
           let hasNewUser = false;
           for (const [uname, uobj] of Object.entries(d.users)) {
@@ -225,7 +220,6 @@ async function pullDataFromServer() {
           }
         }
 
-        // 2. Sincronizar Logs do Feed
         if (Array.isArray(d.activity_logs) && d.activity_logs.length > 0) {
           const existingIds = new Set(clientActivityLogs.map(l => l.id));
           let hasNewLog = false;
@@ -246,7 +240,6 @@ async function pullDataFromServer() {
           }
         }
 
-        // 3. Sincronizar Quadro da Fábrica
         if (d.factory_board && typeof d.factory_board === 'object') {
           const merged = { ...clientFactoryBoard, ...d.factory_board };
           if (JSON.stringify(merged) !== JSON.stringify(clientFactoryBoard)) {
@@ -1004,7 +997,7 @@ window.selectScore3Level = function(sensoName, qNum, qKey, level) {
   pushDataToServer();
 };
 
-// 5. RENDEREZAÇÃO COM LÓGICA DE PROTEÇÃO TEMPORAL E VOTO ÚNICO DIÁRIO POR COLABORADOR/LÍDER
+// 5. RENDEREZAÇÃO COM CLIQUE DIRETO INTERATIVO EM QUALQUER VISÃO DO QUADRO
 function renderFactoryBoard() {
   const container = document.getElementById('factory-board-container');
   const titleEl = document.getElementById('factory-board-title');
@@ -1015,7 +1008,6 @@ function renderFactoryBoard() {
   const isDiarioOrColab = (currentUser && (currentUser.level === 'diario' || currentUser.level === 'colaborador' || currentUser.role === 'colaborador' || currentUser.role === 'lider_diario'));
   const isLider = (currentUser && (currentUser.level === 'diario' || currentUser.role === 'lider_diario'));
   const isMonitor = (currentUser && currentUser.level === 'monitor');
-  const isSeniorOrSemanal = (currentUser && (currentUser.level === 'senior' || currentUser.level === 'semanal' || currentUser.role === 'administrador' || currentUser.role === 'auditor_semanal'));
 
   const targetAuditSector = isLider ? (SECTOR_ROTATION_MAP[userSector] || 'Holter') : userSector;
   let selectedSector = isDiarioOrColab ? targetAuditSector : (activeFactorySectorFilter || 'ALL');
@@ -1029,7 +1021,6 @@ function renderFactoryBoard() {
 
   const todayFocus = DAILY_SENSO_FOCUS[currentDayCode] || DAILY_SENSO_FOCUS['SEG'];
 
-  // VERIFICAR SE O USUÁRIO JÁ DEU O SEU VOTO ÚNICO DO DIA
   const todayDateStr = new Date().toISOString().split('T')[0];
   const userVoteKey = currentUser ? `5s_user_voted_${currentUser.username}_${todayDateStr}` : null;
   const hasVotedToday = userVoteKey ? (localStorage.getItem(userVoteKey) === 'true') : false;
@@ -1162,9 +1153,9 @@ function renderFactoryBoard() {
 
               return `
                 <td style="vertical-align:middle; padding:0.3rem 0.2rem;">
-                  <span class="score-btn-factory selected" data-level="${val}" style="display:inline-block; padding:0.25rem 0.4rem; font-size:0.72rem; font-weight:700;">
+                  <button class="score-btn-factory selected" data-level="${val}" style="display:inline-block; padding:0.25rem 0.4rem; font-size:0.72rem; font-weight:700; cursor:pointer; border:none;" onclick="cycleFactoryBoard('${sec}', '${boardKey}', '${s.name}', '${s.dayCode}')">
                     ${iconMap[val]}
-                  </span>
+                  </button>
                 </td>
               `;
             }
