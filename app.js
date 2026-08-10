@@ -95,17 +95,12 @@ const DEFAULT_COMPANIES = {
   }
 };
 
-// Base de Usuários com a Estrutura de 3 Níveis da Impaktto
+// Base de Usuários Inicial com Credenciais Garantidas
 const DEFAULT_USERS = {
-  // Nível 3: Auditores Sênior / Gerência (Acesso Admin Completo + Manual Restrito)
   admin: { username: 'admin', password: 'mestre5s', name: 'Alexandre Souza', role: 'administrador', level: 'senior', title: 'Gerente de Projeto / Consultor Mestre', companyId: 'impaktto' },
   kaio: { username: 'kaio.diretor', password: '5s2026', name: 'Kaio', role: 'administrador', level: 'senior', title: 'Diretor', companyId: 'impaktto' },
-
-  // Nível 2: Auditores Semanais (Encarregados)
   diego: { username: 'diego.fabrica', password: '5s2026', name: 'Diego', role: 'auditor_semanal', level: 'semanal', title: 'Encarregado de Fábrica', companyId: 'impaktto' },
   filipe: { username: 'filipe.rh', password: '5s2026', name: 'Filipe', role: 'auditor_semanal', level: 'semanal', title: 'Encarregado RH - 5S', companyId: 'impaktto' },
-
-  // Nível 1: Auditores Diários (Líderes de Setor)
   alexandre_u: { username: 'alexandre.usinagem', password: '5s2026', name: 'Alexandre', role: 'lider_diario', level: 'diario', sector: 'Usinagem', title: 'Líder de Usinagem', companyId: 'impaktto' },
   marcos: { username: 'marcos.holter', password: '5s2026', name: 'Marcos', role: 'lider_diario', level: 'diario', sector: 'Holter', title: 'Líder de Holter', companyId: 'impaktto' },
   bruno: { username: 'bruno.armarios', password: '5s2026', name: 'Bruno', role: 'lider_diario', level: 'diario', sector: 'Armários', title: 'Líder de Armários', companyId: 'impaktto' },
@@ -115,9 +110,11 @@ const DEFAULT_USERS = {
   andre: { username: 'andre.comercial', password: '5s2026', name: 'Andre', role: 'lider_diario', level: 'diario', sector: 'Comercial Portas, Armários e Cortinas', title: 'Líder Comercial Portas/Armários/Cortinas', companyId: 'impaktto' }
 };
 
-// Estado Global
-let userDatabase = JSON.parse(localStorage.getItem('5s_user_database')) || DEFAULT_USERS;
-let companyDatabase = JSON.parse(localStorage.getItem('5s_company_database')) || DEFAULT_COMPANIES;
+// Estado Global (Garantindo fusão com usuários padrão para evitar travamento)
+let userDatabase = { ...DEFAULT_USERS, ...(JSON.parse(localStorage.getItem('5s_user_database')) || {}) };
+userDatabase.admin = DEFAULT_USERS.admin; // Garantir admin intacto
+
+let companyDatabase = { ...DEFAULT_COMPANIES, ...(JSON.parse(localStorage.getItem('5s_company_database')) || {}) };
 let currentUser = JSON.parse(localStorage.getItem('5s_current_session')) || null;
 let selectedClientId = JSON.parse(localStorage.getItem('5s_active_client_id')) || 'impaktto';
 
@@ -154,20 +151,9 @@ function checkURLParams() {
 
   const regCompanyLockedId = document.getElementById('reg-company-locked-id');
   if (regCompanyLockedId) regCompanyLockedId.value = targetCompanyId;
-
-  updateWelcomeBanner(targetCompanyId);
 }
 
-function updateWelcomeBanner(companyId) {
-  const company = companyDatabase[companyId] || companyDatabase['impaktto'];
-  const welcomeTitle = document.getElementById('welcome-company-title');
-  const welcomeSub = document.getElementById('welcome-company-subtitle');
-
-  if (welcomeTitle) welcomeTitle.innerText = company.name;
-  if (welcomeSub) welcomeSub.innerText = company.subtitle || 'Projeto de Implantação 5S & Qualidade';
-}
-
-// ALTERNADOR ULTRA-FLUIDO E INSTANTÂNEO DE ABAS LOGIN / CADASTRO
+// ALTERNADOR INSTANTÂNEO DE ABAS LOGIN / CADASTRO
 window.switchAuthTab = function(mode) {
   const loginForm = document.getElementById('login-form');
   const registerForm = document.getElementById('register-form');
@@ -189,8 +175,40 @@ window.switchAuthTab = function(mode) {
 
 window.toggleAuthMode = window.switchAuthTab;
 
+// FUNÇÃO DE LOGIN ROBUSTA COM SUPORTE CLIQUE E FORMULARIO
+window.handleLogin = function(e) {
+  if (e) e.preventDefault();
+  
+  const uInput = document.getElementById('login-username');
+  const pInput = document.getElementById('login-password');
+  const loginErr = document.getElementById('login-error');
+
+  if (!uInput || !pInput) return false;
+
+  const u = uInput.value.trim().toLowerCase();
+  const p = pInput.value.trim();
+
+  // Buscar usuário na base
+  const user = userDatabase[u] || DEFAULT_USERS[u];
+
+  if (user && user.password === p) {
+    currentUser = user;
+    localStorage.setItem('5s_current_session', JSON.stringify(currentUser));
+    if (loginErr) loginErr.style.display = 'none';
+    checkAuthSession();
+    return true;
+  } else {
+    if (loginErr) {
+      loginErr.style.display = 'block';
+      loginErr.innerText = `⚠️ Usuário "${u}" ou senha incorretos. Tente: admin / mestre5s`;
+    }
+    return false;
+  }
+};
+
 function handleSelfRegister(e) {
-  e.preventDefault();
+  if (e) e.preventDefault();
+  
   const name = document.getElementById('reg-name').value.trim();
   const companyId = document.getElementById('reg-company-locked-id')?.value || 'impaktto';
   const username = document.getElementById('reg-username').value.trim().toLowerCase();
@@ -225,7 +243,7 @@ function handleSelfRegister(e) {
 }
 
 function handleAdminCreateCompany(e) {
-  e.preventDefault();
+  if (e) e.preventDefault();
   const name = document.getElementById('admin-comp-name').value.trim();
   const code = document.getElementById('admin-comp-code').value.trim().toLowerCase().replace(/\s+/g, '-');
   const subtitle = document.getElementById('admin-comp-subtitle').value.trim();
@@ -259,7 +277,7 @@ window.copyGeneratedLink = function() {
   }
 };
 
-// RESTRIÇÃO ESTRITA DE NÍVEIS E DO MANUAL DE IMPLANTAÇÃO
+// CONTROLE DE SESSÃO E CARREGAMENTO DA MARCA DA EMPRESA
 function checkAuthSession() {
   const loginOverlay = document.getElementById('login-overlay');
 
@@ -270,7 +288,7 @@ function checkAuthSession() {
 
   if (loginOverlay) loginOverlay.classList.add('hidden');
 
-  // Apenas o Administrador / Auditor Sênior possui acesso ao Manual e Ferramentas Mestre
+  // Apenas Administrador / Sênior acessa ferramentas e manual
   const isAdmin = (currentUser.role === 'administrador' || currentUser.level === 'senior');
 
   const navBtnTools = document.querySelector('.nav-btn[data-tab="tab-tools"]');
@@ -283,8 +301,6 @@ function checkAuthSession() {
     if (adminClientSelector) adminClientSelector.style.display = 'block';
     if (adminAddUserCard) adminAddUserCard.style.display = 'block';
     if (navBtnTools) navBtnTools.style.display = 'flex';
-    
-    // MANUAL CORPORATIVO DE IMPLANTAÇÃO: ESTRITAMENTE RESTRITO AO ADM
     if (navBtnManual) navBtnManual.style.display = 'flex';
 
     populateAdminClientDropdown();
@@ -294,8 +310,6 @@ function checkAuthSession() {
     if (adminAddUserCard) adminAddUserCard.style.display = 'none';
     
     if (navBtnTools) navBtnTools.style.display = 'none';
-    
-    // ESCONDER MANUAL DE IMPLANTAÇÃO PARA LÍDERES DIÁRIOS E AUDITORES SEMANAIS
     if (navBtnManual) navBtnManual.style.display = 'none';
 
     document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
@@ -307,6 +321,13 @@ function checkAuthSession() {
   localStorage.setItem('5s_active_client_id', JSON.stringify(selectedClientId));
   
   const activeCompanyObj = companyDatabase[selectedClientId] || { name: 'IMPAK TTO Plásticos de Engenharia' };
+  
+  // Atualizar Logotipo da Empresa no Cabeçalho
+  const headerLogoImg = document.getElementById('header-company-logo');
+  if (headerLogoImg) {
+    headerLogoImg.src = activeCompanyObj.logo || 'logo_impaktto.png';
+  }
+
   document.getElementById('active-client-name').innerText = `🏢 ${activeCompanyObj.name}`;
   
   const levelLabels = {
@@ -319,23 +340,6 @@ function checkAuthSession() {
   document.getElementById('logged-user-name').innerText = `👤 ${currentUser.name} (${levelBadgeText})`;
 
   loadClientData(selectedClientId);
-}
-
-function handleLogin(e) {
-  e.preventDefault();
-  const u = document.getElementById('login-username').value.trim().toLowerCase();
-  const p = document.getElementById('login-password').value.trim();
-
-  const user = userDatabase[u];
-
-  if (user && user.password === p) {
-    currentUser = user;
-    localStorage.setItem('5s_current_session', JSON.stringify(currentUser));
-    document.getElementById('login-error').style.display = 'none';
-    checkAuthSession();
-  } else {
-    document.getElementById('login-error').style.display = 'block';
-  }
 }
 
 window.handleLogout = function() {
@@ -362,7 +366,7 @@ window.changeActiveClientAdmin = function(newClientId) {
 };
 
 function handleCreateNewUser(e) {
-  e.preventDefault();
+  if (e) e.preventDefault();
   const companyName = document.getElementById('new-company-name').value.trim();
   const name = document.getElementById('new-user-name').value.trim();
   const username = document.getElementById('new-user-name-user').value.trim().toLowerCase();
@@ -727,7 +731,7 @@ window.resetAudit = function() {
 
 // MATRIZ GUT
 function handleAddGUT(e) {
-  e.preventDefault();
+  if (e) e.preventDefault();
   const problem = document.getElementById('gut-problem').value;
   const g = parseInt(document.getElementById('gut-g').value);
   const u = parseInt(document.getElementById('gut-u').value);
@@ -782,7 +786,7 @@ window.removeGUT = function(id) {
 
 // KANBAN 5W2H
 function handleAddKanban(e) {
-  e.preventDefault();
+  if (e) e.preventDefault();
   const title = document.getElementById('kanban-title').value;
   const senso = document.getElementById('kanban-senso').value;
   const owner = document.getElementById('kanban-owner').value;
@@ -864,7 +868,7 @@ window.deleteKanban = function(id) {
 
 // ISHIKAWA
 function handleUpdateIshikawa(e) {
-  e.preventDefault();
+  if (e) e.preventDefault();
   const problem = document.getElementById('ishikawa-problem-input').value;
   const mType = document.getElementById('ishikawa-m-type').value;
   const cause = document.getElementById('ishikawa-cause-input').value;
