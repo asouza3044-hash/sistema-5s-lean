@@ -3,7 +3,11 @@
    PROJETO ESPECIAL DE IMPLANTAÇÃO 5S & QUALIDADE (SENAI)
    ========================================================================== */
 
-// CANAL DE TRANSMISSÃO AO VIVO PARA SINCRONIZAÇÃO EM TEMPO REAL ENTRE TABS E DISPOSITIVOS
+// ENDPOINT GLOBAL DE SINCRONIZAÇÃO EM NUVEM PARA MULTI-DISPOSITIVOS (CELULARES, NOTEBOOKS E TVS)
+const CLOUD_SYNC_URL = 'https://kvdb.io/9eL21Jq8rW7mK3v1/5s_impaktto_global_db_v2';
+const LOCAL_API_SYNC = '/api/sync';
+
+// CANAL DE TRANSMISSÃO EM TEMPO REAL CROSS-TAB
 const syncChannel = (typeof BroadcastChannel !== 'undefined') ? new BroadcastChannel('5s_impaktto_sync_channel') : null;
 
 if (syncChannel) {
@@ -135,13 +139,107 @@ let activeFactorySectorFilter = 'ALL';
 let radarChartInstance = null;
 let autoRefreshTimer = null;
 
-// FUNÇÃO GLOBAL DE TRANSMISSÃO EM TEMPO REAL PUSH
-function notifyGlobalSync() {
+// FUNÇÃO GLOBAL DE TRANSMISSÃO E SINCRONIZAÇÃO EM NUVEM E LOCAL
+async function pushDataToServer() {
+  const payload = {
+    activity_logs: clientActivityLogs,
+    factory_board: clientFactoryBoard,
+    audit_scores: clientAuditScores,
+    users: userDatabase
+  };
+
+  // 1. Enviar para API local /api/sync se disponível
+  try {
+    fetch(LOCAL_API_SYNC, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    }).catch(() => {});
+  } catch (e) {}
+
+  // 2. Enviar para a Nuvem KVDB (para sincronização instantânea entre celulares via GitHub Pages)
+  try {
+    fetch(CLOUD_SYNC_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    }).catch(() => {});
+  } catch (e) {}
+
   if (syncChannel) {
     try {
       syncChannel.postMessage({ type: 'SYNC_ALL_DATA', timestamp: Date.now() });
-    } catch (e) {
-      console.log('Sync broadcast fail:', e);
+    } catch (e) {}
+  }
+}
+
+async function pullDataFromServer() {
+  let fetchedData = null;
+
+  // Tentar API local primeiro
+  try {
+    const res = await fetch(LOCAL_API_SYNC + '?t=' + Date.now());
+    if (res.ok) {
+      fetchedData = await res.json();
+    }
+  } catch (e) {}
+
+  // Se não funcionou, tentar nuvem KVDB
+  if (!fetchedData || !fetchedData.activity_logs) {
+    try {
+      const res = await fetch(CLOUD_SYNC_URL + '?t=' + Date.now());
+      if (res.ok) {
+        fetchedData = await res.json();
+      }
+    } catch (e) {}
+  }
+
+  if (fetchedData && typeof fetchedData === 'object') {
+    let updated = false;
+
+    // Merge de Logs
+    if (Array.isArray(fetchedData.activity_logs) && fetchedData.activity_logs.length > 0) {
+      const existingLogs = JSON.parse(localStorage.getItem('5s_activity_logs_impaktto')) || clientActivityLogs;
+      const existingIds = new Set(existingLogs.map(l => l.id));
+      let hasNewLogs = false;
+
+      fetchedData.activity_logs.forEach(remoteLog => {
+        if (remoteLog && remoteLog.id && !existingIds.has(remoteLog.id)) {
+          existingLogs.unshift(remoteLog);
+          existingIds.add(remoteLog.id);
+          hasNewLogs = true;
+        }
+      });
+
+      if (hasNewLogs) {
+        existingLogs.sort((a, b) => b.id - a.id);
+        clientActivityLogs = existingLogs.slice(0, 60);
+        localStorage.setItem('5s_activity_logs_impaktto', JSON.stringify(clientActivityLogs));
+        renderActivityLogs();
+        updated = true;
+      }
+    }
+
+    // Merge do Quadro da Fábrica
+    if (fetchedData.factory_board && typeof fetchedData.factory_board === 'object') {
+      const mergedBoard = { ...clientFactoryBoard, ...fetchedData.factory_board };
+      if (JSON.stringify(mergedBoard) !== JSON.stringify(clientFactoryBoard)) {
+        clientFactoryBoard = mergedBoard;
+        localStorage.setItem('5s_factory_board_impaktto', JSON.stringify(clientFactoryBoard));
+        renderFactoryBoard();
+        updated = true;
+      }
+    }
+
+    // Merge de Usuários
+    if (fetchedData.users && typeof fetchedData.users === 'object') {
+      const mergedUsers = { ...userDatabase, ...fetchedData.users };
+      if (JSON.stringify(mergedUsers) !== JSON.stringify(userDatabase)) {
+        userDatabase = mergedUsers;
+        localStorage.setItem('5s_impaktto_users', JSON.stringify(userDatabase));
+        renderUserManagementTable();
+        updated = true;
+      }
     }
   }
 }
@@ -241,7 +339,7 @@ function handleSelfRegister(e) {
   }
 
   logActivity(`✨ Novo colaborador registrado (${name} - Setor: ${userSector} - Participação Aberta no 5S)`);
-  notifyGlobalSync();
+  pushDataToServer();
 }
 
 // 3. CONTROLE DE TROCA DE SENHA PESSOAL E SEGURANÇA
@@ -307,7 +405,7 @@ window.handleChangePassword = function(e) {
 
   alert('🎉 Sua nova senha pessoal foi cadastrada com sucesso! Da próxima vez, utilize a sua nova senha.');
   checkAuthSession();
-  notifyGlobalSync();
+  pushDataToServer();
 };
 
 window.clearSystemSession = function() {
@@ -406,7 +504,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('form-ishikawa')?.addEventListener('submit', handleUpdateIshikawa);
 });
 
-// 4. CONTROLE ESTRITO DE SESSÃO E VISIBILIDADE POR GRUPO (1, 2, 3 E MODO MONITOR TV 16:9)
+// 4. CONTROLE ESTRITO DE SESSÃO E VISIBILIDADE POR GRUPO
 function checkAuthSession() {
   const loginOverlay = document.getElementById('login-overlay');
 
@@ -451,10 +549,11 @@ function checkAuthSession() {
   const navBtnTools = document.querySelector('.nav-btn[data-tab="tab-tools"]');
   const navBtnManual = document.querySelector('.nav-btn[data-tab="tab-manual"]');
 
+  // BUSCA AUTOMÁTICA RECORRENTE EM NUVEM E API LOCAL A CADA 3 SEGUNDOS
   if (!autoRefreshTimer) {
     autoRefreshTimer = setInterval(() => {
-      loadImpakttoData();
-    }, 4000);
+      pullDataFromServer();
+    }, 3000);
   }
 
   if (isMonitor) {
@@ -547,6 +646,7 @@ function checkAuthSession() {
 
   try {
     loadImpakttoData();
+    pullDataFromServer();
   } catch (err) {
     console.error('Erro ao carregar dados da Impaktto:', err);
   }
@@ -676,7 +776,7 @@ window.updateUserLevel = function(username, newLevel) {
   };
 
   logActivity(`👤 Alterou classificação do integrante "${userDatabase[username].name}" para ${levelText[newLevel]}`);
-  notifyGlobalSync();
+  pushDataToServer();
 
   renderUserManagementTable();
   alert(`Classificação de "${userDatabase[username].name}" atualizada para ${levelText[newLevel]}!`);
@@ -694,7 +794,7 @@ window.updateUserSector = function(username, newSector) {
 
   localStorage.setItem('5s_impaktto_users', JSON.stringify(userDatabase));
   logActivity(`📍 Alterou setor do integrante "${userDatabase[username].name}" para ${newSector}`);
-  notifyGlobalSync();
+  pushDataToServer();
 
   renderUserManagementTable();
 };
@@ -708,7 +808,7 @@ window.deleteUserAccount = function(username) {
     localStorage.setItem('5s_impaktto_users', JSON.stringify(userDatabase));
 
     logActivity(`Excluiu o usuário de "${deletedName}"`);
-    notifyGlobalSync();
+    pushDataToServer();
     renderUserManagementTable();
   }
 };
@@ -731,7 +831,7 @@ function logActivity(actionText) {
   clientActivityLogs = currentLogs;
   localStorage.setItem('5s_activity_logs_impaktto', JSON.stringify(clientActivityLogs));
   renderActivityLogs();
-  notifyGlobalSync();
+  pushDataToServer();
 }
 
 function renderActivityLogs() {
@@ -848,7 +948,7 @@ window.selectScore3Level = function(sensoName, qNum, qKey, level) {
 
   const labelMap = { bom: '🟢 BOM', regular: '🟡 REGULAR', ruim: '🔴 RUIM' };
   logActivity(`Avaliou o item ${sensoName.toUpperCase()} #${qNum} como ${labelMap[level]}`);
-  notifyGlobalSync();
+  pushDataToServer();
 };
 
 // 5. RENDEREZAÇÃO COM LÓGICA DE PROTEÇÃO TEMPORAL E VOTO ÚNICO DIÁRIO POR COLABORADOR/LÍDER
@@ -900,7 +1000,7 @@ function renderFactoryBoard() {
         <div style="background: rgba(6, 182, 212, 0.12); border: 1px solid var(--accent-cyan); padding: 0.5rem 0.85rem; border-radius: var(--radius-md); margin-bottom: 0.75rem; display: flex; justify-content: space-between; align-items: center;">
           <div>
             <span style="font-size:0.8rem; font-weight:800; color:var(--accent-cyan);">📺 GESTÃO VISUAL 16:9 • VISÃO DOS 7 SETORES & FECHAMENTO COLETIVO</span>
-            <span style="font-size:0.75rem; color:var(--text-muted); margin-left:0.5rem;">Atualização automática a cada 4s</span>
+            <span style="font-size:0.75rem; color:var(--text-muted); margin-left:0.5rem;">Atualização automática a cada 3s</span>
           </div>
           <span class="badge-seiso" style="padding:0.25rem 0.5rem; font-size:0.72rem; font-weight:700;">🟢 DIA ATUAL: ${currentDayCode}</span>
         </div>
@@ -1151,7 +1251,7 @@ window.changeFactorySectorFilter = function(val) {
   renderFactoryBoard();
 };
 
-// 6. CICLO DE AVALIAÇÃO COM REGRA ESTRITA DE 1 VOTO POR DIA POR COLABORADOR/LÍDER
+// 6. CICLO DE AVALIAÇÃO COM REGRA ESTRITA DE 1 VOTO POR DIA POR COLABORADOR/LÍDER E BANCO COMPARTILHADO
 window.cycleFactoryBoard = function(sectorName, boardKey, sensoName, day) {
   if (!currentUser) return;
 
@@ -1161,7 +1261,6 @@ window.cycleFactoryBoard = function(sectorName, boardKey, sensoName, day) {
   const isSeniorOrSemanal = (currentUser && (currentUser.level === 'senior' || currentUser.level === 'semanal' || currentUser.role === 'administrador' || currentUser.role === 'auditor_semanal'));
   const isLider = (currentUser && (currentUser.level === 'diario' || currentUser.role === 'lider_diario'));
 
-  // SE NÃO FOR AUDITOR DO GRUPO 2/3 (OU SEJA, É COLABORADOR OU LÍDER DO GRUPO 1), VERIFICA SE JÁ VOTOU HOJE
   if (!isSeniorOrSemanal) {
     const hasVotedToday = (localStorage.getItem(userVoteKey) === 'true');
     if (hasVotedToday) {
@@ -1177,7 +1276,6 @@ window.cycleFactoryBoard = function(sectorName, boardKey, sensoName, day) {
   clientFactoryBoard[boardKey] = next;
   localStorage.setItem('5s_factory_board_impaktto', JSON.stringify(clientFactoryBoard));
 
-  // SE FOR GRUPO 1 (COLABORADOR OU LÍDER), MARCA O REGISTRO DO VOTO DO DIA PARA BLOQUEAR VOTOS DUPLICADOS
   if (!isSeniorOrSemanal) {
     localStorage.setItem(userVoteKey, 'true');
   }
@@ -1194,7 +1292,7 @@ window.cycleFactoryBoard = function(sectorName, boardKey, sensoName, day) {
   } else {
     logActivity(`Marcou ${sensoName} na ${day} como ${labelMap[next]} no Setor ${sectorName} (Apontamento por Colaborador ${auditorName} - ${originSector})`);
   }
-  notifyGlobalSync();
+  pushDataToServer();
 };
 
 // 7. CÁLCULO DE RESULTADOS E CONTROLE ESTRITO DA SINALIZAÇÃO DE PREMIAÇÃO (CONFIDENCIAL GRUPO 2 E 3)
@@ -1341,7 +1439,7 @@ window.resetAudit = function() {
     clientAuditScores = {};
     localStorage.removeItem('5s_audit_scores_impaktto');
     logActivity('Redefiniu todas as respostas da auditoria');
-    notifyGlobalSync();
+    pushDataToServer();
     renderAuditForms();
     calculateAuditResults();
   }
@@ -1363,7 +1461,7 @@ function handleAddGUT(e) {
   localStorage.setItem('5s_gut_matrix_impaktto', JSON.stringify(clientGutMatrix));
 
   logActivity(`Adicionou o problema "${problem}" na Matriz GUT (Pontuação: ${score})`);
-  notifyGlobalSync();
+  pushDataToServer();
   document.getElementById('gut-problem').value = '';
   renderGUTTable();
 }
@@ -1401,7 +1499,7 @@ window.removeGUT = function(id) {
 
   clientGutMatrix = clientGutMatrix.filter(i => i.id !== id);
   localStorage.setItem('5s_gut_matrix_impaktto', JSON.stringify(clientGutMatrix));
-  notifyGlobalSync();
+  pushDataToServer();
   renderGUTTable();
 };
 
@@ -1427,7 +1525,7 @@ function handleAddKanban(e) {
 
   localStorage.setItem('5s_kanban_tasks_impaktto', JSON.stringify(clientKanbanTasks));
   logActivity(`Criou a tarefa no Kanban: "${title}" (Resp: ${owner || 'Não atribuído'})`);
-  notifyGlobalSync();
+  pushDataToServer();
   document.getElementById('kanban-title').value = '';
   renderKanban();
 }
@@ -1478,7 +1576,7 @@ window.moveKanban = function(id, dir) {
   task.status = flow[currentIdx];
   localStorage.setItem('5s_kanban_tasks_impaktto', JSON.stringify(clientKanbanTasks));
   logActivity(`Moveu a tarefa "${task.title}" para ${task.status.toUpperCase()}`);
-  notifyGlobalSync();
+  pushDataToServer();
   renderKanban();
 };
 
@@ -1488,7 +1586,7 @@ window.deleteKanban = function(id) {
 
   clientKanbanTasks = clientKanbanTasks.filter(t => t.id !== id);
   localStorage.setItem('5s_kanban_tasks_impaktto', JSON.stringify(clientKanbanTasks));
-  notifyGlobalSync();
+  pushDataToServer();
   renderKanban();
 };
 
@@ -1503,7 +1601,7 @@ function handleUpdateIshikawa(e) {
   if (cause && clientIshikawaData[mType]) {
     clientIshikawaData[mType].push(cause);
     logActivity(`Adicionou a causa "${cause}" no Diagrama de Ishikawa (${mType.toUpperCase()})`);
-    notifyGlobalSync();
+    pushDataToServer();
   }
 
   localStorage.setItem('5s_ishikawa_impaktto', JSON.stringify(clientIshikawaData));
