@@ -140,39 +140,34 @@ let autoRefreshTimer = null;
 
 // FUNÇÕES MESTRE DE SINCRONIZAÇÃO EM NUVEM REALTIME
 async function pushDataToServer() {
-  let remoteUsers = {};
-  let remoteLogs = [];
-  let remoteBoard = {};
+  let cloudState = { users: {}, activity_logs: [], factory_board: {}, audit_scores: {} };
 
   try {
     const res = await fetch(CLOUD_MASTER_API + '?t=' + Date.now());
     if (res.ok) {
-      const data = await res.json();
-      if (data && data.data) {
-        remoteUsers = data.data.users || {};
-        remoteLogs = data.data.activity_logs || [];
-        remoteBoard = data.data.factory_board || {};
+      const remote = await res.json();
+      if (remote && remote.data) {
+        cloudState = remote.data;
       }
     }
   } catch(e) {}
 
-  userDatabase = { ...remoteUsers, ...userDatabase };
+  // Mesclar Usuários
+  userDatabase = { ...cloudState.users, ...userDatabase };
   localStorage.setItem('5s_impaktto_users', JSON.stringify(userDatabase));
 
-  const existingLogIds = new Set(clientActivityLogs.map(l => l.id));
-  remoteLogs.forEach(rLog => {
-    if (rLog && rLog.id && !existingLogIds.has(rLog.id)) {
-      clientActivityLogs.unshift(rLog);
-      existingLogIds.add(rLog.id);
-    }
-  });
-  clientActivityLogs.sort((a, b) => b.id - a.id);
-  clientActivityLogs = clientActivityLogs.slice(0, 60);
+  // Mesclar Logs do Feed sem duplicações
+  const logMap = new Map();
+  (cloudState.activity_logs || []).forEach(l => { if (l && l.id) logMap.set(l.id, l); });
+  clientActivityLogs.forEach(l => { if (l && l.id) logMap.set(l.id, l); });
+  clientActivityLogs = Array.from(logMap.values()).sort((a, b) => b.id - a.id).slice(0, 60);
   localStorage.setItem('5s_activity_logs_impaktto', JSON.stringify(clientActivityLogs));
 
-  clientFactoryBoard = { ...remoteBoard, ...clientFactoryBoard };
+  // Mesclar Quadro da Fábrica
+  clientFactoryBoard = { ...cloudState.factory_board, ...clientFactoryBoard };
   localStorage.setItem('5s_factory_board_impaktto', JSON.stringify(clientFactoryBoard));
 
+  // Salvar Estado Mestre Atualizado na Nuvem
   const payload = {
     name: '5s_impaktto_master_db_prod',
     data: {
@@ -193,6 +188,10 @@ async function pushDataToServer() {
     console.error('Erro no Push da Nuvem:', e);
   }
 
+  renderUserManagementTable();
+  renderActivityLogs();
+  renderFactoryBoard();
+
   if (syncChannel) {
     try { syncChannel.postMessage({ type: 'SYNC_ALL_DATA', timestamp: Date.now() }); } catch (e) {}
   }
@@ -206,40 +205,34 @@ async function pullDataFromServer() {
       if (remoteData && remoteData.data) {
         const d = remoteData.data;
 
+        // 1. Sincronizar Usuários (Cadastros feitos em qualquer celular)
         if (d.users && typeof d.users === 'object') {
-          let hasNewUser = false;
-          for (const [uname, uobj] of Object.entries(d.users)) {
-            if (!userDatabase[uname]) {
-              userDatabase[uname] = uobj;
-              hasNewUser = true;
-            }
-          }
-          if (hasNewUser) {
-            localStorage.setItem('5s_impaktto_users', JSON.stringify(userDatabase));
+          const cloudCount = Object.keys(d.users).length;
+          const localCount = Object.keys(userDatabase).length;
+          
+          userDatabase = { ...userDatabase, ...d.users };
+          localStorage.setItem('5s_impaktto_users', JSON.stringify(userDatabase));
+          
+          if (Object.keys(userDatabase).length !== localCount || cloudCount !== localCount) {
             renderUserManagementTable();
           }
         }
 
-        if (Array.isArray(d.activity_logs) && d.activity_logs.length > 0) {
-          const existingIds = new Set(clientActivityLogs.map(l => l.id));
-          let hasNewLog = false;
+        // 2. Sincronizar Logs do Feed
+        if (Array.isArray(d.activity_logs)) {
+          const logMap = new Map();
+          clientActivityLogs.forEach(l => { if (l && l.id) logMap.set(l.id, l); });
+          d.activity_logs.forEach(l => { if (l && l.id) logMap.set(l.id, l); });
+          const mergedLogs = Array.from(logMap.values()).sort((a, b) => b.id - a.id).slice(0, 60);
 
-          d.activity_logs.forEach(rLog => {
-            if (rLog && rLog.id && !existingIds.has(rLog.id)) {
-              clientActivityLogs.unshift(rLog);
-              existingIds.add(rLog.id);
-              hasNewLog = true;
-            }
-          });
-
-          if (hasNewLog) {
-            clientActivityLogs.sort((a, b) => b.id - a.id);
-            clientActivityLogs = clientActivityLogs.slice(0, 60);
+          if (mergedLogs.length !== clientActivityLogs.length || (mergedLogs[0] && clientActivityLogs[0] && mergedLogs[0].id !== clientActivityLogs[0].id)) {
+            clientActivityLogs = mergedLogs;
             localStorage.setItem('5s_activity_logs_impaktto', JSON.stringify(clientActivityLogs));
             renderActivityLogs();
           }
         }
 
+        // 3. Sincronizar Quadro da Fábrica
         if (d.factory_board && typeof d.factory_board === 'object') {
           const merged = { ...clientFactoryBoard, ...d.factory_board };
           if (JSON.stringify(merged) !== JSON.stringify(clientFactoryBoard)) {
@@ -262,6 +255,63 @@ window.forceCloudSyncNow = async function() {
   renderActivityLogs();
   renderFactoryBoard();
   alert('🎉 Sincronização Mestre de Nuvem Concluída! Todos os cadastros e votos de celulares estão atualizados.');
+};
+
+// FUNÇÃO PARA O ADM CADASTRAR COLABORADORES DIRETO PELO PAINEL
+window.handleAddUserFromADM = async function(e) {
+  if (e) e.preventDefault();
+
+  const nameInput = document.getElementById('adm-add-name');
+  const userInput = document.getElementById('adm-add-username');
+  const passInput = document.getElementById('adm-add-password');
+  const sectorInput = document.getElementById('adm-add-sector');
+  const levelInput = document.getElementById('adm-add-level');
+
+  const name = nameInput ? nameInput.value.trim() : '';
+  const username = userInput ? userInput.value.trim().toLowerCase() : '';
+  const password = passInput && passInput.value.trim() ? passInput.value.trim() : '5s2026';
+  const sector = sectorInput ? sectorInput.value : 'Usinagem';
+  const level = levelInput ? levelInput.value : 'colaborador';
+
+  if (!name || !username) {
+    alert('Por favor, informe o Nome e o Usuário do integrante.');
+    return;
+  }
+
+  if (userDatabase[username]) {
+    alert(`O nome de usuário "${username}" já está cadastrado.`);
+    return;
+  }
+
+  const roleMap = { colaborador: 'colaborador', diario: 'lider_diario', semanal: 'auditor_semanal', senior: 'administrador' };
+  const titleMap = {
+    colaborador: `Grupo 1: Colaborador (${sector})`,
+    diario: `Grupo 1: Líder de ${sector}`,
+    semanal: `Grupo 2: Auditor Volante / Encarregado`,
+    senior: `Grupo 3: Gerência & Diretoria`
+  };
+
+  const newUser = {
+    username,
+    password,
+    name,
+    role: roleMap[level] || 'colaborador',
+    level: level,
+    sector: sector,
+    title: titleMap[level] || `Grupo 1: Colaborador (${sector})`
+  };
+
+  userDatabase[username] = newUser;
+  localStorage.setItem('5s_impaktto_users', JSON.stringify(userDatabase));
+
+  logActivity(`✨ Cadastrou o colaborador "${name}" (${titleMap[level]}) direto pelo Painel ADM`);
+  await pushDataToServer();
+
+  if (nameInput) nameInput.value = '';
+  if (userInput) userInput.value = '';
+  if (passInput) passInput.value = '5s2026';
+
+  alert(`🎉 Colaborador "${name}" cadastrado com sucesso e sincronizado em nuvem!`);
 };
 
 // FUNÇÃO GLOBAL DE LOGIN DIRETO IMPAK TTO
@@ -708,7 +758,7 @@ function loadImpakttoData() {
   renderUserManagementTable();
 }
 
-// 7. RENDERIZAÇÃO DO PAINEL DE GESTÃO DE COLABORADORES E NÍVEIS
+// 7. RENDERIZAÇÃO DO PAINEL DE GESTÃO DE COLABORADORES E FORMULÁRIO RÁPIDO ADM
 function renderUserManagementTable() {
   const container = document.getElementById('user-management-table-container');
   if (!container) return;
@@ -717,12 +767,40 @@ function renderUserManagementTable() {
   const todayDateStr = new Date().toISOString().split('T')[0];
 
   let html = `
+    <!-- FORMULÁRIO RÁPIDO PARA O ADM CADASTRAR INTEGRANTES DIRETO PELO PAINEL -->
+    <div style="background: rgba(99, 102, 241, 0.08); border: 1px solid var(--border-highlight); padding: 0.9rem; border-radius: var(--radius-md); margin-bottom: 1rem;">
+      <span style="font-size:0.85rem; font-weight:800; color:var(--accent-cyan); text-transform:uppercase; display:block; margin-bottom:0.5rem;">
+        ➕ CADASTRO RÁPIDO DE COLABORADOR (INCLUSÃO DIRETA PELO ADM)
+      </span>
+      <form onsubmit="handleAddUserFromADM(event)" style="display:flex; gap:0.5rem; flex-wrap:wrap; align-items:center;">
+        <input type="text" id="adm-add-name" class="form-control" placeholder="Nome Completo (ex: João Silva)" style="flex:1; min-width:180px; font-size:0.8rem; padding:0.4rem 0.6rem;" required>
+        <input type="text" id="adm-add-username" class="form-control" placeholder="Usuário (ex: joao.silva)" style="flex:1; min-width:140px; font-size:0.8rem; padding:0.4rem 0.6rem;" required>
+        <input type="text" id="adm-add-password" class="form-control" placeholder="Senha (padrão: 5s2026)" value="5s2026" style="width:130px; font-size:0.8rem; padding:0.4rem 0.6rem;">
+        
+        <select id="adm-add-sector" class="form-control" style="width:auto; font-size:0.8rem; padding:0.4rem 0.6rem;">
+          ${IMPAKTTO_SECTORS.map(s => `<option value="${s}">📍 ${s}</option>`).join('')}
+        </select>
+
+        <select id="adm-add-level" class="form-control" style="width:auto; font-size:0.8rem; padding:0.4rem 0.6rem;">
+          <option value="colaborador">🟢 Grupo 1: Colaborador de Setor</option>
+          <option value="diario">⭐ Grupo 1: Líder Diário de Setor</option>
+          <option value="semanal">🟡 Grupo 2: Auditor Volante / Encarregado</option>
+          <option value="senior">👑 Grupo 3: Gerência & Diretoria</option>
+        </select>
+
+        <button type="submit" class="btn btn-primary" style="padding:0.4rem 0.85rem; font-size:0.8rem; font-weight:700;">
+          ➕ Cadastrar Agora
+        </button>
+      </form>
+    </div>
+
     <div style="margin-bottom:0.75rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem; background:rgba(6,182,212,0.1); padding:0.6rem 0.85rem; border-radius:8px; border:1px solid var(--accent-cyan);">
-      <span style="font-size:0.85rem; color:#e2e8f0; font-weight:700;">🌐 BANCO DE DADOS EM NUVEM CONECTADO • Integrantes: <strong>${usersList.length}</strong></span>
+      <span style="font-size:0.85rem; color:#e2e8f0; font-weight:700;">🌐 BANCO DE DADOS EM NUVEM CONECTADO • Total de Integrantes: <strong>${usersList.length}</strong></span>
       <button class="btn btn-secondary" style="padding:0.3rem 0.75rem; font-size:0.78rem; font-weight:700;" onclick="forceCloudSyncNow()">
         🔄 Sincronizar Nuvem Agora (Buscar Cadastros)
       </button>
     </div>
+
     <table style="width:100%; border-collapse:collapse; font-size:0.85rem;">
       <thead>
         <tr style="background:rgba(255,255,255,0.05); border-bottom:1px solid var(--border-color); text-align:left;">
@@ -764,7 +842,7 @@ function renderUserManagementTable() {
         </td>
         <td style="padding:0.6rem; text-align:center; display:flex; gap:0.3rem; justify-content:center;">
           <button class="btn btn-secondary" style="padding:0.2rem 0.45rem; font-size:0.7rem;" onclick="resetUserDailyVote('${u.username}')" title="Liberar usuário para dar novo voto de teste hoje">
-            🔄 Liberar Novo Voto
+            🔄 Liberar Voto
           </button>
           ${!isSelfAdmin ? `<button class="btn btn-danger" style="padding:0.2rem 0.45rem; font-size:0.7rem;" onclick="deleteUserAccount('${u.username}')">Excluir</button>` : ''}
         </td>
