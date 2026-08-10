@@ -15,13 +15,13 @@
 </head>
 <body>
 
-  <!-- TELA DE LOGIN & AUTO-CADASTRO NA SALA DE REUNIÃO (MODAL OVERLAY) -->
+  <!-- TELA DE LOGIN & AUTO-CADASTRO NA SALA DE REUNIÃO (MODAL OVERLAY PERSONALIZADA) -->
   <div id="login-overlay" class="login-overlay">
     <div class="login-card">
       <div class="login-header">
         <div class="brand-icon" style="margin: 0 auto 1rem auto;">5S</div>
-        <h2>Portal de Consultoria 5S</h2>
-        <p>Projeto Especial Impaktto & SENAI</p>
+        <h2 id="welcome-company-title">IMPAK TTO Plásticos de Engenharia</h2>
+        <p id="welcome-company-subtitle">Projeto Especial de Implantação 5S & SENAI</p>
       </div>
 
       <!-- BOTÕES DE TROCA ENTRE LOGIN E AUTO-CADASTRO -->
@@ -42,7 +42,7 @@
         </div>
 
         <div class="form-group" style="text-align: left;">
-          <label>Empresa / Projeto</label>
+          <label>Empresa / Projeto do Cliente</label>
           <select id="reg-company-id" class="form-control" onchange="handleRegCompanyChange(this.value)">
           </select>
         </div>
@@ -79,7 +79,7 @@
           <input type="password" id="login-password" class="form-control" placeholder="••••••••" required>
         </div>
 
-        <div id="login-error" style="color: var(--danger); font-size: 0.8rem; margin-bottom: 1rem; display: none;">
+        <div id="login-error" style="color: var(--status-ruim); font-size: 0.8rem; margin-bottom: 1rem; display: none;">
           ⚠️ Usuário ou senha incorretos. Tente novamente!
         </div>
 
@@ -102,7 +102,7 @@
       <div class="brand-icon">5S</div>
       <div class="brand-text">
         <h1>Consultoria da Qualidade & 5S</h1>
-        <p id="active-client-name">🏢 Empresa: Impaktto (SENAI & Fábrica)</p>
+        <p id="active-client-name">🏢 Empresa: IMPAK TTO Plásticos de Engenharia</p>
       </div>
     </div>
 
@@ -251,15 +251,51 @@
          =================================================================== -->
     <section id="tab-tools" class="tab-content">
       
-      <!-- SUB-SEÇÃO: PAINEL DO CONSULTOR (CADASTRO EXCLUSIVO DE ADMIN) -->
+      <!-- SUB-SEÇÃO: PAINEL DO CONSULTOR (CADASTRO DE EMPRESAS & LINKS EXCLUSIVOS) -->
       <div class="card" id="admin-add-user-card" style="border-color: var(--border-highlight); background: rgba(99, 102, 241, 0.05); display: none;">
         <div class="card-header">
-          <h2 class="card-title">👑 Painel Exclusivo do Consultor Mestre (Admin)</h2>
+          <h2 class="card-title">👑 Painel Exclusivo do Consultor Mestre (Xandinho)</h2>
         </div>
-        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">
-          Esta área é visível exclusivamente para você (Admin). Utilize para cadastrar novos usuários ou empresas manualmente.
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.25rem;">
+          Cadastre novas empresas de clientes, defina títulos personalizados e **gere o link direto de boas-vindas** para enviar por WhatsApp ou E-mail aos participantes da inspeção.
         </p>
 
+        <!-- FORMULÁRIO 1: CADASTRO DE EMPRESA E GERAÇÃO DE LINK -->
+        <div style="background: rgba(0,0,0,0.25); padding: 1.25rem; border-radius: var(--radius-md); border: 1px solid var(--border-color); margin-bottom: 1.5rem;">
+          <h3 style="font-size: 1rem; color: var(--primary); margin-bottom: 1rem;">🏢 Cadastrar Empresa de Cliente & Gerar Link de Convite</h3>
+          
+          <form id="form-new-company" class="grid-2col">
+            <div class="form-group">
+              <label>Nome Oficial da Empresa</label>
+              <input type="text" id="admin-comp-name" class="form-control" placeholder="Ex: IMPAK TTO Plásticos de Engenharia" required>
+            </div>
+            <div class="form-group">
+              <label>Código do Link (ex: impaktto, sohipren)</label>
+              <input type="text" id="admin-comp-code" class="form-control" placeholder="Ex: impaktto" required>
+            </div>
+            <div class="form-group" style="grid-column: span 2;">
+              <label>Subtítulo do Projeto / Descrição</label>
+              <input type="text" id="admin-comp-subtitle" class="form-control" placeholder="Ex: Projeto Especial de Implantação 5S & SENAI">
+            </div>
+
+            <div style="grid-column: span 2;">
+              <button type="submit" class="btn btn-primary" style="width: 100%;">🚀 Cadastrar Empresa & Gerar Link de Boas-Vindas</button>
+            </div>
+          </form>
+
+          <!-- EXIBIÇÃO DO LINK GERADO -->
+          <div id="generated-link-display" style="margin-top: 1rem; display: none; background: rgba(16, 185, 129, 0.1); border: 1px solid var(--status-bom); padding: 1rem; border-radius: var(--radius-sm);">
+            <strong style="color: var(--status-bom); font-size: 0.85rem;">✅ Link de Convite Gerado com Sucesso!</strong>
+            <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0.25rem 0 0.5rem 0;">Envie este link para a equipe do cliente e do SENAI para auto-cadastro rápido:</p>
+            <div style="display: flex; gap: 0.5rem;">
+              <input type="text" id="generated-link-input" class="form-control" readonly style="background: rgba(0,0,0,0.4); font-weight: bold; color: #a5b4fc;">
+              <button type="button" class="btn btn-primary" onclick="copyGeneratedLink()" style="white-space: nowrap;">📋 Copiar Link</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- FORMULÁRIO 2: CADASTRO MANUAL DE USUÁRIO POR EMPRESA -->
+        <h3 style="font-size: 1rem; color: var(--accent-cyan); margin-bottom: 0.75rem;">👤 Cadastrar Usuário Manualmente</h3>
         <form id="form-new-user" class="grid-2col">
           <div class="form-group">
             <label>Nome da Empresa do Cliente</label>
@@ -278,7 +314,7 @@
             <input type="text" id="new-user-pass" class="form-control" placeholder="Ex: 5s2026" required>
           </div>
           <div style="grid-column: span 2;">
-            <button type="submit" class="btn btn-primary" style="width: 100%;">🚀 Cadastrar Usuário pelo Painel Admin</button>
+            <button type="submit" class="btn btn-secondary" style="width: 100%;">👤 Cadastrar Usuário Individual</button>
           </div>
         </form>
       </div>

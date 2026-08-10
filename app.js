@@ -1,5 +1,5 @@
 /* ==========================================================================
-   PORTAL DE CONSULTORIA 5S & QUALIDADE (PADRÃO FÁBRICA: BOM, REGULAR, RUIM)
+   PORTAL DE CONSULTORIA 5S & QUALIDADE (PERSONALIZAÇÃO DE CLIENTES & LOGOS)
    ========================================================================== */
 
 // Base de Dados Oficial de Perguntas dos 5 Sensos (50 Itens Oficiais)
@@ -66,11 +66,26 @@ const AUDIT_QUESTIONS = {
   ]
 };
 
-// Base de Empresas Inicial
+// Base de Empresas Inicial com Logotipos e Subtítulos
 const DEFAULT_COMPANIES = {
-  impaktto: { id: 'impaktto', name: 'Cliente Impaktto (Projeto SENAI & Fábrica)' },
-  sohipren: { id: 'sohipren', name: 'Sohipren Indústria' },
-  logistica: { id: 'logistica', name: 'Empresa de Logística ABC' }
+  impaktto: {
+    id: 'impaktto',
+    name: 'IMPAK TTO Plásticos de Engenharia',
+    subtitle: 'Projeto de Implantação 5S & Lean - Parceria SENAI',
+    logo: 'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=200&auto=format&fit=crop&q=60' // Logo de teste industrial
+  },
+  sohipren: {
+    id: 'sohipren',
+    name: 'Sohipren S.A. Oleohidráulica',
+    subtitle: 'Metodologia 5S & Gestão da Qualidade ISO 9001',
+    logo: 'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?w=200&auto=format&fit=crop&q=60'
+  },
+  logistica: {
+    id: 'logistica',
+    name: 'Empresa de Logística ABC',
+    subtitle: 'Programa 5S & Excelência Operacional no Armazém',
+    logo: ''
+  }
 };
 
 // Base de Usuários Inicial
@@ -104,20 +119,37 @@ document.addEventListener('DOMContentLoaded', () => {
 
   document.getElementById('login-form')?.addEventListener('submit', handleLogin);
   document.getElementById('register-form')?.addEventListener('submit', handleSelfRegister);
+  document.getElementById('form-new-company')?.addEventListener('submit', handleAdminCreateCompany);
   document.getElementById('form-new-user')?.addEventListener('submit', handleCreateNewUser);
   document.getElementById('form-gut')?.addEventListener('submit', handleAddGUT);
   document.getElementById('form-kanban')?.addEventListener('submit', handleAddKanban);
   document.getElementById('form-ishikawa')?.addEventListener('submit', handleUpdateIshikawa);
 });
 
+// Checar Parâmetros de URL (?empresa=impaktto) e Personalizar a Modal de Boas-Vindas
 function checkURLParams() {
   const urlParams = new URLSearchParams(window.location.search);
   const companyParam = urlParams.get('empresa');
   
   if (companyParam && companyDatabase[companyParam]) {
+    selectedClientId = companyParam;
     const regCompanySelect = document.getElementById('reg-company-id');
     if (regCompanySelect) regCompanySelect.value = companyParam;
+
+    updateWelcomeBanner(companyParam);
+  } else {
+    updateWelcomeBanner(selectedClientId || 'impaktto');
   }
+}
+
+// Atualizar Banner e Logotipo na Tela de Boas-Vindas / Login
+function updateWelcomeBanner(companyId) {
+  const company = companyDatabase[companyId] || companyDatabase['impaktto'];
+  const welcomeTitle = document.getElementById('welcome-company-title');
+  const welcomeSub = document.getElementById('welcome-company-subtitle');
+
+  if (welcomeTitle) welcomeTitle.innerText = company.name;
+  if (welcomeSub) welcomeSub.innerText = company.subtitle || 'Projeto de Implantação 5S & Qualidade';
 }
 
 function populateCompanyDropdowns() {
@@ -154,6 +186,7 @@ window.handleRegCompanyChange = function(val) {
     newCompanyInputContainer.style.display = 'block';
   } else {
     newCompanyInputContainer.style.display = 'none';
+    updateWelcomeBanner(val);
   }
 };
 
@@ -173,7 +206,7 @@ function handleSelfRegister(e) {
       return;
     }
     companyId = username.split('.')[1] || username;
-    companyDatabase[companyId] = { id: companyId, name: newCompanyName };
+    companyDatabase[companyId] = { id: companyId, name: newCompanyName, subtitle: 'Projeto de Implantação 5S & Qualidade' };
     localStorage.setItem('5s_company_database', JSON.stringify(companyDatabase));
   }
 
@@ -192,6 +225,44 @@ function handleSelfRegister(e) {
 
   logActivity(`Novo participante entrou na auditoria de campo (${name})`);
 }
+
+// Administrador Cadastra Nova Empresa com Logotipo e Gera Link
+function handleAdminCreateCompany(e) {
+  e.preventDefault();
+  const name = document.getElementById('admin-comp-name').value.trim();
+  const code = document.getElementById('admin-comp-code').value.trim().toLowerCase().replace(/\s+/g, '-');
+  const subtitle = document.getElementById('admin-comp-subtitle').value.trim();
+  const logo = document.getElementById('admin-comp-logo').value.trim();
+
+  if (!name || !code) return;
+
+  companyDatabase[code] = {
+    id: code,
+    name: name,
+    subtitle: subtitle || 'Projeto de Implantação 5S & Qualidade',
+    logo: logo || ''
+  };
+
+  localStorage.setItem('5s_company_database', JSON.stringify(companyDatabase));
+  populateCompanyDropdowns();
+  populateAdminClientDropdown();
+
+  const generatedLink = `${window.location.origin}${window.location.pathname}?empresa=${code}`;
+  
+  document.getElementById('generated-link-display').style.display = 'block';
+  document.getElementById('generated-link-input').value = generatedLink;
+
+  alert(`Empresa "${name}" cadastrada com sucesso! Link personalizado gerado!`);
+}
+
+window.copyGeneratedLink = function() {
+  const input = document.getElementById('generated-link-input');
+  if (input) {
+    input.select();
+    navigator.clipboard.writeText(input.value);
+    alert('Link copiado com sucesso! Você já pode colar e enviar no WhatsApp ou E-mail!');
+  }
+};
 
 function checkAuthSession() {
   const loginOverlay = document.getElementById('login-overlay');
@@ -387,7 +458,6 @@ function initTabs() {
   });
 }
 
-// Renderizar Formulários de Auditoria 5S de Campo com 3 Opções (Bom, Regular, Ruim)
 function renderAuditForms() {
   const container = document.getElementById('audit-questions-container');
   if (!container) return;
@@ -412,7 +482,7 @@ function renderAuditForms() {
 
     questions.forEach((qText, idx) => {
       const qKey = `${senso}_${idx}`;
-      const currentVal = clientAuditScores[qKey] || 'bom'; // Padrão 'bom'
+      const currentVal = clientAuditScores[qKey] || 'bom';
 
       html += `
         <div class="audit-item">
@@ -449,7 +519,6 @@ function renderAuditForms() {
   container.innerHTML = html;
 }
 
-// Selecionar Nível de Fábrica (Bom, Regular, Ruim)
 window.selectScore3Level = function(sensoName, qNum, qKey, level) {
   clientAuditScores[qKey] = level;
   localStorage.setItem(`5s_audit_scores_${selectedClientId}`, JSON.stringify(clientAuditScores));
@@ -471,7 +540,6 @@ window.selectScore3Level = function(sensoName, qNum, qKey, level) {
   logActivity(`Avaliou o item ${sensoName.toUpperCase()} #${qNum} como ${labelMap[level]}`);
 };
 
-// Renderizar Quadro Virtual "COMO ESTÁ NOSSA ÁREA?" (Foto 3 da Fábrica)
 function renderFactoryBoard() {
   const container = document.getElementById('factory-board-container');
   if (!container) return;
@@ -534,11 +602,9 @@ window.cycleFactoryBoard = function(boardKey, sensoName, day) {
   logActivity(`Marcou ${sensoName} na ${day} como ${labelMap[next]} no Quadro da Área`);
 };
 
-// Calcular Resultados (Bom = 3 pts / 100%, Regular = 2 pts / 66%, Ruim = 1 pt / 33%)
 function calculateAuditResults() {
   const totals = { seiri: 0, seiton: 0, seiso: 0, seiketsu: 0, shitsuke: 0 };
-  const maxPerSenso = 30; // 10 perguntas * 3 pontos (Bom)
-
+  const maxPerSenso = 30;
   const scorePoints = { bom: 3, regular: 2, ruim: 1 };
 
   for (const senso of Object.keys(AUDIT_QUESTIONS)) {
@@ -550,7 +616,7 @@ function calculateAuditResults() {
   }
 
   let totalScore = 0;
-  let totalMax = 150; // 5 sensos * 30 pontos
+  let totalMax = 150;
   const percentages = [];
 
   for (const senso of Object.keys(totals)) {
