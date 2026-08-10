@@ -13,15 +13,26 @@
 </head>
 <body>
 
-  <!-- TELA DE LOGIN CORPORATIVO (MODAL OVERLAY) -->
+  <!-- TELA DE LOGIN & AUTO-CADASTRO CORPORATIVO (MODAL OVERLAY) -->
   <div id="login-overlay" class="login-overlay">
     <div class="login-card">
       <div class="login-header">
         <div class="brand-icon" style="margin: 0 auto 1rem auto;">5S</div>
         <h2>Portal de Consultoria 5S</h2>
-        <p>Acesse seu projeto corporativo com login individual</p>
+        <p>Acesse seu projeto corporativo ou cadastre-se</p>
       </div>
 
+      <!-- BOTÕES DE TROCA ENTRE LOGIN E AUTO-CADASTRO DE NOVO INTEGRANTE -->
+      <div class="nav-tabs" style="margin-bottom: 1.5rem; justify-content: center;">
+        <button type="button" id="auth-tab-login" class="nav-btn active" onclick="toggleAuthMode('login')">
+          🔑 Já Tenho Login
+        </button>
+        <button type="button" id="auth-tab-register" class="nav-btn" onclick="toggleAuthMode('register')">
+          ✨ Sou Novo Integrante
+        </button>
+      </div>
+
+      <!-- FORMULÁRIO DE LOGIN -->
       <form id="login-form">
         <div class="form-group" style="text-align: left;">
           <label>Usuário de Acesso</label>
@@ -42,11 +53,43 @@
         </button>
       </form>
 
+      <!-- FORMULÁRIO DE AUTO-CADASTRO PARA NOVOS INTEGRANTES -->
+      <form id="register-form" style="display: none;">
+        <div class="form-group" style="text-align: left;">
+          <label>Seu Nome Completo</label>
+          <input type="text" id="reg-name" class="form-control" placeholder="Ex: Carlos Henrique Souza" required>
+        </div>
+
+        <div class="form-group" style="text-align: left;">
+          <label>Sua Empresa / Projeto</label>
+          <select id="reg-company-id" class="form-control" onchange="handleRegCompanyChange(this.value)">
+          </select>
+        </div>
+
+        <div class="form-group" id="reg-new-company-container" style="text-align: left; display: none;">
+          <label>Nome da Nova Empresa</label>
+          <input type="text" id="reg-new-company-name" class="form-control" placeholder="Ex: Minha Empresa Ltda">
+        </div>
+
+        <div class="form-group" style="text-align: left;">
+          <label>Crie um Usuário de Acesso</label>
+          <input type="text" id="reg-username" class="form-control" placeholder="Ex: carlos.sohipren" required>
+        </div>
+
+        <div class="form-group" style="text-align: left;">
+          <label>Crie uma Senha</label>
+          <input type="password" id="reg-password" class="form-control" placeholder="••••••••" required>
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="width: 100%; padding: 0.8rem;">
+          🚀 Criar Conta & Acessar Sistema
+        </button>
+      </form>
+
       <div class="credentials-box">
-        <strong>💡 Logins Individuais para Demonstração:</strong><br>
-        • <strong>Consultor Mestre:</strong> <code>admin</code> | Senha: <code>master5s</code><br>
+        <strong>💡 Contas para Teste de Demonstração:</strong><br>
+        • <strong>Consultor Mestre (Admin):</strong> <code>admin</code> | Senha: <code>master5s</code><br>
         • <strong>Auditora Sohipren:</strong> <code>maria.sohipren</code> | Senha: <code>5s2026</code><br>
-        • <strong>Líder Sohipren:</strong> <code>sohipren</code> | Senha: <code>5s2026</code><br>
         • <strong>Operações Logística:</strong> <code>ana.logistica</code> | Senha: <code>5s2026</code>
       </div>
     </div>
@@ -202,13 +245,13 @@
          =================================================================== -->
     <section id="tab-tools" class="tab-content">
       
-      <!-- SUB-SEÇÃO: PAINEL DO CONSULTOR (CADASTRO DE NOVOS USUÁRIOS INDIVIDUALIZADOS) -->
+      <!-- SUB-SEÇÃO: PAINEL DO CONSULTOR (CADASTRO EXCLUSIVO DE ADMIN) -->
       <div class="card" id="admin-add-user-card" style="border-color: var(--border-highlight); background: rgba(99, 102, 241, 0.05); display: none;">
         <div class="card-header">
-          <h2 class="card-title">👥 Painel da Consultoria: Criar Usuário Individualizado</h2>
+          <h2 class="card-title">👑 Painel Exclusivo do Consultor Mestre (Admin)</h2>
         </div>
         <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">
-          Cadastre integrantes da equipe do cliente (ex: Maria, João, Carlos). Cada um terá seu login próprio e o sistema registrará o nome de quem respondeu cada auditoria!
+          Esta área é visível exclusivamente para você (Admin). Utilize para cadastrar novos usuários ou empresas manualmente.
         </p>
 
         <form id="form-new-user" class="grid-2col">
@@ -229,7 +272,7 @@
             <input type="text" id="new-user-pass" class="form-control" placeholder="Ex: 5s2026" required>
           </div>
           <div style="grid-column: span 2;">
-            <button type="submit" class="btn btn-primary" style="width: 100%;">🚀 Cadastrar Usuário Individualizado</button>
+            <button type="submit" class="btn btn-primary" style="width: 100%;">🚀 Cadastrar Usuário pelo Painel Admin</button>
           </div>
         </form>
       </div>

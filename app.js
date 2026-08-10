@@ -1,5 +1,5 @@
 /* ==========================================================================
-   PORTAL DE CONSULTORIA 5S & QUALIDADE (COM NUVEM E RASTREABILIDADE)
+   PORTAL DE CONSULTORIA 5S & QUALIDADE (MULTI-TENANT & AUTO-CADASTRO)
    ========================================================================== */
 
 // Base de Dados Oficial de Pergunta dos 5 Sensos (50 Perguntas Oficiais)
@@ -66,13 +66,13 @@ const AUDIT_QUESTIONS = {
   ]
 };
 
-// Base de Usuários com Nomes Individualizados
+// Base de Usuários
 const DEFAULT_USERS = {
   admin: { username: 'admin', password: 'master5s', name: 'Consultor Mestre (Xandinho)', role: 'admin', companyId: 'sohipren' },
   sohipren: { username: 'sohipren', password: '5s2026', name: 'Líder Sohipren', role: 'client', companyId: 'sohipren' },
-  'maria.sohipren': { username: 'maria.sohipren', password: '5s2026', name: 'Maria Silva (Auditora Sohipren)', role: 'client', companyId: 'sohipren' },
+  'maria.sohipren': { username: 'maria.sohipren', password: '5s2026', name: 'Maria Silva (Auditora)', role: 'client', companyId: 'sohipren' },
   logistica: { username: 'logistica', password: '5s2026', name: 'Gerente Logística', role: 'client', companyId: 'logistica' },
-  'ana.logistica': { username: 'ana.logistica', password: '5s2026', name: 'Ana Paula (Operações Logística)', role: 'client', companyId: 'logistica' }
+  'ana.logistica': { username: 'ana.logistica', password: '5s2026', name: 'Ana Paula (Operações)', role: 'client', companyId: 'logistica' }
 };
 
 const DEFAULT_COMPANIES = {
@@ -96,19 +96,112 @@ let clientActivityLogs = [];
 // Inicialização
 document.addEventListener('DOMContentLoaded', () => {
   initTabs();
+  checkURLParams();
   checkAuthSession();
+  populateCompanyDropdowns();
 
   document.getElementById('login-form')?.addEventListener('submit', handleLogin);
+  document.getElementById('register-form')?.addEventListener('submit', handleSelfRegister);
   document.getElementById('form-new-user')?.addEventListener('submit', handleCreateNewUser);
   document.getElementById('form-gut')?.addEventListener('submit', handleAddGUT);
   document.getElementById('form-kanban')?.addEventListener('submit', handleAddKanban);
   document.getElementById('form-ishikawa')?.addEventListener('submit', handleUpdateIshikawa);
 });
 
-// Sessão e Autenticação
+// Checar parâmetros de URL (?empresa=sohipren)
+function checkURLParams() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const companyParam = urlParams.get('empresa');
+  
+  if (companyParam && companyDatabase[companyParam]) {
+    const regCompanySelect = document.getElementById('reg-company-id');
+    if (regCompanySelect) regCompanySelect.value = companyParam;
+  }
+}
+
+// Povoar Dropdowns de Empresas
+function populateCompanyDropdowns() {
+  const regSelect = document.getElementById('reg-company-id');
+  if (regSelect) {
+    regSelect.innerHTML = Object.values(companyDatabase)
+      .map(c => `<option value="${c.id}">${c.name}</option>`)
+      .join('') + `<option value="new">+ Cadastrar Nova Empresa</option>`;
+  }
+}
+
+// Alternar entre Telas na Modal (Login vs Cadastro de Integrante)
+window.toggleAuthMode = function(mode) {
+  const loginForm = document.getElementById('login-form');
+  const registerForm = document.getElementById('register-form');
+  const btnTabLogin = document.getElementById('auth-tab-login');
+  const btnTabRegister = document.getElementById('auth-tab-register');
+
+  if (mode === 'register') {
+    loginForm.style.display = 'none';
+    registerForm.style.display = 'block';
+    btnTabLogin.classList.remove('active');
+    btnTabRegister.classList.add('active');
+  } else {
+    loginForm.style.display = 'block';
+    registerForm.style.display = 'none';
+    btnTabLogin.classList.add('active');
+    btnTabRegister.classList.remove('active');
+  }
+};
+
+// Ao alterar o Select de Empresa no Cadastro
+window.handleRegCompanyChange = function(val) {
+  const newCompanyInputContainer = document.getElementById('reg-new-company-container');
+  if (val === 'new') {
+    newCompanyInputContainer.style.display = 'block';
+  } else {
+    newCompanyInputContainer.style.display = 'none';
+  }
+};
+
+// Auto-Cadastro de Novo Integrante
+function handleSelfRegister(e) {
+  e.preventDefault();
+  const name = document.getElementById('reg-name').value.trim();
+  let companyId = document.getElementById('reg-company-id').value;
+  const newCompanyName = document.getElementById('reg-new-company-name').value.trim();
+  const username = document.getElementById('reg-username').value.trim().toLowerCase();
+  const password = document.getElementById('reg-password').value.trim();
+
+  if (!name || !username || !password) return;
+
+  if (companyId === 'new') {
+    if (!newCompanyName) {
+      alert('Por favor, informe o nome da nova empresa.');
+      return;
+    }
+    companyId = username.split('.')[1] || username;
+    companyDatabase[companyId] = { id: companyId, name: newCompanyName };
+    localStorage.setItem('5s_company_database', JSON.stringify(companyDatabase));
+  }
+
+  if (userDatabase[username]) {
+    alert('Este nome de usuário já existe. Escolha outro usuário (ex: joao.sohipren).');
+    return;
+  }
+
+  const newUser = { username, password, name, role: 'client', companyId };
+  userDatabase[username] = newUser;
+  localStorage.setItem('5s_user_database', JSON.stringify(userDatabase));
+
+  // Logar o usuário automaticamente
+  currentUser = newUser;
+  localStorage.setItem('5s_current_session', JSON.stringify(currentUser));
+  checkAuthSession();
+
+  logActivity(`Novo integrante cadastrou-se no portal (${name})`);
+}
+
+// Checagem de Sessão do Usuário & Controle de Acesso do Admin
 function checkAuthSession() {
   const loginOverlay = document.getElementById('login-overlay');
-  
+  const adminAddUserCard = document.getElementById('admin-add-user-card');
+
   if (!currentUser) {
     if (loginOverlay) loginOverlay.classList.remove('hidden');
     return;
@@ -116,15 +209,17 @@ function checkAuthSession() {
 
   if (loginOverlay) loginOverlay.classList.add('hidden');
 
+  // RIGOROSO CONTROLE DE ACESSO: Card de cadastro EXCLUSIVO para o Admin
   if (currentUser.role === 'admin') {
     selectedClientId = selectedClientId || 'sohipren';
     document.getElementById('admin-client-selector-container')?.style.setProperty('display', 'block');
-    document.getElementById('admin-add-user-card')?.style.setProperty('display', 'block');
+    if (adminAddUserCard) adminAddUserCard.style.setProperty('display', 'block');
     populateAdminClientDropdown();
   } else {
     selectedClientId = currentUser.companyId || currentUser.username;
     document.getElementById('admin-client-selector-container')?.style.setProperty('display', 'none');
-    document.getElementById('admin-add-user-card')?.style.setProperty('display', 'none');
+    // ESCONDER COMPLETAMENTE PARA CLIENTES
+    if (adminAddUserCard) adminAddUserCard.style.setProperty('display', 'none');
   }
 
   localStorage.setItem('5s_active_client_id', JSON.stringify(selectedClientId));
@@ -133,7 +228,6 @@ function checkAuthSession() {
   document.getElementById('active-client-name').innerText = `🏢 Empresa: ${activeCompanyObj.name}`;
   document.getElementById('logged-user-name').innerText = `👤 ${currentUser.name}`;
 
-  // Carregar dados e sincronizar em nuvem
   loadClientData(selectedClientId);
 }
 
@@ -164,7 +258,7 @@ window.handleLogout = function() {
   location.reload();
 };
 
-// Povoar Dropdown do Admin
+// Dropdown de Empresas para Admin
 function populateAdminClientDropdown() {
   const select = document.getElementById('admin-client-select');
   if (!select) return;
@@ -181,7 +275,7 @@ window.changeActiveClientAdmin = function(newClientId) {
   checkAuthSession();
 };
 
-// Cadastrar Novo Usuário / Integrante
+// Cadastrar Novo Usuário pelo Admin
 function handleCreateNewUser(e) {
   e.preventDefault();
   const companyName = document.getElementById('new-company-name').value.trim();
@@ -201,16 +295,17 @@ function handleCreateNewUser(e) {
   userDatabase[username] = { username, password, name, role: 'client', companyId };
   localStorage.setItem('5s_user_database', JSON.stringify(userDatabase));
 
-  alert(`Novo usuário registrado com sucesso!\nNome: ${name}\nLogin: ${username}\nSenha: ${password}`);
+  alert(`Usuário registrado pelo Admin!\nNome: ${name}\nLogin: ${username}`);
   document.getElementById('new-company-name').value = '';
   document.getElementById('new-user-name').value = '';
   document.getElementById('new-user-name-user').value = '';
   document.getElementById('new-user-pass').value = '';
 
+  populateCompanyDropdowns();
   populateAdminClientDropdown();
 }
 
-// Carregar Dados e Histórico do Cliente Ativo
+// Carregar Dados Isolados do Cliente
 function loadClientData(clientId) {
   clientAuditScores = JSON.parse(localStorage.getItem(`5s_audit_scores_${clientId}`)) || {};
   clientGutMatrix = JSON.parse(localStorage.getItem(`5s_gut_matrix_${clientId}`)) || [];
@@ -237,7 +332,7 @@ function loadClientData(clientId) {
   renderActivityLogs();
 }
 
-// Registrar Histórico de Quem Mexeu (Rastreabilidade)
+// Registrar Rastreabilidade
 function logActivity(actionText) {
   const timestamp = new Date().toLocaleString('pt-BR');
   const userLabel = currentUser ? currentUser.name : 'Usuário';
@@ -250,30 +345,12 @@ function logActivity(actionText) {
   };
 
   clientActivityLogs.unshift(logEntry);
-  if (clientActivityLogs.length > 50) clientActivityLogs.pop(); // Manter últimos 50
+  if (clientActivityLogs.length > 50) clientActivityLogs.pop();
 
   localStorage.setItem(`5s_activity_logs_${selectedClientId}`, JSON.stringify(clientActivityLogs));
   renderActivityLogs();
-
-  // Sincronizar em Nuvem (Simulador de Nuvem Real-Time entre Dispositivos)
-  syncToCloudStorage();
 }
 
-// Sincronizador de Nuvem (Salva dados globais para compartilhamento instantâneo)
-function syncToCloudStorage() {
-  const payload = {
-    scores: clientAuditScores,
-    gut: clientGutMatrix,
-    kanban: clientKanbanTasks,
-    ishikawa: clientIshikawaData,
-    logs: clientActivityLogs,
-    lastUpdate: new Date().getTime()
-  };
-
-  localStorage.setItem(`5s_cloud_sync_${selectedClientId}`, JSON.stringify(payload));
-}
-
-// Renderizar Histórico de Alterações na Interface
 function renderActivityLogs() {
   const container = document.getElementById('activity-log-container');
   if (!container) return;
@@ -291,7 +368,7 @@ function renderActivityLogs() {
   `).join('');
 }
 
-// Navegação entre Abas
+// Navegação de Abas
 function initTabs() {
   const navBtns = document.querySelectorAll('.nav-btn');
   const tabContents = document.querySelectorAll('.tab-content');
@@ -307,7 +384,7 @@ function initTabs() {
   });
 }
 
-// Renderizar Perguntas da Auditoria 5S
+// Renderizar Auditoria 5S
 function renderAuditForms() {
   const container = document.getElementById('audit-questions-container');
   if (!container) return;
@@ -359,7 +436,6 @@ function renderAuditForms() {
   container.innerHTML = html;
 }
 
-// Selecionar Nota (Com Gravação de Quem Fez e Data)
 window.selectScore = function(sensoName, qNum, qKey, score) {
   clientAuditScores[qKey] = score;
   localStorage.setItem(`5s_audit_scores_${selectedClientId}`, JSON.stringify(clientAuditScores));
@@ -379,7 +455,6 @@ window.selectScore = function(sensoName, qNum, qKey, score) {
   logActivity(`Alterou a nota do item ${sensoName.toUpperCase()} #${qNum} para nota ${score}`);
 };
 
-// Calcular Resultados e Nível de Maturidade
 function calculateAuditResults() {
   const totals = { seiri: 0, seiton: 0, seiso: 0, seiketsu: 0, shitsuke: 0 };
   const maxPerSenso = 40;
@@ -429,7 +504,6 @@ function calculateAuditResults() {
   }
 }
 
-// Resetar Auditoria
 window.resetAudit = function() {
   if (confirm(`Deseja redefinir a auditoria de "${companyDatabase[selectedClientId]?.name}"?`)) {
     clientAuditScores = {};
