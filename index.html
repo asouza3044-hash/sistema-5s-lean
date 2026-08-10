@@ -35,7 +35,7 @@
       </div>
 
       <!-- FORMULÁRIO 1: LOGIN DIRETO E ULTRA-CLEAN (APENAS 2 CAMPOS) -->
-      <form id="login-form">
+      <form id="login-form" onsubmit="handleLogin(event)">
         <div class="form-group" style="text-align: left;">
           <label>Usuário de Acesso</label>
           <input type="text" id="login-username" class="form-control" placeholder="Ex: alexandre.usinagem ou admin" required autocomplete="username">
@@ -50,7 +50,7 @@
           ⚠️ Usuário ou senha incorretos. Tente novamente!
         </div>
 
-        <button type="submit" class="btn btn-primary" style="width: 100%; padding: 0.85rem; font-size: 1rem;">
+        <button type="button" class="btn btn-primary" onclick="handleLogin(event)" style="width: 100%; padding: 0.85rem; font-size: 1rem;">
           🔑 Entrar no Portal 5S
         </button>
       </form>
