@@ -4,7 +4,7 @@
    ========================================================================== */
 
 // BANCO DE DADOS CENTRALIZADO EM NUVEM MASTER (RESTRITO IMPAK TTO - 100% REALTIME)
-const CLOUD_MASTER_API = 'https://api.restful-api.dev/objects/ff8081819f7e10ae019fed7272c0202b';
+const CLOUD_MASTER_API = 'https://jsonblob.com/api/jsonBlob/019fed7c-893e-7ee2-b856-c689f02eb1cf';
 
 // CANAL DE TRANSMISSÃO EM TEMPO REAL CROSS-TAB
 const syncChannel = (typeof BroadcastChannel !== 'undefined') ? new BroadcastChannel('5s_impaktto_sync_channel') : null;
@@ -143,16 +143,18 @@ async function pushDataToServer() {
   let cloudState = { users: {}, activity_logs: [], factory_board: {}, audit_scores: {} };
 
   try {
-    const res = await fetch(CLOUD_MASTER_API + '?t=' + Date.now());
+    const res = await fetch(CLOUD_MASTER_API, {
+      headers: { 'Accept': 'application/json' }
+    });
     if (res.ok) {
       const remote = await res.json();
-      if (remote && remote.data) {
-        cloudState = remote.data;
+      if (remote) {
+        cloudState = remote;
       }
     }
   } catch(e) {}
 
-  // Mesclar Usuários
+  // Mesclar Usuários: Todos os locais + todos os remotos
   userDatabase = { ...cloudState.users, ...userDatabase };
   localStorage.setItem('5s_impaktto_users', JSON.stringify(userDatabase));
 
@@ -167,21 +169,21 @@ async function pushDataToServer() {
   clientFactoryBoard = { ...cloudState.factory_board, ...clientFactoryBoard };
   localStorage.setItem('5s_factory_board_impaktto', JSON.stringify(clientFactoryBoard));
 
-  // Salvar Estado Mestre Atualizado na Nuvem
+  // Salvar Estado Mestre Atualizado na Nuvem via PUT
   const payload = {
-    name: '5s_impaktto_master_db_prod',
-    data: {
-      users: userDatabase,
-      activity_logs: clientActivityLogs,
-      factory_board: clientFactoryBoard,
-      audit_scores: clientAuditScores
-    }
+    users: userDatabase,
+    activity_logs: clientActivityLogs,
+    factory_board: clientFactoryBoard,
+    audit_scores: clientAuditScores
   };
 
   try {
     await fetch(CLOUD_MASTER_API, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
       body: JSON.stringify(payload)
     });
   } catch (e) {
@@ -199,12 +201,12 @@ async function pushDataToServer() {
 
 async function pullDataFromServer() {
   try {
-    const res = await fetch(CLOUD_MASTER_API + '?t=' + Date.now());
+    const res = await fetch(CLOUD_MASTER_API, {
+      headers: { 'Accept': 'application/json' }
+    });
     if (res.ok) {
-      const remoteData = await res.json();
-      if (remoteData && remoteData.data) {
-        const d = remoteData.data;
-
+      const d = await res.json();
+      if (d) {
         // 1. Sincronizar Usuários (Cadastros feitos em qualquer celular)
         if (d.users && typeof d.users === 'object') {
           const cloudCount = Object.keys(d.users).length;
