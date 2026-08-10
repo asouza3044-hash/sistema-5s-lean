@@ -10,10 +10,10 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
   <!-- Chart.js para o Gráfico Radar dos 5 Sensos -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <!-- Local Styles com Cache Busting v12.0 -->
-  <link rel="stylesheet" href="styles.css?v=12.0">
+  <!-- Local Styles com Cache Busting v13.0 -->
+  <link rel="stylesheet" href="styles.css?v=13.0">
   <!-- JavaScript Principal Carregado no Head -->
-  <script src="app.js?v=12.0"></script>
+  <script src="app.js?v=13.0"></script>
 </head>
 <body>
 
@@ -95,7 +95,7 @@
         </div>
 
         <div class="form-group" style="text-align: left;">
-          <label>Crie uma Senha</label>
+          <label>Crie uma Senha Pessoal Única</label>
           <input type="password" id="reg-password" class="form-control" placeholder="••••••••">
         </div>
 
@@ -104,6 +104,40 @@
         </button>
       </form>
 
+    </div>
+  </div>
+
+  <!-- MODAL DE TROCA DE SENHA PESSOAL -->
+  <div id="modal-change-password" class="login-overlay" style="display: none; z-index: 10000;">
+    <div class="login-card" style="max-width: 420px;">
+      <div class="login-header">
+        <h2>🔑 Alterar Senha Pessoal</h2>
+        <p>Crie sua senha individual para proteger seus apontamentos</p>
+      </div>
+
+      <form id="form-change-password" onsubmit="handleChangePassword(event)">
+        <div class="form-group" style="text-align: left;">
+          <label>Senha Atual</label>
+          <input type="password" id="change-pass-current" class="form-control" placeholder="Digite sua senha atual (ex: 5s2026)" required>
+        </div>
+
+        <div class="form-group" style="text-align: left;">
+          <label>Nova Senha Pessoal</label>
+          <input type="password" id="change-pass-new" class="form-control" placeholder="Digite sua nova senha" required minlength="4">
+        </div>
+
+        <div class="form-group" style="text-align: left;">
+          <label>Confirmar Nova Senha</label>
+          <input type="password" id="change-pass-confirm" class="form-control" placeholder="Repita a nova senha" required minlength="4">
+        </div>
+
+        <div id="change-pass-error" style="color: var(--status-ruim); font-size: 0.82rem; margin-bottom: 1rem; display: none;"></div>
+
+        <div style="display: flex; gap: 0.5rem;">
+          <button type="button" class="btn btn-secondary" onclick="closeChangePasswordModal()" style="flex: 1;">Cancelar</button>
+          <button type="submit" class="btn btn-primary" style="flex: 1;">💾 Salvar Nova Senha</button>
+        </div>
+      </form>
     </div>
   </div>
 
@@ -118,10 +152,13 @@
       </div>
     </div>
 
-    <!-- PAINEL DE SESSÃO DO USUÁRIO DA IMPAKTTO -->
-    <div class="user-session-bar">
+    <!-- PAINEL DE SESSÃO DO USUÁRIO DA IMPAKTTO + BOTÃO DE TROCA DE SENHA -->
+    <div class="user-session-bar" style="gap: 0.5rem; flex-wrap: wrap;">
       <span id="logged-user-name" class="client-badge">👤 Logado</span>
-      <button class="btn btn-secondary" onclick="handleLogout()" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;">
+      <button class="btn btn-secondary" onclick="openChangePasswordModal()" style="padding: 0.4rem 0.8rem; font-size: 0.78rem; background: rgba(99, 102, 241, 0.2); border-color: var(--primary);">
+        🔑 Trocar Senha
+      </button>
+      <button class="btn btn-secondary" onclick="handleLogout()" style="padding: 0.4rem 0.8rem; font-size: 0.78rem;">
         🚪 Sair
       </button>
     </div>
@@ -144,6 +181,21 @@
 
   <!-- MAIN CONTAINER -->
   <main class="main-container">
+
+    <!-- BANNER DE ALERTA DE SEGURANÇA PARA TROCA DE SENHA PADRÃO -->
+    <div id="security-password-alert" style="display: none; background: linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(239, 68, 68, 0.15)); border: 1px solid var(--status-regular); padding: 0.85rem 1.25rem; border-radius: var(--radius-md); margin-bottom: 1.25rem; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
+      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+        <div>
+          <strong style="color: #fde047; font-size: 0.9rem;">⚠️ ALERTA DE SEGURANÇA DE ACESSO:</strong>
+          <div style="font-size: 0.85rem; color: #f8fafc; margin-top: 0.15rem;">
+            Você ainda está utilizando a <strong>senha padrão "5s2026"</strong>! Altere agora sua senha pessoal para garantir que outros não façam lançamentos em seu nome.
+          </div>
+        </div>
+        <button class="btn btn-primary" onclick="openChangePasswordModal()" style="padding: 0.45rem 0.9rem; font-size: 0.82rem; font-weight: 700;">
+          🔑 Cadastrar Minha Senha Pessoal
+        </button>
+      </div>
+    </div>
 
     <!-- ===================================================================
          ABA 1: DASHBOARD & AUDITORIA 5S DE CAMPO DA IMPAK TTO

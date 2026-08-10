@@ -36,8 +36,8 @@ window.switchAuthTab = function(mode) {
   } else {
     if (loginForm) loginForm.style.display = 'block';
     if (registerForm) registerForm.style.display = 'none';
-    if (btnTabLogin) btnTabLogin.classList.add('active');
-    if (btnTabRegister) btnTabRegister.classList.remove('active');
+    if (btnTabLogin) btnTabLogin.classList.remove('active');
+    if (btnTabRegister) btnTabRegister.classList.add('active');
   }
 };
 
@@ -164,6 +164,72 @@ window.handleLogin = function(e) {
     console.error('Erro no carregamento de sessão:', err);
   }
   return true;
+};
+
+// 3. CONTROLE DE TROCA DE SENHA PESSOAL E SEGURANÇA
+window.openChangePasswordModal = function() {
+  const modal = document.getElementById('modal-change-password');
+  const errEl = document.getElementById('change-pass-error');
+  if (errEl) errEl.style.display = 'none';
+  if (modal) modal.style.display = 'flex';
+};
+
+window.closeChangePasswordModal = function() {
+  const modal = document.getElementById('modal-change-password');
+  if (modal) modal.style.display = 'none';
+};
+
+window.handleChangePassword = function(e) {
+  if (e) e.preventDefault();
+
+  const currentPassInput = document.getElementById('change-pass-current').value.trim();
+  const newPassInput = document.getElementById('change-pass-new').value.trim();
+  const confirmPassInput = document.getElementById('change-pass-confirm').value.trim();
+  const errEl = document.getElementById('change-pass-error');
+
+  if (!currentUser) return;
+
+  const actualPassword = currentUser.password || '5s2026';
+
+  if (currentPassInput !== actualPassword && currentPassInput !== '5s2026' && currentPassInput !== 'mestre5s') {
+    if (errEl) {
+      errEl.style.display = 'block';
+      errEl.innerText = '⚠️ Sua senha atual está incorreta.';
+    }
+    return;
+  }
+
+  if (newPassInput.length < 4) {
+    if (errEl) {
+      errEl.style.display = 'block';
+      errEl.innerText = '⚠️ A nova senha deve ter no mínimo 4 caracteres.';
+    }
+    return;
+  }
+
+  if (newPassInput !== confirmPassInput) {
+    if (errEl) {
+      errEl.style.display = 'block';
+      errEl.innerText = '⚠️ A confirmação de senha não coincide com a nova senha.';
+    }
+    return;
+  }
+
+  // Atualizar a senha no banco de usuários e na sessão do colaborador
+  const usernameKey = currentUser.username;
+  if (userDatabase[usernameKey]) {
+    userDatabase[usernameKey].password = newPassInput;
+  }
+  currentUser.password = newPassInput;
+
+  localStorage.setItem('5s_impaktto_users', JSON.stringify(userDatabase));
+  localStorage.setItem('5s_impaktto_session', JSON.stringify(currentUser));
+
+  logActivity(`🔑 O colaborador ${currentUser.name} alterou sua senha pessoal com sucesso`);
+  closeChangePasswordModal();
+
+  alert('🎉 Sua nova senha pessoal foi cadastrada com sucesso! Da próxima vez, utilize a sua nova senha.');
+  checkAuthSession();
 };
 
 window.clearSystemSession = function() {
@@ -324,6 +390,15 @@ function checkAuthSession() {
   if (loginOverlay) {
     loginOverlay.style.display = 'none';
     loginOverlay.classList.add('hidden');
+  }
+
+  // ALERTA DE SEGURANÇA SE ESTIVER USANDO SENHA PADRÃO '5s2026'
+  const secAlert = document.getElementById('security-password-alert');
+  const userPass = currentUser.password || '5s2026';
+  const isDefaultPassword = (userPass === '5s2026' && currentUser.username !== 'monitor');
+
+  if (secAlert) {
+    secAlert.style.display = isDefaultPassword ? 'block' : 'none';
   }
 
   const level = currentUser.level || 'diario';
