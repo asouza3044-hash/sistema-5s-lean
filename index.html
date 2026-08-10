@@ -10,10 +10,10 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
   <!-- Chart.js para o Gráfico Radar dos 5 Sensos -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <!-- Local Styles com Cache Busting v11.0 -->
-  <link rel="stylesheet" href="styles.css?v=11.0">
+  <!-- Local Styles com Cache Busting v12.0 -->
+  <link rel="stylesheet" href="styles.css?v=12.0">
   <!-- JavaScript Principal Carregado no Head -->
-  <script src="app.js?v=11.0"></script>
+  <script src="app.js?v=12.0"></script>
 </head>
 <body>
 
@@ -46,7 +46,7 @@
       <form id="login-form" onsubmit="handleLogin(event)">
         <div class="form-group" style="text-align: left;">
           <label>Usuário de Acesso</label>
-          <input type="text" id="login-username" class="form-control" placeholder="Ex: alexandre.usinagem, monitor ou admin" autocomplete="username" required>
+          <input type="text" id="login-username" class="form-control" placeholder="Ex: alexandre.usinagem, clayton, diego ou admin" autocomplete="username" required>
         </div>
 
         <div class="form-group" style="text-align: left;">
@@ -69,11 +69,11 @@
         </div>
       </form>
 
-      <!-- FORMULÁRIO 2: AUTO-CADASTRO RÁPIDO (GRUPO 1) -->
+      <!-- FORMULÁRIO 2: AUTO-CADASTRO RÁPIDO (ENTRA COMO GRUPO 1 POR PADRÃO) -->
       <form id="register-form" style="display: none;">
         <div class="form-group" style="text-align: left;">
-          <label>Seu Nome</label>
-          <input type="text" id="reg-name" class="form-control" placeholder="Ex: Alexandre, Diego, Kaio...">
+          <label>Seu Nome Completo</label>
+          <input type="text" id="reg-name" class="form-control" placeholder="Ex: João Silva...">
         </div>
 
         <div class="form-group" style="text-align: left;">
@@ -90,8 +90,8 @@
         </div>
 
         <div class="form-group" style="text-align: left;">
-          <label>Crie um Usuário</label>
-          <input type="text" id="reg-username" class="form-control" placeholder="Ex: alexandre.usinagem">
+          <label>Crie um Usuário de Acesso</label>
+          <input type="text" id="reg-username" class="form-control" placeholder="Ex: joao.usinagem">
         </div>
 
         <div class="form-group" style="text-align: left;">
@@ -136,7 +136,7 @@
       </button>
       <!-- MANUAL ESTRITAMENTE RESTRITO AO ADM / GERÊNCIA & DIRETORIA (GRUPO 3) -->
       <button class="nav-btn" data-tab="tab-manual" style="display: none;">
-        📖 Manual de Implantação (Restrito ADM)
+        📖 Manual de Implantação & Gestão (Restrito ADM)
       </button>
     </nav>
   </header>
@@ -150,7 +150,7 @@
          =================================================================== -->
     <section id="tab-dashboard" class="tab-content active">
       
-      <!-- CARD 1: PAINEL DE MATURIDADE GLOBAL DA EMPRESA (RADAR 5S & PROGRAMA DE PREMIAÇÃO MENSAL EM DINHEIRO) -->
+      <!-- CARD 1: PAINEL DE MATURIDADE GLOBAL DA EMPRESA (RADAR 5S - RESTAURADO NA TV E GRUPO 2/3) -->
       <div id="card-maturity-dashboard" class="card">
         <div class="card-header">
           <h2 class="card-title">🏆 Nível de Maturidade 5S - IMPAK TTO</h2>
@@ -209,7 +209,7 @@
           </div>
         </div>
 
-        <!-- CONTAINER DO PROGRAMA DE PREMIAÇÃO MENSAL EM DINHEIRO (META >= 90%) -->
+        <!-- CONTAINER DO PROGRAMA DE PREMIAÇÃO MENSAL EM DINHEIRO (CONFIDENCIAL GRUPO 2 E 3) -->
         <div id="monthly-reward-badge"></div>
 
       </div>
@@ -241,7 +241,7 @@
         </div>
       </div>
 
-      <!-- CARD 4: CHECKLIST OFICIAL DE AUDITORIA MENSAL 5S (GRUPO 2 E GRUPO 3 - AVALIAÇÃO DA PREMIAÇÃO) -->
+      <!-- CARD 4: CHECKLIST OFICIAL DE AUDITORIA MENSAL 5S (GRUPO 2 E GRUPO 3) -->
       <div id="card-audit-checklist" class="card">
         <div class="card-header">
           <h2 class="card-title">📋 Checklist Oficial da Auditoria Mensal 5S (Validação do Prêmio ≥90%)</h2>
@@ -259,10 +259,22 @@
 
 
     <!-- ===================================================================
-         ABA 2: CENTRAL DE FERRAMENTAS DA QUALIDADE (EXCLUSIVO GRUPO 3 - ADM)
+         ABA 2: CENTRAL DE FERRAMENTAS DA QUALIDADE E GESTÃO DE USUÁRIOS
          =================================================================== -->
     <section id="tab-tools" class="tab-content">
       
+      <!-- SUB-SEÇÃO ESPECIAL: PAINEL DE GESTÃO DE COLABORADORES E NÍVEIS DE GOVERNANÇA (EXCLUSIVO GRUPO 3 / ADM) -->
+      <div id="card-user-management" class="card" style="border-color: var(--accent-cyan); background: rgba(6, 182, 212, 0.04);">
+        <div class="card-header">
+          <h2 class="card-title" style="color: var(--accent-cyan);">👥 Gestão de Colaboradores & Níveis de Governança (1, 2 e 3)</h2>
+          <span style="font-size:0.78rem; font-weight:700; color:var(--text-muted);">Controle Exclusivo da Gerência & Diretoria</span>
+        </div>
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.25rem;">
+          À medida que novos colaboradores se registrarem, você pode <strong>promover ou definir a permissão de acesso com 1 clique</strong> (Nível 1 - Líder Diário, Nível 2 - Auditor Volante/Encarregado ou Nível 3 - Diretoria/Gerência):
+        </p>
+        <div id="user-management-table-container" style="overflow-x: auto;"></div>
+      </div>
+
       <!-- SUB-SEÇÃO: MATRIZ GUT -->
       <div class="card">
         <div class="card-header">
@@ -470,7 +482,7 @@
           <h4 style="color: var(--accent-cyan); margin-bottom: 0.5rem;">Diretrizes da Governança & Premiação em Dinheiro Mensal (Meta ≥90%):</h4>
           <ul style="list-style: square inside; margin-left: 1rem;">
             <li><strong>Nível 1 (Grupo 1 - Líderes Diários):</strong> Avaliação rápida diária no rodízio de auditoria cruzada. Ao virar a semana, limpa o quadro para o novo ciclo.</li>
-            <li><strong>Nível 2 e 3 (Auditores Mensais):</strong> Auditoria Oficial realizada 1 vez ao mês pelos Grupos 2 e 3 via Checklist de 50 Perguntas.</li>
+            <li><strong>Nível 2 e 3 (Auditores Mensais):</strong> Auditoria Oficial realizada 1 vez ao mês pelos Grupos 2 e 3 via Checklist de 50 Perguntas. Clayton atua como Auditor Volante (Grupo 2).</li>
             <li><strong>Prêmio em Dinheiro (Meta ≥ 90%):</strong> O setor/empresa que atingir 90% de conformidade na auditoria mensal conquista o Prêmio em Dinheiro 5S Impaktto!</li>
             <li><strong>Perfil Especial TV / Monitor:</strong> <code>monitor</code> / <code>5s2026</code> (Painel de Gestão Visual 16:9 sem Rolagem).</li>
           </ul>

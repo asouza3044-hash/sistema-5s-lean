@@ -36,8 +36,8 @@ window.switchAuthTab = function(mode) {
   } else {
     if (loginForm) loginForm.style.display = 'block';
     if (registerForm) registerForm.style.display = 'none';
-    if (btnTabLogin) btnTabLogin.classList.remove('active');
-    if (btnTabRegister) btnTabRegister.classList.add('active');
+    if (btnTabLogin) btnTabLogin.classList.add('active');
+    if (btnTabRegister) btnTabRegister.classList.remove('active');
   }
 };
 
@@ -283,7 +283,8 @@ function handleSelfRegister(e) {
     name,
     role: 'lider_diario',
     level: 'diario',
-    sector: userSector
+    sector: userSector,
+    title: `Grupo 1: Líder de ${userSector}`
   };
 
   userDatabase[username] = newUser;
@@ -337,6 +338,7 @@ function checkAuthSession() {
   const cardMaturity = document.getElementById('card-maturity-dashboard');
   const cardActivityFeed = document.getElementById('card-activity-feed');
   const cardAuditChecklist = document.getElementById('card-audit-checklist');
+  const cardUserManagement = document.getElementById('card-user-management');
 
   const navTabsContainer = document.querySelector('.nav-tabs');
   const navBtnTools = document.querySelector('.nav-btn[data-tab="tab-tools"]');
@@ -348,8 +350,9 @@ function checkAuthSession() {
 
     if (cardMaturity) cardMaturity.style.display = 'block'; // RADAR RESTAURADO NA TV
     if (cardFactoryBoard) cardFactoryBoard.style.display = 'block';
-    if (cardActivityFeed) cardActivityFeed.style.display = 'none'; // REMOVIDO PARA ANONIMATO
+    if (cardActivityFeed) cardActivityFeed.style.display = 'none';
     if (cardAuditChecklist) cardAuditChecklist.style.display = 'none';
+    if (cardUserManagement) cardUserManagement.style.display = 'none';
 
     if (navTabsContainer) navTabsContainer.style.display = 'none';
     if (navBtnTools) navBtnTools.style.display = 'none';
@@ -376,6 +379,7 @@ function checkAuthSession() {
       if (cardMaturity) cardMaturity.style.display = 'none';
       if (cardActivityFeed) cardActivityFeed.style.display = 'none';
       if (cardAuditChecklist) cardAuditChecklist.style.display = 'none';
+      if (cardUserManagement) cardUserManagement.style.display = 'none';
 
       if (navTabsContainer) navTabsContainer.style.display = 'none';
       if (navBtnTools) navBtnTools.style.display = 'none';
@@ -389,6 +393,7 @@ function checkAuthSession() {
       if (cardMaturity) cardMaturity.style.display = 'block';
       if (cardActivityFeed) cardActivityFeed.style.display = 'block';
       if (cardAuditChecklist) cardAuditChecklist.style.display = 'block';
+      if (cardUserManagement) cardUserManagement.style.display = 'none';
 
       if (navTabsContainer) navTabsContainer.style.display = 'flex';
       if (navBtnTools) navBtnTools.style.display = 'none';
@@ -400,10 +405,12 @@ function checkAuthSession() {
       document.getElementById('tab-dashboard')?.classList.add('active');
 
     } else {
+      // GRUPO 3 (ADM): ACESSO TOTAL INCLUINDO GESTÃO DE USUÁRIOS E NÍVEIS
       if (cardFactoryBoard) cardFactoryBoard.style.display = 'block';
       if (cardMaturity) cardMaturity.style.display = 'block';
       if (cardActivityFeed) cardActivityFeed.style.display = 'block';
       if (cardAuditChecklist) cardAuditChecklist.style.display = 'block';
+      if (cardUserManagement) cardUserManagement.style.display = 'block';
 
       if (navTabsContainer) navTabsContainer.style.display = 'flex';
       if (navBtnTools) navBtnTools.style.display = 'flex';
@@ -476,7 +483,111 @@ function loadImpakttoData() {
   renderKanban();
   renderIshikawa();
   renderActivityLogs();
+  renderUserManagementTable();
 }
+
+// 7. RENDERIZAÇÃO DO PAINEL DE GESTÃO DE COLABORADORES E NÍVEIS (1, 2, 3)
+function renderUserManagementTable() {
+  const container = document.getElementById('user-management-table-container');
+  if (!container) return;
+
+  const usersList = Object.values(userDatabase).filter(u => u.username !== 'monitor');
+
+  let html = `
+    <table style="width:100%; border-collapse:collapse; font-size:0.85rem;">
+      <thead>
+        <tr style="background:rgba(255,255,255,0.05); border-bottom:1px solid var(--border-color); text-align:left;">
+          <th style="padding:0.6rem;">Nome do Colaborador</th>
+          <th style="padding:0.6rem;">Usuário</th>
+          <th style="padding:0.6rem;">Setor Origem</th>
+          <th style="padding:0.6rem;">Nível de Governança (1, 2 ou 3)</th>
+          <th style="padding:0.6rem; text-align:center;">Ação</th>
+        </tr>
+      </thead>
+      <tbody>
+  `;
+
+  usersList.forEach(u => {
+    const isSelfAdmin = (u.username === 'admin');
+
+    html += `
+      <tr style="border-bottom:1px solid rgba(255,255,255,0.04);">
+        <td style="padding:0.6rem; font-weight:700; color:var(--text-main);">
+          👤 ${u.name} ${isSelfAdmin ? '<span style="color:var(--accent-cyan); font-size:0.7rem;">(ADM Mestre)</span>' : ''}
+        </td>
+        <td style="padding:0.6rem; color:var(--text-muted);"><code>${u.username}</code></td>
+        <td style="padding:0.6rem;">
+          <select class="form-control" style="font-size:0.78rem; padding:0.25rem 0.5rem; width:auto;" onchange="updateUserSector('${u.username}', this.value)" ${isSelfAdmin ? 'disabled' : ''}>
+            ${IMPAKTTO_SECTORS.map(s => `<option value="${s}" ${u.sector === s ? 'selected' : ''}>📍 ${s}</option>`).join('')}
+          </select>
+        </td>
+        <td style="padding:0.6rem;">
+          <select class="form-control" style="font-size:0.78rem; padding:0.25rem 0.5rem; width:auto;" onchange="updateUserLevel('${u.username}', this.value)" ${isSelfAdmin ? 'disabled' : ''}>
+            <option value="diario" ${u.level === 'diario' ? 'selected' : ''}>🟢 Nível 1: Grupo 1 (Líder Diário)</option>
+            <option value="semanal" ${u.level === 'semanal' ? 'selected' : ''}>🟡 Nível 2: Grupo 2 (Auditor Volante / Encarregado)</option>
+            <option value="senior" ${u.level === 'senior' ? 'selected' : ''}>👑 Nível 3: Grupo 3 (Gerência & Diretoria)</option>
+          </select>
+        </td>
+        <td style="padding:0.6rem; text-align:center;">
+          ${!isSelfAdmin ? `<button class="btn btn-danger" style="padding:0.2rem 0.5rem; font-size:0.72rem;" onclick="deleteUserAccount('${u.username}')">Excluir</button>` : '<span style="color:var(--text-muted); font-size:0.7rem;">Protegido</span>'}
+        </td>
+      </tr>
+    `;
+  });
+
+  html += `</tbody></table>`;
+  container.innerHTML = html;
+}
+
+window.updateUserLevel = function(username, newLevel) {
+  if (!userDatabase[username]) return;
+
+  const roleMap = { diario: 'lider_diario', semanal: 'auditor_semanal', senior: 'administrador' };
+  const titleMap = {
+    diario: `Grupo 1: Líder de ${userDatabase[username].sector || 'Setor'}`,
+    semanal: `Grupo 2: Auditor Volante / Encarregado`,
+    senior: `Grupo 3: Gerência & Diretoria`
+  };
+
+  userDatabase[username].level = newLevel;
+  userDatabase[username].role = roleMap[newLevel] || 'lider_diario';
+  userDatabase[username].title = titleMap[newLevel] || 'Grupo 1: Líder Diário';
+
+  localStorage.setItem('5s_impaktto_users', JSON.stringify(userDatabase));
+
+  const levelText = { diario: 'Grupo 1 (Líder Diário)', semanal: 'Grupo 2 (Auditor Volante/Encarregado)', senior: 'Grupo 3 (Gerência & Diretoria)' };
+  logActivity(`👤 Alterou permissão do colaborador "${userDatabase[username].name}" para ${levelText[newLevel]}`);
+
+  renderUserManagementTable();
+  alert(`Permissão de "${userDatabase[username].name}" atualizada com sucesso para ${levelText[newLevel]}!`);
+};
+
+window.updateUserSector = function(username, newSector) {
+  if (!userDatabase[username]) return;
+
+  userDatabase[username].sector = newSector;
+  if (userDatabase[username].level === 'diario') {
+    userDatabase[username].title = `Grupo 1: Líder de ${newSector}`;
+  }
+
+  localStorage.setItem('5s_impaktto_users', JSON.stringify(userDatabase));
+  logActivity(`📍 Alterou setor do colaborador "${userDatabase[username].name}" para ${newSector}`);
+
+  renderUserManagementTable();
+};
+
+window.deleteUserAccount = function(username) {
+  if (!userDatabase[username]) return;
+
+  if (confirm(`Deseja realmente excluir o acesso do colaborador "${userDatabase[username].name}"?`)) {
+    const deletedName = userDatabase[username].name;
+    delete userDatabase[username];
+    localStorage.setItem('5s_impaktto_users', JSON.stringify(userDatabase));
+
+    logActivity(`Excluiu o usuário de "${deletedName}"`);
+    renderUserManagementTable();
+  }
+};
 
 function logActivity(actionText) {
   const timestamp = new Date().toLocaleString('pt-BR');
@@ -998,7 +1109,6 @@ function calculateAuditResults() {
         `;
       }
     } else {
-      // 100% OCULTO NO MODO TV E GRUPO 1 PARA PRESERVAR CONFIDENCIALIDADE
       rewardBadgeEl.style.display = 'none';
       rewardBadgeEl.innerHTML = '';
     }
