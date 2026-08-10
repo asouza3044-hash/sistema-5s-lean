@@ -1,5 +1,5 @@
 /* ==========================================================================
-   PORTAL DE CONSULTORIA 5S & QUALIDADE (PERSONALIZAÇÃO DE CLIENTES & LOGOS)
+   PORTAL DE CONSULTORIA 5S & QUALIDADE (EXCLUSIVIDADE CORPORATIVA)
    ========================================================================== */
 
 // Base de Dados Oficial de Perguntas dos 5 Sensos (50 Itens Oficiais)
@@ -66,7 +66,7 @@ const AUDIT_QUESTIONS = {
   ]
 };
 
-// Base de Empresas Inicial com Logotipos e Subtítulos
+// Base de Empresas Inicial (Exclusividade Total - Sem a palavra "Cliente")
 const DEFAULT_COMPANIES = {
   impaktto: {
     id: 'impaktto',
@@ -82,7 +82,7 @@ const DEFAULT_COMPANIES = {
   },
   logistica: {
     id: 'logistica',
-    name: 'Empresa de Logística ABC',
+    name: 'Logística & Operações Especiais',
     subtitle: 'Programa 5S & Excelência Operacional no Armazém',
     logo: ''
   }
@@ -91,8 +91,8 @@ const DEFAULT_COMPANIES = {
 // Base de Usuários Inicial
 const DEFAULT_USERS = {
   admin: { username: 'admin', password: 'mestre5s', name: 'Consultor Mestre (Xandinho)', role: 'administrador', companyId: 'impaktto' },
-  impaktto: { username: 'impaktto', password: '5s2026', name: 'Equipe Impaktto', role: 'cliente', companyId: 'impaktto' },
-  senai: { username: 'senai', password: '5s2026', name: 'Equipe SENAI', role: 'cliente', companyId: 'impaktto' }
+  impaktto: { username: 'impaktto', password: '5s2026', name: 'Equipe Impaktto', role: 'auditor', companyId: 'impaktto' },
+  senai: { username: 'senai', password: '5s2026', name: 'Equipe SENAI', role: 'auditor', companyId: 'impaktto' }
 };
 
 // Estado Global
@@ -101,7 +101,7 @@ let companyDatabase = JSON.parse(localStorage.getItem('5s_company_database')) ||
 let currentUser = JSON.parse(localStorage.getItem('5s_current_session')) || null;
 let selectedClientId = JSON.parse(localStorage.getItem('5s_active_client_id')) || 'impaktto';
 
-// Dados do Cliente Ativo
+// Dados da Empresa Ativa
 let clientAuditScores = {};
 let clientGutMatrix = [];
 let clientKanbanTasks = [];
@@ -139,7 +139,6 @@ function checkURLParams() {
     selectedClientId = companyParam;
     const targetCompany = companyDatabase[companyParam];
 
-    // Travar a empresa vinda do link sem opção de troca no cadastro
     if (regCompanySelect) regCompanySelect.style.display = 'none';
     if (regCompanyLockedName) {
       regCompanyLockedName.style.display = 'block';
@@ -206,7 +205,6 @@ function handleSelfRegister(e) {
   e.preventDefault();
   const name = document.getElementById('reg-name').value.trim();
   
-  // Obter a empresa travada do link ou a selecionada no dropdown
   const lockedId = document.getElementById('reg-company-locked-id').value;
   let companyId = lockedId || document.getElementById('reg-company-id').value;
   
@@ -231,7 +229,7 @@ function handleSelfRegister(e) {
     return;
   }
 
-  const newUser = { username, password, name, role: 'cliente', companyId };
+  const newUser = { username, password, name, role: 'auditor', companyId };
   userDatabase[username] = newUser;
   localStorage.setItem('5s_user_database', JSON.stringify(userDatabase));
 
@@ -239,7 +237,7 @@ function handleSelfRegister(e) {
   localStorage.setItem('5s_current_session', JSON.stringify(currentUser));
   checkAuthSession();
 
-  logActivity(`Novo participante entrou na auditoria de campo (${name})`);
+  logActivity(`Novo integrante registrado na inspeção (${name})`);
 }
 
 function handleAdminCreateCompany(e) {
@@ -266,7 +264,7 @@ function handleAdminCreateCompany(e) {
   document.getElementById('generated-link-display').style.display = 'block';
   document.getElementById('generated-link-input').value = generatedLink;
 
-  alert(`Empresa "${name}" cadastrada com sucesso! Link personalizado gerado!`);
+  alert(`Empresa "${name}" cadastrada com sucesso! Link exclusivo gerado!`);
 }
 
 window.copyGeneratedLink = function() {
@@ -274,7 +272,7 @@ window.copyGeneratedLink = function() {
   if (input) {
     input.select();
     navigator.clipboard.writeText(input.value);
-    alert('Link copiado com sucesso! Você já pode colar e enviar no WhatsApp ou E-mail!');
+    alert('Link exclusivo copiado com sucesso! Você já pode enviar para a equipe!');
   }
 };
 
@@ -318,8 +316,8 @@ function checkAuthSession() {
 
   localStorage.setItem('5s_active_client_id', JSON.stringify(selectedClientId));
   
-  const activeCompanyObj = companyDatabase[selectedClientId] || { name: 'Empresa Impaktto' };
-  document.getElementById('active-client-name').innerText = `🏢 Empresa: ${activeCompanyObj.name}`;
+  const activeCompanyObj = companyDatabase[selectedClientId] || { name: 'IMPAK TTO Plásticos de Engenharia' };
+  document.getElementById('active-client-name').innerText = `🏢 ${activeCompanyObj.name}`;
   document.getElementById('logged-user-name').innerText = `👤 ${currentUser.name} ${isAdmin ? '(Consultor Mestre)' : '(Inspetor de Fábrica)'}`;
 
   loadClientData(selectedClientId);
@@ -377,14 +375,14 @@ function handleCreateNewUser(e) {
   const companyId = username.split('.')[1] || username;
 
   if (!companyDatabase[companyId]) {
-    companyDatabase[companyId] = { id: companyId, name: companyName || name };
+    companyDatabase[companyId] = { id: companyId, name: companyName || name, subtitle: 'Projeto de Implantação 5S' };
     localStorage.setItem('5s_company_database', JSON.stringify(companyDatabase));
   }
 
-  userDatabase[username] = { username, password, name, role: 'cliente', companyId };
+  userDatabase[username] = { username, password, name, role: 'auditor', companyId };
   localStorage.setItem('5s_user_database', JSON.stringify(userDatabase));
 
-  alert(`Usuário registrado!\nNome: ${name}\nUsuário: ${username}`);
+  alert(`Integrante registrado!\nNome: ${name}\nUsuário: ${username}`);
   document.getElementById('new-company-name').value = '';
   document.getElementById('new-user-name').value = '';
   document.getElementById('new-user-name-user').value = '';

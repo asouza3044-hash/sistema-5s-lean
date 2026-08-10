@@ -48,7 +48,7 @@
           <select id="reg-company-id" class="form-control" onchange="handleRegCompanyChange(this.value)">
           </select>
 
-          <!-- EXIBIÇÃO BLOQUEADA (USADO QUANDO O LINK É DEDICADO À EMPRESA DO CLIENTE) -->
+          <!-- EXIBIÇÃO BLOQUEADA (USADO QUANDO O LINK É DEDICADO À EMPRESA) -->
           <input type="text" id="reg-company-locked-name" class="form-control" style="display: none; background: rgba(99, 102, 241, 0.15); font-weight: bold; border-color: var(--primary); color: #a5b4fc;" readonly>
           <input type="hidden" id="reg-company-locked-id">
         </div>
@@ -108,14 +108,14 @@
       <div class="brand-icon">5S</div>
       <div class="brand-text">
         <h1>Consultoria da Qualidade & 5S</h1>
-        <p id="active-client-name">🏢 Empresa: IMPAK TTO Plásticos de Engenharia</p>
+        <p id="active-client-name">🏢 IMPAK TTO Plásticos de Engenharia</p>
       </div>
     </div>
 
-    <!-- PAINEL DE SESSÃO DO USUÁRIO & SELETOR DE CLIENTE ADMIN -->
+    <!-- PAINEL DE SESSÃO DO USUÁRIO & SELETOR DE EMPRESA ADMIN -->
     <div class="user-session-bar">
       
-      <!-- SELETOR DE CLIENTES PARA O ADMIN/CONSULTOR -->
+      <!-- SELETOR DE EMPRESAS PARA O ADMIN/CONSULTOR -->
       <div id="admin-client-selector-container" style="display: none;">
         <select id="admin-client-select" class="form-control" onchange="changeActiveClientAdmin(this.value)" style="padding: 0.4rem 0.6rem; font-size: 0.8rem; background: rgba(99, 102, 241, 0.2); border-color: var(--primary);">
         </select>
@@ -263,12 +263,12 @@
           <h2 class="card-title">👑 Painel Exclusivo do Consultor Mestre (Xandinho)</h2>
         </div>
         <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.25rem;">
-          Cadastre novas empresas de clientes, defina títulos personalizados e **gere o link direto de boas-vindas** para enviar por WhatsApp ou E-mail aos participantes da inspeção.
+          Cadastre novas empresas, defina títulos personalizados e **gere o link direto de boas-vindas** para enviar por WhatsApp ou E-mail aos participantes da inspeção.
         </p>
 
-        <!-- FORMULÁRIO 1: CADASTRO DE EMPRESA E GERAÇÃO DE LINK -->
+        <!-- FORMULÁRIO 1: CADASTRO DE EMPRESA E GERAÇÃO DE LINK EXCLUSIVO -->
         <div style="background: rgba(0,0,0,0.25); padding: 1.25rem; border-radius: var(--radius-md); border: 1px solid var(--border-color); margin-bottom: 1.5rem;">
-          <h3 style="font-size: 1rem; color: var(--primary); margin-bottom: 1rem;">🏢 Cadastrar Empresa de Cliente & Gerar Link de Convite</h3>
+          <h3 style="font-size: 1rem; color: var(--primary); margin-bottom: 1rem;">🏢 Cadastrar Empresa & Gerar Link Exclusivo de Convite</h3>
           
           <form id="form-new-company" class="grid-2col">
             <div class="form-group">
@@ -285,14 +285,14 @@
             </div>
 
             <div style="grid-column: span 2;">
-              <button type="submit" class="btn btn-primary" style="width: 100%;">🚀 Cadastrar Empresa & Gerar Link de Boas-Vindas</button>
+              <button type="submit" class="btn btn-primary" style="width: 100%;">🚀 Cadastrar Empresa & Gerar Link Exclusivo</button>
             </div>
           </form>
 
           <!-- EXIBIÇÃO DO LINK GERADO -->
           <div id="generated-link-display" style="margin-top: 1rem; display: none; background: rgba(16, 185, 129, 0.1); border: 1px solid var(--status-bom); padding: 1rem; border-radius: var(--radius-sm);">
-            <strong style="color: var(--status-bom); font-size: 0.85rem;">✅ Link de Convite Gerado com Sucesso!</strong>
-            <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0.25rem 0 0.5rem 0;">Envie este link para a equipe do cliente e do SENAI para auto-cadastro rápido:</p>
+            <strong style="color: var(--status-bom); font-size: 0.85rem;">✅ Link Exclusivo Gerado com Sucesso!</strong>
+            <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0.25rem 0 0.5rem 0;">Envie este link para a equipe do projeto e do SENAI para auto-cadastro rápido:</p>
             <div style="display: flex; gap: 0.5rem;">
               <input type="text" id="generated-link-input" class="form-control" readonly style="background: rgba(0,0,0,0.4); font-weight: bold; color: #a5b4fc;">
               <button type="button" class="btn btn-primary" onclick="copyGeneratedLink()" style="white-space: nowrap;">📋 Copiar Link</button>
@@ -304,8 +304,8 @@
         <h3 style="font-size: 1rem; color: var(--accent-cyan); margin-bottom: 0.75rem;">👤 Cadastrar Usuário Manualmente</h3>
         <form id="form-new-user" class="grid-2col">
           <div class="form-group">
-            <label>Nome da Empresa do Cliente</label>
-            <input type="text" id="new-company-name" class="form-control" placeholder="Ex: Impaktto Indústria" required>
+            <label>Nome da Empresa</label>
+            <input type="text" id="new-company-name" class="form-control" placeholder="Ex: IMPAK TTO Plásticos de Engenharia" required>
           </div>
           <div class="form-group">
             <label>Nome Completo do Colaborador / Auditor</label>
