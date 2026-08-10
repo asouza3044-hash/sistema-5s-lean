@@ -336,16 +336,13 @@ function checkAuthSession() {
   const navBtnManual = document.querySelector('.nav-btn[data-tab="tab-manual"]');
 
   if (isMonitor) {
-    // ---------------------------------------------------------------------
-    // CONTA MONITOR (TV FÁBRICA & ESCRITÓRIO): LAYOUT 16:9 ELEGANTE (INDIVIDUAL + COLETIVO)
-    // ---------------------------------------------------------------------
     document.body.classList.add('monitor-mode');
     activeFactorySectorFilter = 'ALL';
 
     if (cardMaturity) cardMaturity.style.display = 'block';
     if (cardFactoryBoard) cardFactoryBoard.style.display = 'block';
-    if (cardActivityFeed) cardActivityFeed.style.display = 'none'; // REMOVIDO PARA ANONIMATO
-    if (cardAuditChecklist) cardAuditChecklist.style.display = 'none'; // Sem formulário de perguntas
+    if (cardActivityFeed) cardActivityFeed.style.display = 'none';
+    if (cardAuditChecklist) cardAuditChecklist.style.display = 'none';
 
     if (navTabsContainer) navTabsContainer.style.display = 'none';
     if (navBtnTools) navBtnTools.style.display = 'none';
@@ -606,7 +603,7 @@ window.selectScore3Level = function(sensoName, qNum, qKey, level) {
   logActivity(`Avaliou o item ${sensoName.toUpperCase()} #${qNum} como ${labelMap[level]}`);
 };
 
-// 5. RENDEREZAÇÃO DO QUADRO DE MATRIZ DE DEPARTAMENTOS INDIVIDUAIS + FECHAMENTO COLETIVO DA SEMANA
+// 5. RENDEREZAÇÃO COM LÓGICA DE PROTEÇÃO TEMPORAL (BLOQUEIO DE DIAS FUTUROS)
 function renderFactoryBoard() {
   const container = document.getElementById('factory-board-container');
   const titleEl = document.getElementById('factory-board-title');
@@ -621,10 +618,14 @@ function renderFactoryBoard() {
   const targetAuditSector = SECTOR_ROTATION_MAP[userSector] || 'Holter';
   let selectedSector = isDiario ? targetAuditSector : (activeFactorySectorFilter || 'ALL');
 
-  // Identificar Dia Atual da Semana (SEG, TER, QUA, QUI, SEX)
+  // Identificar Dia Atual da Semana (SEG, TER, QUA, QUI, SEX, SAB)
   const dayNames = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
-  const todayIdx = new Date().getDay();
-  const currentDayCode = dayNames[todayIdx] === 'DOM' ? 'SEG' : dayNames[todayIdx];
+  const daysOrder = ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
+  
+  const todayIdxRaw = new Date().getDay();
+  const currentDayCode = dayNames[todayIdxRaw] === 'DOM' ? 'SEG' : dayNames[todayIdxRaw];
+  const todayIndexInWeek = daysOrder.indexOf(currentDayCode);
+
   const todayFocus = DAILY_SENSO_FOCUS[currentDayCode] || DAILY_SENSO_FOCUS['SEG'];
 
   // Atualizar Título Dinâmico do Card
@@ -650,7 +651,7 @@ function renderFactoryBoard() {
             <span style="font-size:0.8rem; font-weight:800; color:var(--accent-cyan);">📺 GESTÃO VISUAL 16:9 • VISÃO DOS 7 SETORES & FECHAMENTO COLETIVO</span>
             <span style="font-size:0.75rem; color:var(--text-muted); margin-left:0.5rem;">Atualização automática a cada 30s</span>
           </div>
-          <span class="badge-seiso" style="padding:0.25rem 0.5rem; font-size:0.72rem; font-weight:700;">🟢 FECHAMENTO SEMANAL AO VIVO</span>
+          <span class="badge-seiso" style="padding:0.25rem 0.5rem; font-size:0.72rem; font-weight:700;">🟢 DIA ATUAL: ${currentDayCode}</span>
         </div>
       `;
     } else if (isDiario) {
@@ -707,7 +708,11 @@ function renderFactoryBoard() {
         <thead>
           <tr>
             <th style="text-align:left; width: 180px;">DEPARTAMENTO / SETOR</th>
-            ${sensos.map(s => `<th style="${s.dayCode === currentDayCode ? 'background:rgba(99,102,241,0.3); color:#fff;' : ''}">${s.name} ${s.dayCode === currentDayCode ? '⭐' : ''}</th>`).join('')}
+            ${sensos.map(s => {
+              const dayIdx = daysOrder.indexOf(s.dayCode);
+              const isFuture = (dayIdx > todayIndexInWeek);
+              return `<th style="${s.dayCode === currentDayCode ? 'background:rgba(99,102,241,0.3); color:#fff;' : (isFuture ? 'opacity:0.6;' : '')}">${s.name} ${s.dayCode === currentDayCode ? '⭐ (Hoje)' : (isFuture ? '⏳' : '')}</th>`;
+            }).join('')}
           </tr>
         </thead>
         <tbody>
@@ -721,17 +726,31 @@ function renderFactoryBoard() {
             📍 ${sec}
           </td>
           ${sensos.map(s => {
-            const boardKey = `${sec}_${s.key}_${s.dayCode}`;
-            const val = clientFactoryBoard[boardKey] || 'bom';
-            const iconMap = { bom: '🟢 Bom', regular: '🟡 Regular', ruim: '🔴 Ruim' };
+            const dayIdx = daysOrder.indexOf(s.dayCode);
+            const isFuture = (dayIdx > todayIndexInWeek);
 
-            return `
-              <td style="vertical-align:middle; padding:0.3rem 0.2rem;">
-                <span class="score-btn-factory selected" data-level="${val}" style="display:inline-block; padding:0.25rem 0.4rem; font-size:0.72rem; font-weight:700;">
-                  ${iconMap[val]}
-                </span>
-              </td>
-            `;
+            if (isFuture) {
+              // DIA FUTURO: EXIBIR BLOQUEADO/PENDENTE SEM PREENCHIMENTO FALSO
+              return `
+                <td style="vertical-align:middle; padding:0.3rem 0.2rem; opacity:0.4;">
+                  <span style="display:inline-block; padding:0.25rem 0.4rem; font-size:0.72rem; font-weight:500; color:var(--text-muted); border:1px dashed var(--border-color); border-radius:6px;">
+                    ⚪ Aguardando
+                  </span>
+                </td>
+              `;
+            } else {
+              const boardKey = `${sec}_${s.key}_${s.dayCode}`;
+              const val = clientFactoryBoard[boardKey] || 'bom';
+              const iconMap = { bom: '🟢 Bom', regular: '🟡 Regular', ruim: '🔴 Ruim' };
+
+              return `
+                <td style="vertical-align:middle; padding:0.3rem 0.2rem;">
+                  <span class="score-btn-factory selected" data-level="${val}" style="display:inline-block; padding:0.25rem 0.4rem; font-size:0.72rem; font-weight:700;">
+                    ${iconMap[val]}
+                  </span>
+                </td>
+              `;
+            }
           }).join('')}
         </tr>
       `;
@@ -744,6 +763,19 @@ function renderFactoryBoard() {
           🌐 FECHAMENTO COLETIVO IMPAK TTO
         </td>
         ${sensos.map(s => {
+          const dayIdx = daysOrder.indexOf(s.dayCode);
+          const isFuture = (dayIdx > todayIndexInWeek);
+
+          if (isFuture) {
+            return `
+              <td style="vertical-align:middle; padding:0.4rem 0.2rem; opacity:0.5;">
+                <span style="display:inline-block; padding:0.3rem 0.45rem; font-size:0.72rem; font-weight:600; color:var(--text-muted);">
+                  ⚪ Em Aberto
+                </span>
+              </td>
+            `;
+          }
+
           let hasRuim = false;
           let hasRegular = false;
           let countRuim = 0;
@@ -782,7 +814,7 @@ function renderFactoryBoard() {
     container.innerHTML = html;
 
   } else {
-    // SE FOR VISÃO INDIVIDUAL DO LÍDER NO GRUPO 1: MOSTRAR QUADRO DE SENSOS X DIAS DO SEU DESTINO
+    // SE FOR VISÃO INDIVIDUAL DO LÍDER NO GRUPO 1: QUADRO DO SETOR COM BLOQUEIO TEMPORAL FUTURO
     const sensos = [
       { key: 'seiri', dayCode: 'SEG', name: 'UTILIZAÇÃO (SEIRI)', class: 'badge-seiri', desc: 'Segunda: Separar o útil do inútil • Descarte de desnecessários' },
       { key: 'seiton', dayCode: 'TER', name: 'ORGANIZAÇÃO (SEITON)', class: 'badge-seiton', desc: 'Terça: Um lugar para cada coisa • Identificação visual' },
@@ -796,7 +828,11 @@ function renderFactoryBoard() {
         <thead>
           <tr>
             <th style="text-align:left; width: 280px;">CONCEITO 5S (RODÍZIO 5X5)</th>
-            ${days.map(d => `<th style="${d === currentDayCode ? 'background:rgba(99,102,241,0.3); color:#fff; border-bottom:2px solid var(--primary);' : ''}">${d} ${d === currentDayCode ? '⭐ (Hoje)' : ''}</th>`).join('')}
+            ${days.map(d => {
+              const dayIdx = daysOrder.indexOf(d);
+              const isFuture = (dayIdx > todayIndexInWeek);
+              return `<th style="${d === currentDayCode ? 'background:rgba(99,102,241,0.3); color:#fff; border-bottom:2px solid var(--primary);' : (isFuture ? 'opacity:0.5;' : '')}">${d} ${d === currentDayCode ? '⭐ (Hoje)' : (isFuture ? '⏳' : '')}</th>`;
+            }).join('')}
           </tr>
         </thead>
         <tbody>
@@ -814,17 +850,30 @@ function renderFactoryBoard() {
             </div>
           </td>
           ${days.map(day => {
-            const boardKey = `${selectedSector}_${s.key}_${day}`;
-            const currentStatus = clientFactoryBoard[boardKey] || 'bom';
-            const iconMap = { bom: '🟢 Bom', regular: '🟡 Regular', ruim: '🔴 Ruim' };
+            const dayIdx = daysOrder.indexOf(day);
+            const isFuture = (dayIdx > todayIndexInWeek);
 
-            return `
-              <td style="vertical-align:middle; ${day === currentDayCode ? 'background:rgba(99,102,241,0.1);' : ''}">
-                <button class="btn btn-secondary" style="padding:0.3rem 0.6rem; font-size:0.78rem;" onclick="cycleFactoryBoard('${selectedSector}', '${boardKey}', '${s.name}', '${day}')">
-                  ${iconMap[currentStatus]}
-                </button>
-              </td>
-            `;
+            if (isFuture) {
+              return `
+                <td style="vertical-align:middle; opacity:0.35;">
+                  <button class="btn btn-secondary" style="padding:0.3rem 0.6rem; font-size:0.75rem; cursor:not-allowed;" disabled title="Lançamento liberado no dia correspondente">
+                    ⚪ Aguardando
+                  </button>
+                </td>
+              `;
+            } else {
+              const boardKey = `${selectedSector}_${s.key}_${day}`;
+              const currentStatus = clientFactoryBoard[boardKey] || 'bom';
+              const iconMap = { bom: '🟢 Bom', regular: '🟡 Regular', ruim: '🔴 Ruim' };
+
+              return `
+                <td style="vertical-align:middle; ${day === currentDayCode ? 'background:rgba(99,102,241,0.1);' : ''}">
+                  <button class="btn btn-secondary" style="padding:0.3rem 0.6rem; font-size:0.78rem;" onclick="cycleFactoryBoard('${selectedSector}', '${boardKey}', '${s.name}', '${day}')">
+                    ${iconMap[currentStatus]}
+                  </button>
+                </td>
+              `;
+            }
           }).join('')}
         </tr>
       `;
@@ -1078,7 +1127,7 @@ function renderKanban() {
 }
 
 window.moveKanban = function(id, dir) {
-  const task = task = clientKanbanTasks.find(t => t.id === id);
+  const task = clientKanbanTasks.find(t => t.id === id);
   if (!task) return;
 
   const flow = ['a-fazer', 'em-andamento', 'concluido'];
