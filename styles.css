@@ -48,7 +48,7 @@ body {
 }
 
 /* ==========================================================================
-   TELA DE ABERTURA ULTRA-PREMIUM (FODÁSTICA & GLASSMORPHISM)
+   TELA DE ABERTURA ULTRA-PREMIUM COM LOGO DA IMPAKTTO NO TOPO
    ========================================================================== */
 .login-overlay {
   position: fixed;
@@ -96,22 +96,32 @@ body {
   }
 }
 
-.login-header {
-  margin-bottom: 1.5rem;
+.login-brand-logo-container {
+  margin: 0 auto 1.25rem auto;
+  text-align: center;
 }
 
-.login-brand-icon {
-  width: 56px;
-  height: 56px;
-  margin: 0 auto 1rem auto;
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(6, 182, 212, 0.2));
-  border: 1px solid var(--border-highlight);
-  border-radius: 16px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.75rem;
-  box-shadow: 0 0 20px rgba(99, 102, 241, 0.3);
+.login-company-logo {
+  max-height: 65px;
+  max-width: 220px;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.5));
+  animation: logoPulse 3s ease-in-out infinite alternate;
+}
+
+@keyframes logoPulse {
+  from {
+    transform: scale(1);
+    filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.5));
+  }
+  to {
+    transform: scale(1.03);
+    filter: drop-shadow(0 6px 16px rgba(99, 102, 241, 0.4));
+  }
+}
+
+.login-header {
+  margin-bottom: 1.5rem;
 }
 
 .login-header h2 {
