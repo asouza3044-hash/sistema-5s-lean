@@ -2,6 +2,28 @@
    PORTAL DE CONSULTORIA 5S & QUALIDADE (ARQUITETURA DE GOVERNANÇA IMPAK TTO)
    ========================================================================== */
 
+// DECLARAÇÃO GLOBAL DO ALTERNADOR INSTANTÂNEO DE ABAS (LOGIN / CADASTRO)
+window.switchAuthTab = function(mode) {
+  const loginForm = document.getElementById('login-form');
+  const registerForm = document.getElementById('register-form');
+  const btnTabLogin = document.getElementById('auth-tab-login');
+  const btnTabRegister = document.getElementById('auth-tab-register');
+
+  if (mode === 'register') {
+    if (loginForm) loginForm.style.display = 'none';
+    if (registerForm) registerForm.style.display = 'block';
+    if (btnTabLogin) btnTabLogin.classList.remove('active');
+    if (btnTabRegister) btnTabRegister.classList.add('active');
+  } else {
+    if (loginForm) loginForm.style.display = 'block';
+    if (registerForm) registerForm.style.display = 'none';
+    if (btnTabLogin) btnTabLogin.classList.add('active');
+    if (btnTabRegister) btnTabRegister.classList.remove('active');
+  }
+};
+
+window.toggleAuthMode = window.switchAuthTab;
+
 // Base de Dados Oficial de Perguntas dos 5 Sensos (50 Itens Oficiais)
 const AUDIT_QUESTIONS = {
   seiri: [
@@ -127,11 +149,25 @@ let clientActivityLogs = [];
 let clientFactoryBoard = {};
 let radarChartInstance = null;
 
-// Inicialização
+// Inicialização de Eventos
 document.addEventListener('DOMContentLoaded', () => {
   initTabs();
   checkURLParams();
   checkAuthSession();
+
+  // Escutadores Específicos para Toque em Dispositivos Móveis (iOS / Android)
+  const btnRegisterTab = document.getElementById('auth-tab-register');
+  const btnLoginTab = document.getElementById('auth-tab-login');
+
+  if (btnRegisterTab) {
+    btnRegisterTab.addEventListener('click', (e) => { e.preventDefault(); switchAuthTab('register'); });
+    btnRegisterTab.addEventListener('touchend', (e) => { e.preventDefault(); switchAuthTab('register'); });
+  }
+
+  if (btnLoginTab) {
+    btnLoginTab.addEventListener('click', (e) => { e.preventDefault(); switchAuthTab('login'); });
+    btnLoginTab.addEventListener('touchend', (e) => { e.preventDefault(); switchAuthTab('login'); });
+  }
 
   document.getElementById('login-form')?.addEventListener('submit', handleLogin);
   document.getElementById('register-form')?.addEventListener('submit', handleSelfRegister);
@@ -153,28 +189,6 @@ function checkURLParams() {
   if (regCompanyLockedId) regCompanyLockedId.value = targetCompanyId;
 }
 
-// ALTERNADOR INSTANTÂNEO DE ABAS LOGIN / CADASTRO
-window.switchAuthTab = function(mode) {
-  const loginForm = document.getElementById('login-form');
-  const registerForm = document.getElementById('register-form');
-  const btnTabLogin = document.getElementById('auth-tab-login');
-  const btnTabRegister = document.getElementById('auth-tab-register');
-
-  if (mode === 'register') {
-    if (loginForm) loginForm.style.display = 'none';
-    if (registerForm) registerForm.style.display = 'block';
-    if (btnTabLogin) btnTabLogin.classList.remove('active');
-    if (btnTabRegister) btnTabRegister.classList.add('active');
-  } else {
-    if (loginForm) loginForm.style.display = 'block';
-    if (registerForm) registerForm.style.display = 'none';
-    if (btnTabLogin) btnTabLogin.classList.add('active');
-    if (btnTabRegister) btnTabRegister.classList.remove('active');
-  }
-};
-
-window.toggleAuthMode = window.switchAuthTab;
-
 // FUNÇÃO DE LOGIN ROBUSTA COM SUPORTE CLIQUE E FORMULARIO
 window.handleLogin = function(e) {
   if (e) e.preventDefault();
@@ -188,7 +202,6 @@ window.handleLogin = function(e) {
   const u = uInput.value.trim().toLowerCase();
   const p = pInput.value.trim();
 
-  // Buscar usuário na base
   const user = userDatabase[u] || DEFAULT_USERS[u];
 
   if (user && user.password === p) {
