@@ -17,11 +17,8 @@ def build_pdf():
     scratch_dir = r"C:\Users\lasec\.gemini\antigravity\scratch\manual-5s-qualidade"
     brain_dir = r"C:\Users\lasec\.gemini\antigravity\brain\c8f26f84-9c35-4516-bb09-a221d2c2091e"
 
-    logo_scratch = os.path.join(scratch_dir, "logo_impaktto.png")
-    logo_brain = os.path.join(brain_dir, "logo_impaktto.png")
-
-    if os.path.exists(logo_scratch) and not os.path.exists(logo_brain):
-        shutil.copy(logo_scratch, logo_brain)
+    logo_jpg_scratch = os.path.join(scratch_dir, "logo_impaktto_pdf.jpg")
+    logo_jpg_brain = os.path.join(brain_dir, "logo_impaktto_pdf.jpg")
 
     pdf_filename = os.path.join(scratch_dir, "instrucao_trabalho_cleiton_5s.pdf")
     artifacts_pdf = os.path.join(brain_dir, "instrucao_trabalho_cleiton_5s.pdf")
@@ -39,15 +36,14 @@ def build_pdf():
     
     primary_color = colors.HexColor("#6366f1")
     dark_header_bg = colors.HexColor("#0f172a")
-    accent_cyan = colors.HexColor("#06b6d4")
     text_dark = colors.HexColor("#1e293b")
 
     title_style = ParagraphStyle(
         'DocTitle',
         parent=styles['Heading1'],
         fontName='Helvetica-Bold',
-        fontSize=17,
-        leading=21,
+        fontSize=16,
+        leading=20,
         textColor=colors.HexColor("#0f172a"),
         alignment=1
     )
@@ -56,8 +52,8 @@ def build_pdf():
         'DocSubTitle',
         parent=styles['Normal'],
         fontName='Helvetica-Bold',
-        fontSize=10.5,
-        leading=14,
+        fontSize=10,
+        leading=13,
         textColor=primary_color,
         alignment=1
     )
@@ -66,19 +62,19 @@ def build_pdf():
         'SectionHeading',
         parent=styles['Heading2'],
         fontName='Helvetica-Bold',
-        fontSize=11.5,
-        leading=15,
+        fontSize=11,
+        leading=14,
         textColor=primary_color,
-        spaceBefore=10,
-        spaceAfter=4
+        spaceBefore=8,
+        spaceAfter=3
     )
 
     body_style = ParagraphStyle(
         'BodyTextCustom',
         parent=styles['Normal'],
         fontName='Helvetica',
-        fontSize=9.5,
-        leading=13.5,
+        fontSize=9,
+        leading=13,
         textColor=text_dark
     )
 
@@ -86,8 +82,8 @@ def build_pdf():
         'HighlightCustom',
         parent=styles['Normal'],
         fontName='Helvetica-Bold',
-        fontSize=9.5,
-        leading=13.5,
+        fontSize=9,
+        leading=13,
         textColor=colors.HexColor("#047857")
     )
 
@@ -96,16 +92,16 @@ def build_pdf():
         parent=styles['Normal'],
         alignment=2,
         fontName='Helvetica-Bold',
-        fontSize=9,
-        leading=12,
+        fontSize=8.5,
+        leading=11.5,
         textColor=colors.white
     )
 
     story = []
 
-    # 1. CABEÇALHO IMPACTANTE COM O LOGOTIPO OFICIAL DA IMPAK TTO
-    if os.path.exists(logo_scratch):
-        img = Image(logo_scratch, width=2.5*inch, height=0.9*inch)
+    # 1. CABEÇALHO COM A LOGO DA IMPAK TTO EM FORMATO JPEG COMPATÍVEL
+    if os.path.exists(logo_jpg_scratch):
+        img = Image(logo_jpg_scratch, width=2.4*inch, height=0.87*inch)
         
         header_text = Paragraph(
             "<b>IMPAK TTO PLÁSTICOS DE ENGENHARIA</b><br/>"
@@ -114,25 +110,26 @@ def build_pdf():
             header_right_style
         )
 
-        header_table = Table([[img, header_text]], colWidths=[2.8*inch, 4.2*inch])
+        header_table = Table([[img, header_text]], colWidths=[2.6*inch, 4.4*inch])
         header_table.setStyle(TableStyle([
             ('BACKGROUND', (0,0), (-1,-1), dark_header_bg),
             ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
             ('ALIGN', (0,0), (0,0), 'LEFT'),
             ('ALIGN', (1,0), (1,0), 'RIGHT'),
-            ('PADDING', (0,0), (-1,-1), 10),
-            ('BOTTOMPADDING', (0,0), (-1,-1), 10),
-            ('TOPPADDING', (0,0), (-1,-1), 10),
+            ('PADDING', (0,0), (-1,-1), 8),
         ]))
         story.append(header_table)
+    else:
+        # Fallback de texto caso a imagem falhe
+        story.append(Paragraph("<b>IMPAK TTO PLÁSTICOS DE ENGENHARIA - PROGRAMA 5S</b>", title_style))
 
-    story.append(Spacer(1, 10))
+    story.append(Spacer(1, 8))
 
     # 2. TÍTULO DO DOCUMENTO
     story.append(Paragraph("TERMO DE NOMEAÇÃO & INSTRUÇÃO DE TRABALHO", title_style))
-    story.append(Spacer(1, 4))
+    story.append(Spacer(1, 3))
     story.append(Paragraph("FUNÇÃO ESPECIAL: AUDITOR VOLANTE / CORINGA DE QUALIDADE 5S (GRUPO 2)", subtitle_style))
-    story.append(Spacer(1, 10))
+    story.append(Spacer(1, 8))
 
     # 3. TEXTO DE EXALTAÇÃO DA FUNÇÃO DO CLEITON
     exaltation_text = """
@@ -145,11 +142,11 @@ def build_pdf():
     exalt_table.setStyle(TableStyle([
         ('BACKGROUND', (0,0), (-1,-1), colors.HexColor("#f0f9ff")),
         ('BORDER', (0,0), (-1,-1), 1, colors.HexColor("#bae6fd")),
-        ('PADDING', (0,0), (-1,-1), 10),
+        ('PADDING', (0,0), (-1,-1), 8),
         ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
     ]))
     story.append(exalt_table)
-    story.append(Spacer(1, 10))
+    story.append(Spacer(1, 8))
 
     # 4. CREDENCIAIS DE ACESSO AO PORTAL
     story.append(Paragraph("🔑 SUAS CREDENCIAIS DE ACESSO AO PORTAL DIGITAL", heading2_style))
@@ -165,11 +162,11 @@ def build_pdf():
     cred_table.setStyle(TableStyle([
         ('BACKGROUND', (0,0), (-1,-1), colors.HexColor("#f8fafc")),
         ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor("#e2e8f0")),
-        ('PADDING', (0,0), (-1,-1), 6),
+        ('PADDING', (0,0), (-1,-1), 5),
         ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
     ]))
     story.append(cred_table)
-    story.append(Spacer(1, 10))
+    story.append(Spacer(1, 8))
 
     # 5. AS 3 ATRIBUIÇÕES PRINCIPAIS DO CLEITON
     story.append(Paragraph("⚙️ SUAS 3 PRINCIPAIS TAREFAS DE CAMPO", heading2_style))
@@ -193,24 +190,24 @@ def build_pdf():
     tasks_table.setStyle(TableStyle([
         ('BACKGROUND', (0,0), (-1,-1), colors.HexColor("#ffffff")),
         ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor("#cbd5e1")),
-        ('PADDING', (0,0), (-1,-1), 6),
+        ('PADDING', (0,0), (-1,-1), 5),
         ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
     ]))
     story.append(tasks_table)
-    story.append(Spacer(1, 16))
+    story.append(Spacer(1, 14))
 
     # 6. ASSINATURAS OFICIAIS DE NOMEAÇÃO
     story.append(Paragraph("<b>ASSINATURAS OFICIAIS DE NOMEAÇÃO E COMPROMISSO COM A QUALIDADE</b>", ParagraphStyle('SignTitle', parent=styles['Normal'], alignment=1, fontSize=8.5, fontName='Helvetica-Bold', textColor=text_dark)))
-    story.append(Spacer(1, 20))
+    story.append(Spacer(1, 16))
 
     signatures_data = [
         [
-            Paragraph("_____________________________<br/><b>Cleiton</b><br/><font size='8' color='#64748b'>Auditor Volante 5S (Grupo 2)</font>", ParagraphStyle('Sig1', parent=styles['Normal'], alignment=1)),
-            Paragraph("_____________________________<br/><b>Diego</b><br/><font size='8' color='#64748b'>Encarregado de Fábrica (Grupo 2)</font>", ParagraphStyle('Sig2', parent=styles['Normal'], alignment=1))
+            Paragraph("_____________________________<br/><b>Cleiton</b><br/><font size='7.5' color='#64748b'>Auditor Volante 5S (Grupo 2)</font>", ParagraphStyle('Sig1', parent=styles['Normal'], alignment=1)),
+            Paragraph("_____________________________<br/><b>Diego</b><br/><font size='7.5' color='#64748b'>Encarregado de Fábrica (Grupo 2)</font>", ParagraphStyle('Sig2', parent=styles['Normal'], alignment=1))
         ],
         [
-            Paragraph("<br/><br/>_____________________________<br/><b>Alexandre Souza</b><br/><font size='8' color='#64748b'>Consultor Mestre & Gerente de Projeto</font>", ParagraphStyle('Sig3', parent=styles['Normal'], alignment=1)),
-            Paragraph("<br/><br/>_____________________________<br/><b>Kaio</b><br/><font size='8' color='#64748b'>Diretor (Impaktto Plásticos)</font>", ParagraphStyle('Sig4', parent=styles['Normal'], alignment=1))
+            Paragraph("<br/><br/>_____________________________<br/><b>Alexandre Souza</b><br/><font size='7.5' color='#64748b'>Consultor Mestre & Gerente de Projeto</font>", ParagraphStyle('Sig3', parent=styles['Normal'], alignment=1)),
+            Paragraph("<br/><br/>_____________________________<br/><b>Kaio</b><br/><font size='7.5' color='#64748b'>Diretor (Impaktto Plásticos)</font>", ParagraphStyle('Sig4', parent=styles['Normal'], alignment=1))
         ]
     ]
 
@@ -229,7 +226,7 @@ def build_pdf():
     with open(artifacts_pdf, 'wb') as f_dst:
         f_dst.write(pdf_bytes)
 
-    print("PDF RECOMPILADO COM A LOGO DA IMPAK TTO EM DESTAQUE!")
+    print("PDF RECOMPILADO COM SUCESSO COM A LOGO IMPAK TTO VISÍVEL!")
 
 if __name__ == "__main__":
     build_pdf()
