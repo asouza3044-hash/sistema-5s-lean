@@ -54,19 +54,19 @@ const IMPAKTTO_SECTORS = [
   "Comercial Portas, Armários e Cortinas"
 ];
 
-// Usuários Oficiais Pré-Configurados da Equipe Impaktto (Arquitetura 3 Níveis)
+// Usuários Oficiais Pré-Configurados da Equipe Impaktto (Arquitetura 3 Grupos de Governança)
 const DEFAULT_USERS = {
-  admin: { username: 'admin', password: 'mestre5s', name: 'Alexandre Souza', role: 'administrador', level: 'senior', title: 'Gerente de Projeto / Consultor Mestre' },
-  kaio: { username: 'kaio.diretor', password: '5s2026', name: 'Kaio', role: 'administrador', level: 'senior', title: 'Diretor' },
-  diego: { username: 'diego.fabrica', password: '5s2026', name: 'Diego', role: 'auditor_semanal', level: 'semanal', title: 'Encarregado de Fábrica' },
-  filipe: { username: 'filipe.rh', password: '5s2026', name: 'Filipe', role: 'auditor_semanal', level: 'semanal', title: 'Encarregado RH - 5S' },
-  alexandre_u: { username: 'alexandre.usinagem', password: '5s2026', name: 'Alexandre', role: 'lider_diario', level: 'diario', sector: 'Usinagem', title: 'Líder de Usinagem' },
-  marcos: { username: 'marcos.holter', password: '5s2026', name: 'Marcos', role: 'lider_diario', level: 'diario', sector: 'Holter', title: 'Líder de Holter' },
-  bruno: { username: 'bruno.armarios', password: '5s2026', name: 'Bruno', role: 'lider_diario', level: 'diario', sector: 'Armários', title: 'Líder de Armários' },
-  elton: { username: 'elton.portas', password: '5s2026', name: 'Elton', role: 'lider_diario', level: 'diario', sector: 'Portas / Cortinas', title: 'Líder de Portas / Cortinas' },
-  giovanna: { username: 'giovanna.acabamento', password: '5s2026', name: 'Giovanna', role: 'lider_diario', level: 'diario', sector: 'Acabamento', title: 'Líder de Acabamento' },
-  fabio: { username: 'fabio.comercial', password: '5s2026', name: 'Fabio', role: 'lider_diario', level: 'diario', sector: 'Comercial Usinados', title: 'Líder Comercial Usinados' },
-  andre: { username: 'andre.comercial', password: '5s2026', name: 'Andre', role: 'lider_diario', level: 'diario', sector: 'Comercial Portas, Armários e Cortinas', title: 'Líder Comercial Portas/Armários/Cortinas' }
+  admin: { username: 'admin', password: 'mestre5s', name: 'Alexandre Souza', role: 'administrador', level: 'senior', title: 'Grupo 3: Gerente de Projeto / Consultor Mestre' },
+  kaio: { username: 'kaio.diretor', password: '5s2026', name: 'Kaio', role: 'administrador', level: 'senior', title: 'Grupo 3: Diretor' },
+  diego: { username: 'diego.fabrica', password: '5s2026', name: 'Diego', role: 'auditor_semanal', level: 'semanal', title: 'Grupo 2: Encarregado de Fábrica' },
+  filipe: { username: 'filipe.rh', password: '5s2026', name: 'Filipe', role: 'auditor_semanal', level: 'semanal', title: 'Grupo 2: Encarregado RH - 5S' },
+  alexandre_u: { username: 'alexandre.usinagem', password: '5s2026', name: 'Alexandre', role: 'lider_diario', level: 'diario', sector: 'Usinagem', title: 'Grupo 1: Líder de Usinagem' },
+  marcos: { username: 'marcos.holter', password: '5s2026', name: 'Marcos', role: 'lider_diario', level: 'diario', sector: 'Holter', title: 'Grupo 1: Líder de Holter' },
+  bruno: { username: 'bruno.armarios', password: '5s2026', name: 'Bruno', role: 'lider_diario', level: 'diario', sector: 'Armários', title: 'Grupo 1: Líder de Armários' },
+  elton: { username: 'elton.portas', password: '5s2026', name: 'Elton', role: 'lider_diario', level: 'diario', sector: 'Portas / Cortinas', title: 'Grupo 1: Líder de Portas / Cortinas' },
+  giovanna: { username: 'giovanna.acabamento', password: '5s2026', name: 'Giovanna', role: 'lider_diario', level: 'diario', sector: 'Acabamento', title: 'Grupo 1: Líder de Acabamento' },
+  fabio: { username: 'fabio.comercial', password: '5s2026', name: 'Fabio', role: 'lider_diario', level: 'diario', sector: 'Comercial Usinados', title: 'Grupo 1: Líder Comercial Usinados' },
+  andre: { username: 'andre.comercial', password: '5s2026', name: 'Andre', role: 'lider_diario', level: 'diario', sector: 'Comercial Portas, Armários e Cortinas', title: 'Grupo 1: Líder Comercial Portas/Armários/Cortinas' }
 };
 
 // Estado Global
@@ -98,7 +98,6 @@ window.handleLogin = function(e) {
   if (!u) {
     currentUser = DEFAULT_USERS.admin;
   } else {
-    // Buscar por chave ou por username interno do integrante
     let foundUser = userDatabase[u] || Object.values(userDatabase).find(usr => usr.username && usr.username.toLowerCase() === u);
 
     if (foundUser && (foundUser.password === p || p === '5s2026' || p === 'mestre5s' || p === '')) {
@@ -241,6 +240,7 @@ function handleSelfRegister(e) {
     return;
   }
 
+  // Novos cadastros pertencem por padrão ao GRUPO 1 (Líder Diário)
   const newUser = {
     username,
     password,
@@ -268,10 +268,10 @@ function handleSelfRegister(e) {
     console.error('Erro ao carregar sessão pós-registro:', err);
   }
 
-  logActivity(`Novo integrante registrado (${name} - Setor: ${userSector})`);
+  logActivity(`Novo integrante registrado (${name} - Setor: ${userSector} - Grupo 1)`);
 }
 
-// CONTROLE DE SESSÃO DA IMPAKTTO
+// 4. CONTROLE ESTRITO DE SESSÃO E VISIBILIDADE POR GRUPO (1, 2 E 3)
 function checkAuthSession() {
   const loginOverlay = document.getElementById('login-overlay');
 
@@ -288,16 +288,50 @@ function checkAuthSession() {
     loginOverlay.classList.add('hidden');
   }
 
-  // Apenas Administrador / Sênior acessa ferramentas e manual
-  const isAdmin = (currentUser.role === 'administrador' || currentUser.level === 'senior');
+  const level = currentUser.level || 'diario';
+  const role = currentUser.role || 'lider_diario';
 
+  const isSenior = (role === 'administrador' || level === 'senior');
+  const isSemanal = (role === 'auditor_semanal' || level === 'semanal');
+  const isDiario = (!isSenior && !isSemanal); // GRUPO 1: LÍDER DIÁRIO DE SETOR
+
+  // Cards da Tela Principal
+  const cardFactoryBoard = document.getElementById('card-factory-board');
+  const cardMaturity = document.getElementById('card-maturity-dashboard');
+  const cardActivityFeed = document.getElementById('card-activity-feed');
+  const cardAuditChecklist = document.getElementById('card-audit-checklist');
+
+  // Elementos da Navegação Superior
+  const navTabsContainer = document.querySelector('.nav-tabs');
   const navBtnTools = document.querySelector('.nav-btn[data-tab="tab-tools"]');
   const navBtnManual = document.querySelector('.nav-btn[data-tab="tab-manual"]');
 
-  if (isAdmin) {
-    if (navBtnTools) navBtnTools.style.display = 'flex';
-    if (navBtnManual) navBtnManual.style.display = 'flex';
-  } else {
+  if (isDiario) {
+    // ---------------------------------------------------------------------
+    // GRUPO 1: SOMENTE E SOMENTE DEVERÁ APARECER O QUADRO DA FÁBRICA
+    // ---------------------------------------------------------------------
+    if (cardFactoryBoard) cardFactoryBoard.style.display = 'block';
+    if (cardMaturity) cardMaturity.style.display = 'none';
+    if (cardActivityFeed) cardActivityFeed.style.display = 'none';
+    if (cardAuditChecklist) cardAuditChecklist.style.display = 'none';
+
+    if (navTabsContainer) navTabsContainer.style.display = 'none';
+    if (navBtnTools) navBtnTools.style.display = 'none';
+    if (navBtnManual) navBtnManual.style.display = 'none';
+
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    document.getElementById('tab-dashboard')?.classList.add('active');
+
+  } else if (isSemanal) {
+    // ---------------------------------------------------------------------
+    // GRUPO 2 (AUDITORES SEMANAIS): QUADRO + CHECKLIST + MATURIDADE + FEED
+    // ---------------------------------------------------------------------
+    if (cardFactoryBoard) cardFactoryBoard.style.display = 'block';
+    if (cardMaturity) cardMaturity.style.display = 'block';
+    if (cardActivityFeed) cardActivityFeed.style.display = 'block';
+    if (cardAuditChecklist) cardAuditChecklist.style.display = 'block';
+
+    if (navTabsContainer) navTabsContainer.style.display = 'flex';
     if (navBtnTools) navBtnTools.style.display = 'none';
     if (navBtnManual) navBtnManual.style.display = 'none';
 
@@ -305,13 +339,24 @@ function checkAuthSession() {
     document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
     document.querySelector('.nav-btn[data-tab="tab-dashboard"]')?.classList.add('active');
     document.getElementById('tab-dashboard')?.classList.add('active');
+
+  } else {
+    // ---------------------------------------------------------------------
+    // GRUPO 3 (AUDITORES SÊNIOR / ADM): ACESSO TOTAL COMPLETO
+    // ---------------------------------------------------------------------
+    if (cardFactoryBoard) cardFactoryBoard.style.display = 'block';
+    if (cardMaturity) cardMaturity.style.display = 'block';
+    if (cardActivityFeed) cardActivityFeed.style.display = 'block';
+    if (cardAuditChecklist) cardAuditChecklist.style.display = 'block';
+
+    if (navTabsContainer) navTabsContainer.style.display = 'flex';
+    if (navBtnTools) navBtnTools.style.display = 'flex';
+    if (navBtnManual) navBtnManual.style.display = 'flex';
   }
 
-  // Garantir Logotipo da Impaktto no Cabeçalho
+  // Logotipo e Identificação
   const headerLogoImg = document.getElementById('header-company-logo');
-  if (headerLogoImg) {
-    headerLogoImg.src = 'logo_impaktto.png';
-  }
+  if (headerLogoImg) headerLogoImg.src = 'logo_impaktto.png';
 
   const activeClientNameEl = document.getElementById('active-client-name');
   if (activeClientNameEl) {
@@ -319,12 +364,12 @@ function checkAuthSession() {
   }
   
   const levelLabels = {
-    senior: '👑 Auditor Sênior (Adm)',
-    semanal: '🔍 Auditor Semanal',
-    diario: '📋 Líder Diário'
+    senior: '👑 Grupo 3: Auditor Sênior (Adm/Diretoria)',
+    semanal: '🔍 Grupo 2: Auditor Semanal (Encarregado)',
+    diario: '📋 Grupo 1: Líder Diário de Setor'
   };
 
-  const levelBadgeText = levelLabels[currentUser.level || 'diario'] || '📋 Integrante';
+  const levelBadgeText = levelLabels[level] || '📋 Grupo 1: Líder Diário';
   const loggedUserNameEl = document.getElementById('logged-user-name');
   if (loggedUserNameEl) {
     loggedUserNameEl.innerText = `👤 ${currentUser.name} (${levelBadgeText})`;

@@ -10,10 +10,10 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
   <!-- Chart.js para o Gráfico Radar dos 5 Sensos -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <!-- Local Styles com Cache Busting v6.0 -->
-  <link rel="stylesheet" href="styles.css?v=6.0">
+  <!-- Local Styles com Cache Busting v7.0 -->
+  <link rel="stylesheet" href="styles.css?v=7.0">
   <!-- JavaScript Principal Carregado no Head -->
-  <script src="app.js?v=6.0"></script>
+  <script src="app.js?v=7.0"></script>
 </head>
 <body>
 
@@ -69,7 +69,7 @@
         </div>
       </form>
 
-      <!-- FORMULÁRIO 2: AUTO-CADASTRO RÁPIDO -->
+      <!-- FORMULÁRIO 2: AUTO-CADASTRO RÁPIDO (GRUPO 1) -->
       <form id="register-form" style="display: none;">
         <div class="form-group" style="text-align: left;">
           <label>Seu Nome</label>
@@ -100,7 +100,7 @@
         </div>
 
         <button type="submit" class="btn btn-primary" style="width: 100%; padding: 0.85rem; font-size: 1rem;">
-          🚀 Finalizar e Acessar Portal
+          🚀 Finalizar e Acessar Portal (Grupo 1)
         </button>
       </form>
 
@@ -126,7 +126,7 @@
       </button>
     </div>
 
-    <!-- TABS NAVIGATION -->
+    <!-- TABS NAVIGATION (VISÍVEL APENAS PARA GRUPO 2 E GRUPO 3) -->
     <nav class="nav-tabs">
       <button class="nav-btn active" data-tab="tab-dashboard">
         📋 Auditoria 5S de Campo
@@ -134,7 +134,7 @@
       <button class="nav-btn" data-tab="tab-tools">
         🛠️ Ferramentas da Qualidade
       </button>
-      <!-- MANUAL ESTRITAMENTE RESTRITO AO ADM / GERÊNCIA & DIRETORIA -->
+      <!-- MANUAL ESTRITAMENTE RESTRITO AO ADM / GERÊNCIA & DIRETORIA (GRUPO 3) -->
       <button class="nav-btn" data-tab="tab-manual" style="display: none;">
         📖 Manual de Implantação (Restrito ADM)
       </button>
@@ -150,8 +150,19 @@
          =================================================================== -->
     <section id="tab-dashboard" class="tab-content active">
       
-      <!-- PAINEL DE MATURIDADE GLOBAL DA EMPRESA -->
-      <div class="card">
+      <!-- CARD 1: QUADRO DIGITAL "COMO ESTÁ NOSSA ÁREA?" (EXCLUSIVO GRUPO 1, 2 E 3) -->
+      <div id="card-factory-board" class="card" style="border-color: rgba(245, 158, 11, 0.4); background: rgba(245, 158, 11, 0.03);">
+        <div class="card-header">
+          <h2 class="card-title" style="color: var(--status-regular);">📋 Quadro da Fábrica: COMO ESTÁ NOSSA ÁREA?</h2>
+        </div>
+        <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem;">
+          Avaliação diária de 3 Níveis (<strong>🟢 Bom | 🟡 Regular | 🔴 Ruim</strong>). Clique no botão do dia para alternar o status:
+        </p>
+        <div id="factory-board-container" style="overflow-x: auto;"></div>
+      </div>
+
+      <!-- CARD 2: PAINEL DE MATURIDADE GLOBAL DA EMPRESA (GRUPO 2 E 3) -->
+      <div id="card-maturity-dashboard" class="card">
         <div class="card-header">
           <h2 class="card-title">🏆 Nível de Maturidade 5S - IMPAK TTO</h2>
           <button class="btn btn-secondary" onclick="window.print()">🖨️ Exportar Relatório Executivo</button>
@@ -211,19 +222,8 @@
 
       </div>
 
-      <!-- CARD: QUADRO DIGITAL "COMO ESTÁ NOSSA ÁREA?" (FÁBRICA IMPAK TTO) -->
-      <div class="card" style="border-color: rgba(245, 158, 11, 0.4); background: rgba(245, 158, 11, 0.03);">
-        <div class="card-header">
-          <h2 class="card-title" style="color: var(--status-regular);">📋 Quadro da Fábrica: COMO ESTÁ NOSSA ÁREA?</h2>
-        </div>
-        <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem;">
-          Avaliação diária de 3 Níveis (<strong>🟢 Bom | 🟡 Regular | 🔴 Ruim</strong>). Clique no botão do dia para alternar o status:
-        </p>
-        <div id="factory-board-container" style="overflow-x: auto;"></div>
-      </div>
-
-      <!-- CARD DE RASTREABILIDADE AO VIVO (FEED DA REUNIÃO E DA FÁBRICA) -->
-      <div class="card" style="border-color: rgba(6, 182, 212, 0.4); background: rgba(6, 182, 212, 0.03);">
+      <!-- CARD 3: RASTREABILIDADE AO VIVO (FEED DA REUNIÃO E DA FÁBRICA - GRUPO 2 E 3) -->
+      <div id="card-activity-feed" class="card" style="border-color: rgba(6, 182, 212, 0.4); background: rgba(6, 182, 212, 0.03);">
         <div class="card-header">
           <h2 class="card-title" style="color: var(--accent-cyan);">📜 Feed de Lançamentos de Campo (Ao Vivo)</h2>
         </div>
@@ -234,8 +234,8 @@
         </div>
       </div>
 
-      <!-- FORMULÁRIO DA AUDITORIA 5S DE CAMPO -->
-      <div class="card">
+      <!-- CARD 4: CHECKLIST OFICIAL DE AUDITORIA 5S DE CAMPO (GRUPO 2 E 3) -->
+      <div id="card-audit-checklist" class="card">
         <div class="card-header">
           <h2 class="card-title">📋 Checklist Oficial de Auditoria 5S de Campo</h2>
           <button class="btn btn-danger" onclick="resetAudit()">🔄 Redefinir Respostas</button>
@@ -252,7 +252,7 @@
 
 
     <!-- ===================================================================
-         ABA 2: CENTRAL DE FERRAMENTAS DA QUALIDADE
+         ABA 2: CENTRAL DE FERRAMENTAS DA QUALIDADE (EXCLUSIVO GRUPO 3 - ADM)
          =================================================================== -->
     <section id="tab-tools" class="tab-content">
       
@@ -446,7 +446,7 @@
     </section>
 
     <!-- ===================================================================
-         ABA 3: MANUAL DE IMPLANTAÇÃO COMPLETO (ESTRITAMENTE RESTRITO AO ADM)
+         ABA 3: MANUAL DE IMPLANTAÇÃO COMPLETO (ESTRITAMENTE RESTRITO AO ADM - GRUPO 3)
          =================================================================== -->
     <section id="tab-manual" class="tab-content">
       <div class="card" style="border-color: var(--border-highlight); background: rgba(99, 102, 241, 0.05);">
@@ -462,9 +462,9 @@
           
           <h4 style="color: var(--accent-cyan); margin-bottom: 0.5rem;">Diretrizes da Governança em 3 Níveis da Impaktto:</h4>
           <ul style="list-style: square inside; margin-left: 1rem;">
-            <li><strong>Nível 1 (Líderes Diários):</strong> Alexandre (Usinagem), Marcos (Holter), Bruno (Armários), Elton (Portas/Cortinas), Giovanna (Acabamento), Fabio (Comercial Usinados), Andre (Comercial Portas/Armários/Cortinas).</li>
-            <li><strong>Nível 2 (Auditores Semanais):</strong> Diego (Encarregado Fábrica), Filipe (Encarregado RH - 5S).</li>
-            <li><strong>Nível 3 (Auditores Sênior):</strong> Kaio (Diretor), Alexandre Souza (Gerente de Projeto / Consultor Mestre).</li>
+            <li><strong>Nível 1 (Grupo 1 - Líderes Diários):</strong> Alexandre (Usinagem), Marcos (Holter), Bruno (Armários), Elton (Portas/Cortinas), Giovanna (Acabamento), Fabio (Comercial Usinados), Andre (Comercial Portas/Armários/Cortinas).</li>
+            <li><strong>Nível 2 (Grupo 2 - Auditores Semanais):</strong> Diego (Encarregado Fábrica), Filipe (Encarregado RH - 5S).</li>
+            <li><strong>Nível 3 (Grupo 3 - Auditores Sênior):</strong> Kaio (Diretor), Alexandre Souza (Gerente de Projeto / Consultor Mestre).</li>
           </ul>
         </div>
       </div>
