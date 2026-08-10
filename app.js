@@ -137,6 +137,8 @@ let clientFactoryBoard = {};
 let activeFactorySectorFilter = 'ALL';
 let radarChartInstance = null;
 let autoRefreshTimer = null;
+let currentVoteTarget = null;
+let selectedVoteOption = 'bom';
 
 // HELPER PARA CÁLCULO E CONVERSÃO DE MÉDIA DE VOTOS POR CÉLULA DO QUADRO
 function getBoardCellSummary(boardKey) {
@@ -335,6 +337,226 @@ window.forceCloudSyncNow = async function() {
   renderActivityLogs();
   renderFactoryBoard();
   alert('🎉 Sincronização Mestre de Nuvem Concluída! Todos os cadastros e votos de celulares estão atualizados.');
+};
+
+// MODAL INTERATIVO DE ESCOLHA EXPLÍCITA DE VOTO (COM OBSERVATÓRIO / HISTÓRICO DE NOTAS)
+window.openVoteChoiceModal = function(sectorName, boardKey, sensoName, day) {
+  if (!currentUser) return;
+
+  const todayDateStr = new Date().toISOString().split('T')[0];
+  const userVoteKey = `5s_user_voted_${currentUser.username}_${todayDateStr}`;
+
+  const isSeniorOrSemanal = (currentUser && (currentUser.level === 'senior' || currentUser.level === 'semanal' || currentUser.role === 'administrador' || currentUser.role === 'auditor_semanal'));
+
+  if (!isSeniorOrSemanal) {
+    const hasVotedToday = (localStorage.getItem(userVoteKey) === 'true');
+    if (hasVotedToday) {
+      alert('⚠️ Você já deu sua nota do dia, obrigado. Amanhã tem mais!');
+      return;
+    }
+  }
+
+  currentVoteTarget = { sectorName, boardKey, sensoName, day };
+  selectedVoteOption = 'bom';
+
+  let modal = document.getElementById('modal-vote-choice');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'modal-vote-choice';
+    modal.className = 'modal-overlay';
+    modal.style.cssText = 'position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.85); backdrop-filter:blur(8px); display:flex; align-items:center; justify-content:center; z-index:99999; padding:1rem;';
+    document.body.appendChild(modal);
+  }
+
+  const summary = getBoardCellSummary(boardKey);
+  const existingVotes = summary.votes || [];
+
+  let historyHtml = '';
+  if (existingVotes.length > 0) {
+    const votesList = existingVotes.map(v => {
+      const icon = v.score === 'bom' ? '🟢 Bom' : (v.score === 'regular' ? '🟡 Regular' : '🔴 Ruim');
+      return `<li style="font-size:0.78rem; padding:0.25rem 0; border-bottom:1px solid rgba(255,255,255,0.05); color:#d1d5db;">
+        👤 <strong>${v.name}:</strong> ${icon} ${v.comment ? `<i>("${v.comment}")</i>` : ''} <span style="font-size:0.7rem; color:var(--text-muted);">🕒 ${v.timestamp || ''}</span>
+      </li>`;
+    }).join('');
+
+    historyHtml = `
+      <div style="background:rgba(255,255,255,0.04); border:1px solid var(--border-color); padding:0.65rem 0.85rem; border-radius:8px; margin-bottom:1rem;">
+        <span style="font-size:0.78rem; font-weight:800; color:var(--accent-cyan); text-transform:uppercase;">📊 VOTOS JÁ COMPUTADOS HOJE NESTA CÉLULA (MÉDIA: ${summary.avgPoints} pts):</span>
+        <ul style="list-style:none; padding:0; margin:0.4rem 0 0 0;">
+          ${votesList}
+        </ul>
+      </div>
+    `;
+  }
+
+  modal.innerHTML = `
+    <div style="background:var(--bg-card); border:1px solid var(--border-highlight); border-radius:16px; max-width:520px; width:100%; padding:1.4rem; box-shadow:0 20px 40px rgba(0,0,0,0.6); color:var(--text-main); font-family:Inter, sans-serif;">
+      
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:0.75rem;">
+        <div>
+          <h3 style="margin:0; font-size:1.15rem; color:var(--text-main); font-family:Outfit, sans-serif;">🗳️ Registrar Avaliação 5S</h3>
+          <span style="font-size:0.8rem; color:var(--accent-cyan); font-weight:700;">📍 Setor: ${sectorName} • ${sensoName} (${day})</span>
+        </div>
+        <button onclick="closeVoteChoiceModal()" style="background:none; border:none; color:var(--text-muted); font-size:1.4rem; cursor:pointer;">✕</button>
+      </div>
+
+      <div style="background:rgba(99,102,241,0.1); border:1px solid var(--primary); padding:0.55rem 0.85rem; border-radius:8px; margin-bottom:1.1rem; font-size:0.82rem;">
+        👤 <strong>Avaliador:</strong> ${currentUser.name} <span style="color:var(--text-muted);">(${currentUser.title || 'Grupo 1'})</span>
+      </div>
+
+      ${historyHtml}
+
+      <span style="font-size:0.82rem; font-weight:800; color:#e2e8f0; text-transform:uppercase; display:block; margin-bottom:0.6rem;">
+        ESCOLHA A SUA NOTA DE AVALIAÇÃO:
+      </span>
+
+      <div style="display:flex; flex-direction:column; gap:0.6rem; margin-bottom:1.2rem;">
+        <button type="button" id="vote-opt-bom" onclick="selectVoteOptionInModal('bom')" style="display:flex; align-items:center; justify-content:space-between; padding:0.75rem 1rem; border-radius:10px; border:2px solid #10b981; background:rgba(16,185,129,0.22); color:#ffffff; cursor:pointer; font-weight:700; font-size:0.95rem; text-align:left; transition:all 0.2s;">
+          <div>
+            <div>🟢 Bom (3.0 Pontos)</div>
+            <div style="font-size:0.72rem; font-weight:400; color:#a7f3d0;">Setor limpo, organizado e dentro dos padrões 5S</div>
+          </div>
+          <span id="chk-bom" style="font-size:1.2rem;">✅</span>
+        </button>
+
+        <button type="button" id="vote-opt-regular" onclick="selectVoteOptionInModal('regular')" style="display:flex; align-items:center; justify-content:space-between; padding:0.75rem 1rem; border-radius:10px; border:2px solid #f59e0b; background:rgba(255,255,255,0.03); color:#9ca3af; cursor:pointer; font-weight:700; font-size:0.95rem; text-align:left; transition:all 0.2s;">
+          <div>
+            <div>🟡 Regular (2.0 Pontos)</div>
+            <div style="font-size:0.72rem; font-weight:400; color:#fde68a;">Encontradas pequenas oportunidades de melhoria</div>
+          </div>
+          <span id="chk-regular" style="font-size:1.2rem; display:none;">✅</span>
+        </button>
+
+        <button type="button" id="vote-opt-ruim" onclick="selectVoteOptionInModal('ruim')" style="display:flex; align-items:center; justify-content:space-between; padding:0.75rem 1rem; border-radius:10px; border:2px solid #ef4444; background:rgba(255,255,255,0.03); color:#9ca3af; cursor:pointer; font-weight:700; font-size:0.95rem; text-align:left; transition:all 0.2s;">
+          <div>
+            <div>🔴 Ruim (1.0 Ponto)</div>
+            <div style="font-size:0.72rem; font-weight:400; color:#fca5a5;">Não conformidade ou desordem identificada</div>
+          </div>
+          <span id="chk-ruim" style="font-size:1.2rem; display:none;">✅</span>
+        </button>
+      </div>
+
+      <div style="margin-bottom:1.2rem;">
+        <label style="font-size:0.78rem; font-weight:700; color:#9ca3af; display:block; margin-bottom:0.3rem;">
+          📝 Observação / Apontamento de Campo (Opcional):
+        </label>
+        <input type="text" id="vote-comment-input" class="form-control" placeholder="Ex: Ferramentas organizadas / bancada limpa..." style="width:100%; font-size:0.85rem; padding:0.5rem 0.75rem;">
+      </div>
+
+      <div style="display:flex; gap:0.6rem; justify-content:flex-end;">
+        <button type="button" class="btn btn-secondary" onclick="closeVoteChoiceModal()" style="padding:0.6rem 1rem; font-size:0.85rem;">✕ Cancelar</button>
+        <button type="button" class="btn btn-primary" onclick="confirmVoteChoiceModal()" style="padding:0.6rem 1.3rem; font-size:0.85rem; font-weight:700;">✅ Confirmar Voto</button>
+      </div>
+
+    </div>
+  `;
+
+  modal.style.display = 'flex';
+};
+
+window.selectVoteOptionInModal = function(opt) {
+  selectedVoteOption = opt;
+
+  ['bom', 'regular', 'ruim'].forEach(o => {
+    const btn = document.getElementById(`vote-opt-${o}`);
+    const chk = document.getElementById(`chk-${o}`);
+    if (o === opt) {
+      if (btn) {
+        btn.style.background = o === 'bom' ? 'rgba(16,185,129,0.25)' : (o === 'regular' ? 'rgba(245,158,11,0.25)' : 'rgba(239,68,68,0.25)');
+        btn.style.color = '#ffffff';
+      }
+      if (chk) chk.style.display = 'inline';
+    } else {
+      if (btn) {
+        btn.style.background = 'rgba(255,255,255,0.03)';
+        btn.style.color = '#9ca3af';
+      }
+      if (chk) chk.style.display = 'none';
+    }
+  });
+};
+
+window.closeVoteChoiceModal = function() {
+  const modal = document.getElementById('modal-vote-choice');
+  if (modal) modal.style.display = 'none';
+  currentVoteTarget = null;
+};
+
+window.confirmVoteChoiceModal = function() {
+  if (!currentVoteTarget || !currentUser) return;
+
+  const { sectorName, boardKey, sensoName, day } = currentVoteTarget;
+  const commentInput = document.getElementById('vote-comment-input');
+  const commentText = commentInput ? commentInput.value.trim() : '';
+
+  const scoreChoice = selectedVoteOption || 'bom';
+  const scorePts = { bom: 3, regular: 2, ruim: 1 };
+
+  const currentSummary = getBoardCellSummary(boardKey);
+  let existingVotes = currentSummary.votes || [];
+
+  // Remover voto anterior do mesmo usuário se houver re-tentativa
+  existingVotes = existingVotes.filter(v => (v.username || v.name) !== currentUser.username && (v.username || v.name) !== currentUser.name);
+
+  const timestamp = new Date().toLocaleString('pt-BR');
+  existingVotes.push({
+    username: currentUser.username,
+    name: currentUser.name,
+    role: currentUser.role || 'colaborador',
+    score: scoreChoice,
+    points: scorePts[scoreChoice],
+    comment: commentText,
+    timestamp: timestamp
+  });
+
+  const totalPts = existingVotes.reduce((acc, v) => acc + v.points, 0);
+  const avgPts = totalPts / existingVotes.length;
+
+  let avgStatus = 'bom';
+  if (avgPts >= 2.5) avgStatus = 'bom';
+  else if (avgPts >= 1.7) avgStatus = 'regular';
+  else avgStatus = 'ruim';
+
+  clientFactoryBoard[boardKey] = {
+    status: avgStatus,
+    avgPoints: Math.round(avgPts * 10) / 10,
+    votes: existingVotes
+  };
+
+  localStorage.setItem('5s_factory_board_impaktto', JSON.stringify(clientFactoryBoard));
+
+  const isSeniorOrSemanal = (currentUser && (currentUser.level === 'senior' || currentUser.level === 'semanal' || currentUser.role === 'administrador' || currentUser.role === 'auditor_semanal'));
+  const isLider = (currentUser && (currentUser.level === 'diario' || currentUser.role === 'lider_diario'));
+  const todayDateStr = new Date().toISOString().split('T')[0];
+  const userVoteKey = `5s_user_voted_${currentUser.username}_${todayDateStr}`;
+
+  if (!isSeniorOrSemanal) {
+    localStorage.setItem(userVoteKey, 'true');
+  }
+
+  closeVoteChoiceModal();
+  renderFactoryBoard();
+
+  const labelMap = { bom: '🟢 BOM', regular: '🟡 REGULAR', ruim: '🔴 RUIM' };
+  const auditorName = currentUser.name;
+  const originSector = currentUser.sector || 'Fábrica';
+  const totalVotesCount = existingVotes.length;
+  const commentSuffix = commentText ? ` 💬 "${commentText}"` : '';
+
+  if (isSeniorOrSemanal) {
+    logActivity(`⚖️ Calibração (por ${auditorName}): Marcou ${sensoName} na ${day} como ${labelMap[scoreChoice]} no Setor ${sectorName} (Média: ${Math.round(avgPts * 10) / 10} com ${totalVotesCount} v)${commentSuffix}`);
+  } else if (isLider) {
+    logActivity(`Marcou ${sensoName} na ${day} como ${labelMap[scoreChoice]} no Setor ${sectorName} (Auditoria Cruzada por Líder ${auditorName} - Origem: ${originSector} • Média: ${Math.round(avgPts * 10) / 10})${commentSuffix}`);
+  } else {
+    logActivity(`Marcou ${sensoName} na ${day} como ${labelMap[scoreChoice]} no Setor ${sectorName} (Apontamento Cidadão por ${auditorName} - ${originSector} • Média: ${Math.round(avgPts * 10) / 10})${commentSuffix}`);
+  }
+
+  pushDataToServer();
+};
+
+window.cycleFactoryBoard = function(sectorName, boardKey, sensoName, day) {
+  openVoteChoiceModal(sectorName, boardKey, sensoName, day);
 };
 
 // FUNÇÃO PARA O ADM CADASTRAR COLABORADORES DIRETO PELO PAINEL
@@ -587,7 +809,7 @@ const AUDIT_QUESTIONS = {
     "Os materiais estão armazenados de forma a facilitar o acesso e evitar acidentes?",
     "As áreas livres de circulação de pessoas e empilhadeiras estão sem obstrução?",
     "A coleta seletiva de resíduos/recicláveis está identificada e funcionando?",
-    "Os cabos elétricos, mangueiras e fios estão devidamente organizados e seguros?",
+    "Os cabos elétricos, mangueiras e fios estão devidamente organizedos e seguros?",
     "Os colaboradores conhecem e respeitam o padrão de organização do setor?",
     "Equipamentos e máquinas desligados ao final do expediente conforme padrão?"
   ],
@@ -1312,7 +1534,7 @@ function renderFactoryBoard() {
 
               return `
                 <td style="vertical-align:middle; padding:0.3rem 0.2rem;">
-                  <button class="score-btn-factory selected" data-level="${summary.status}" style="display:inline-block; padding:0.25rem 0.4rem; font-size:0.72rem; font-weight:700; cursor:pointer; border:none;" onclick="cycleFactoryBoard('${sec}', '${boardKey}', '${s.name}', '${s.dayCode}')" title="Clique para avaliar. Média Atual: ${summary.avgPoints} (${summary.voteCount} votos)">
+                  <button class="score-btn-factory selected" data-level="${summary.status}" style="display:inline-block; padding:0.25rem 0.4rem; font-size:0.72rem; font-weight:700; cursor:pointer; border:none;" onclick="openVoteChoiceModal('${sec}', '${boardKey}', '${s.name}', '${s.dayCode}')" title="Clique para abrir opções de voto. Média Atual: ${summary.avgPoints} (${summary.voteCount} votos)">
                     ${iconMap[summary.status]} ${countBadge}
                   </button>
                 </td>
@@ -1433,7 +1655,7 @@ function renderFactoryBoard() {
 
               return `
                 <td style="vertical-align:middle; ${day === currentDayCode ? 'background:rgba(99,102,241,0.1);' : ''}">
-                  <button class="btn btn-secondary" style="padding:0.3rem 0.6rem; font-size:0.78rem;" onclick="cycleFactoryBoard('${selectedSector}', '${boardKey}', '${s.name}', '${day}')" title="Clique para votar. Média Atual: ${summary.avgPoints} (${summary.voteCount} votos computados)">
+                  <button class="btn btn-secondary" style="padding:0.3rem 0.6rem; font-size:0.78rem;" onclick="openVoteChoiceModal('${selectedSector}', '${boardKey}', '${s.name}', '${day}')" title="Clique para abrir caixa de escolha de voto. Média: ${summary.avgPoints} (${summary.voteCount} votos)">
                     ${iconMap[summary.status]} ${countBadge}
                   </button>
                 </td>
@@ -1452,84 +1674,6 @@ function renderFactoryBoard() {
 window.changeFactorySectorFilter = function(val) {
   activeFactorySectorFilter = val;
   renderFactoryBoard();
-};
-
-// 6. CICLO DE AVALIAÇÃO COM COMPUTO E MÉDIA DE MÚLTIPLOS VOTOS NO MESMO SETOR
-window.cycleFactoryBoard = function(sectorName, boardKey, sensoName, day) {
-  if (!currentUser) return;
-
-  const todayDateStr = new Date().toISOString().split('T')[0];
-  const userVoteKey = `5s_user_voted_${currentUser.username}_${todayDateStr}`;
-
-  const isSeniorOrSemanal = (currentUser && (currentUser.level === 'senior' || currentUser.level === 'semanal' || currentUser.role === 'administrador' || currentUser.role === 'auditor_semanal'));
-  const isLider = (currentUser && (currentUser.level === 'diario' || currentUser.role === 'lider_diario'));
-
-  if (!isSeniorOrSemanal) {
-    const hasVotedToday = (localStorage.getItem(userVoteKey) === 'true');
-    if (hasVotedToday) {
-      alert('⚠️ Você já deu sua nota do dia, obrigado. Amanhã tem mais!');
-      return;
-    }
-  }
-
-  // Obter votos atuais da célula
-  const currentSummary = getBoardCellSummary(boardKey);
-  const nextMap = { bom: 'regular', regular: 'ruim', ruim: 'bom' };
-  const nextScore = nextMap[currentSummary.status];
-  const scorePts = { bom: 3, regular: 2, ruim: 1 };
-
-  // Registrar Voto do Usuário Atual
-  let existingVotes = currentSummary.votes || [];
-  
-  // Remover voto anterior do mesmo usuário se houver re-tentativa
-  existingVotes = existingVotes.filter(v => (v.username || v.name) !== currentUser.username && (v.username || v.name) !== currentUser.name);
-
-  const timestamp = new Date().toLocaleString('pt-BR');
-  existingVotes.push({
-    username: currentUser.username,
-    name: currentUser.name,
-    role: currentUser.role || 'colaborador',
-    score: nextScore,
-    points: scorePts[nextScore],
-    timestamp: timestamp
-  });
-
-  const totalPts = existingVotes.reduce((acc, v) => acc + v.points, 0);
-  const avgPts = totalPts / existingVotes.length;
-
-  let avgStatus = 'bom';
-  if (avgPts >= 2.5) avgStatus = 'bom';
-  else if (avgPts >= 1.7) avgStatus = 'regular';
-  else avgStatus = 'ruim';
-
-  clientFactoryBoard[boardKey] = {
-    status: avgStatus,
-    avgPoints: Math.round(avgPts * 10) / 10,
-    votes: existingVotes
-  };
-
-  localStorage.setItem('5s_factory_board_impaktto', JSON.stringify(clientFactoryBoard));
-
-  if (!isSeniorOrSemanal) {
-    localStorage.setItem(userVoteKey, 'true');
-  }
-
-  renderFactoryBoard();
-
-  const labelMap = { bom: '🟢 BOM', regular: '🟡 REGULAR', ruim: '🔴 RUIM' };
-  const auditorName = currentUser.name;
-  const originSector = currentUser.sector || 'Fábrica';
-  const totalVotesCount = existingVotes.length;
-
-  if (isSeniorOrSemanal) {
-    logActivity(`⚖️ Calibração de Auditoria (por ${auditorName}): Marcou ${sensoName} na ${day} como ${labelMap[nextScore]} no Setor ${sectorName} (Média Computada: ${Math.round(avgPts * 10) / 10} com ${totalVotesCount} votos)`);
-  } else if (isLider) {
-    logActivity(`Marcou ${sensoName} na ${day} como ${labelMap[nextScore]} no Setor ${sectorName} (Auditoria Cruzada por Líder ${auditorName} - Origem: ${originSector} • Média Computada: ${Math.round(avgPts * 10) / 10})`);
-  } else {
-    logActivity(`Marcou ${sensoName} na ${day} como ${labelMap[nextScore]} no Setor ${sectorName} (Apontamento Cidadão por ${auditorName} - Setor: ${originSector} • Média Computada: ${Math.round(avgPts * 10) / 10})`);
-  }
-
-  pushDataToServer();
 };
 
 // 7. CÁLCULO DE RESULTADOS E CONTROLE ESTRITO DA SINALIZAÇÃO DE PREMIAÇÃO
