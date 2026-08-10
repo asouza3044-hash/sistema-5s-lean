@@ -2,12 +2,14 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Portal de Consultoria 5S & Qualidade - Impaktto & SENAI</title>
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Chart.js para o Gráfico Radar dos 5 Sensos -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <!-- Local Styles -->
   <link rel="stylesheet" href="styles.css">
 </head>
@@ -60,7 +62,7 @@
           <input type="password" id="reg-password" class="form-control" placeholder="••••••••" required>
         </div>
 
-        <button type="submit" class="btn btn-primary" style="width: 100%; padding: 0.8rem; font-size: 1rem;">
+        <button type="submit" class="btn btn-primary" style="width: 100%; padding: 0.9rem; font-size: 1.05rem;">
           🚀 Entrar e Iniciar Auditoria de Campo
         </button>
       </form>
@@ -150,63 +152,58 @@
           <button class="btn btn-secondary" onclick="window.print()">🖨️ Exportar Relatório Consolidado</button>
         </div>
 
-        <div class="grid-metrics">
-          <div class="metric-card seiri">
-            <div class="metric-label">1. Seiri (Utilização)</div>
-            <div class="metric-value" id="score-seiri">100%</div>
-            <div class="progress-bar-container">
-              <div class="progress-bar-fill" id="bar-seiri"></div>
-            </div>
-            <div class="metric-sub">Meta: &ge; 95% para evolução</div>
+        <!-- GRÁFICO RADAR DOS 5 SENSOS (IMPACTO VISUAL EXECUTIVO) -->
+        <div class="grid-2col" style="margin-bottom: 1.5rem; align-items: center;">
+          <div style="background: rgba(0,0,0,0.25); padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--border-color); height: 300px; display: flex; justify-content: center; align-items: center;">
+            <canvas id="radarChart5S"></canvas>
           </div>
 
-          <div class="metric-card seiton">
-            <div class="metric-label">2. Seiton (Organização)</div>
-            <div class="metric-value" id="score-seiton">100%</div>
-            <div class="progress-bar-container">
-              <div class="progress-bar-fill" id="bar-seiton"></div>
-            </div>
-            <div class="metric-sub">Meta: &ge; 95% para evolução</div>
-          </div>
+          <div>
+            <div class="grid-metrics" style="grid-template-columns: 1fr 1fr; margin-bottom: 1rem;">
+              <div class="metric-card seiri">
+                <div class="metric-label">1. Seiri (Utilização)</div>
+                <div class="metric-value" id="score-seiri">100%</div>
+                <div class="progress-bar-container"><div class="progress-bar-fill" id="bar-seiri"></div></div>
+              </div>
 
-          <div class="metric-card seiso">
-            <div class="metric-label">3. Seiso (Limpeza)</div>
-            <div class="metric-value" id="score-seiso">100%</div>
-            <div class="progress-bar-container">
-              <div class="progress-bar-fill" id="bar-seiso"></div>
-            </div>
-            <div class="metric-sub">Meta: &ge; 95% para evolução</div>
-          </div>
+              <div class="metric-card seiton">
+                <div class="metric-label">2. Seiton (Organização)</div>
+                <div class="metric-value" id="score-seiton">100%</div>
+                <div class="progress-bar-container"><div class="progress-bar-fill" id="bar-seiton"></div></div>
+              </div>
 
-          <div class="metric-card seiketsu">
-            <div class="metric-label">4. Seiketsu (Padronização)</div>
-            <div class="metric-value" id="score-seiketsu">100%</div>
-            <div class="progress-bar-container">
-              <div class="progress-bar-fill" id="bar-seiketsu"></div>
-            </div>
-            <div class="metric-sub">Meta: &ge; 95% para evolução</div>
-          </div>
+              <div class="metric-card seiso">
+                <div class="metric-label">3. Seiso (Limpeza)</div>
+                <div class="metric-value" id="score-seiso">100%</div>
+                <div class="progress-bar-container"><div class="progress-bar-fill" id="bar-seiso"></div></div>
+              </div>
 
-          <div class="metric-card shitsuke">
-            <div class="metric-label">5. Shitsuke (Disciplina)</div>
-            <div class="metric-value" id="score-shitsuke">100%</div>
-            <div class="progress-bar-container">
-              <div class="progress-bar-fill" id="bar-shitsuke"></div>
+              <div class="metric-card seiketsu">
+                <div class="metric-label">4. Seiketsu (Padronização)</div>
+                <div class="metric-value" id="score-seiketsu">100%</div>
+                <div class="progress-bar-container"><div class="progress-bar-fill" id="bar-seiketsu"></div></div>
+              </div>
             </div>
-            <div class="metric-sub">Meta: &ge; 95% para evolução</div>
+
+            <div class="metric-card shitsuke" style="margin-bottom: 1rem;">
+              <div class="metric-label">5. Shitsuke (Disciplina)</div>
+              <div class="metric-value" id="score-shitsuke">100%</div>
+              <div class="progress-bar-container"><div class="progress-bar-fill" id="bar-shitsuke"></div></div>
+            </div>
+
+            <div style="background: rgba(99, 102, 241, 0.1); padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--border-highlight); display: flex; justify-content: space-between; align-items: center;">
+              <div>
+                <span style="font-size: 0.8rem; color: var(--text-muted);">Índice Geral de Maturidade:</span>
+                <h3 id="global-maturity-score" style="font-size: 1.8rem; font-family: var(--font-display); color: var(--primary);">100%</h3>
+              </div>
+              <div style="text-align: right;">
+                <span style="font-size: 0.8rem; color: var(--text-muted);">Status da Empresa:</span>
+                <div id="global-maturity-status" style="font-weight: 700; font-size: 1rem;">Excelente (Nível 5)</div>
+              </div>
+            </div>
           </div>
         </div>
 
-        <div style="background: rgba(255,255,255,0.03); padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
-          <div>
-            <span style="font-size: 0.85rem; color: var(--text-muted);">Índice Geral de Maturidade:</span>
-            <h3 id="global-maturity-score" style="font-size: 2rem; font-family: var(--font-display); color: var(--primary);">100%</h3>
-          </div>
-          <div>
-            <span style="font-size: 0.85rem; color: var(--text-muted);">Status de Avaliação:</span>
-            <div id="global-maturity-status" style="font-weight: 700; font-size: 1.1rem;">Excelente (Nível 5)</div>
-          </div>
-        </div>
       </div>
 
       <!-- CARD DE RASTREABILIDADE AO VIVO (FEED DA REUNIÃO E DA FÁBRICA) -->

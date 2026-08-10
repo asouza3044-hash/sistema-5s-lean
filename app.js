@@ -92,6 +92,7 @@ let clientGutMatrix = [];
 let clientKanbanTasks = [];
 let clientIshikawaData = {};
 let clientActivityLogs = [];
+let radarChartInstance = null;
 
 // Inicialização
 document.addEventListener('DOMContentLoaded', () => {
@@ -209,14 +210,12 @@ function checkAuthSession() {
 
   const isAdmin = (currentUser.role === 'administrador');
 
-  // Elementos Exclusivos do Administrador (Consultor Mestre)
   const navBtnTools = document.querySelector('.nav-btn[data-tab="tab-tools"]');
   const navBtnManual = document.querySelector('.nav-btn[data-tab="tab-manual"]');
   const adminClientSelector = document.getElementById('admin-client-selector-container');
   const adminAddUserCard = document.getElementById('admin-add-user-card');
 
   if (isAdmin) {
-    // Administrador tem visão total
     selectedClientId = selectedClientId || 'impaktto';
     if (adminClientSelector) adminClientSelector.style.display = 'block';
     if (adminAddUserCard) adminAddUserCard.style.display = 'block';
@@ -224,16 +223,13 @@ function checkAuthSession() {
     if (navBtnManual) navBtnManual.style.display = 'flex';
     populateAdminClientDropdown();
   } else {
-    // Usuários/Auditores da Fábrica têm visão simplificada focada em campo
     selectedClientId = currentUser.companyId || 'impaktto';
     if (adminClientSelector) adminClientSelector.style.display = 'none';
     if (adminAddUserCard) adminAddUserCard.style.display = 'none';
     
-    // Ocultar ferramentas administrativas para usuários comuns para foco 100% na Auditoria de Campo
     if (navBtnTools) navBtnTools.style.display = 'none';
     if (navBtnManual) navBtnManual.style.display = 'none';
 
-    // Garante que o cliente está na aba de Auditoria de Campo
     document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
     document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
     document.querySelector('.nav-btn[data-tab="tab-dashboard"]')?.classList.add('active');
@@ -474,7 +470,7 @@ window.selectScore = function(sensoName, qNum, qKey, score) {
   logActivity(`Pontuou o item ${sensoName.toUpperCase()} #${qNum} com Nota ${score}`);
 };
 
-// Calcular Resultados e Nível de Maturidade
+// Calcular Resultados & Renderizar Gráfico Radar 5S
 function calculateAuditResults() {
   const totals = { seiri: 0, seiton: 0, seiso: 0, seiketsu: 0, shitsuke: 0 };
   const maxPerSenso = 40;
@@ -489,9 +485,11 @@ function calculateAuditResults() {
 
   let totalScore = 0;
   let totalMax = 200;
+  const percentages = [];
 
   for (const senso of Object.keys(totals)) {
     const pct = Math.round((totals[senso] / maxPerSenso) * 100);
+    percentages.push(pct);
     totalScore += totals[senso];
 
     const elScore = document.getElementById(`score-${senso}`);
@@ -521,6 +519,57 @@ function calculateAuditResults() {
       elStatus.innerText = 'Insuficiente (Nível 1/2 - Requer Ação)';
       elStatus.style.color = '#ef4444';
     }
+  }
+
+  // Renderizar ou Atualizar Gráfico Radar de Maturidade 5S
+  renderRadarChart(percentages);
+}
+
+// Renderizador do Gráfico Radar de Maturidade 5S (Chart.js)
+function renderRadarChart(scoresData) {
+  const canvas = document.getElementById('radarChart5S');
+  if (!canvas || typeof Chart === 'undefined') return;
+
+  const labels = ['1. Seiri (Utilização)', '2. Seiton (Organização)', '3. Seiso (Limpeza)', '4. Seiketsu (Padronização)', '5. Shitsuke (Disciplina)'];
+
+  if (radarChartInstance) {
+    radarChartInstance.data.datasets[0].data = scoresData;
+    radarChartInstance.update();
+  } else {
+    radarChartInstance = new Chart(canvas, {
+      type: 'radar',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: 'Maturidade % por Senso',
+          data: scoresData,
+          backgroundColor: 'rgba(99, 102, 241, 0.25)',
+          borderColor: '#6366f1',
+          pointBackgroundColor: '#8b5cf6',
+          pointBorderColor: '#fff',
+          pointHoverBackgroundColor: '#fff',
+          pointHoverBorderColor: '#8b5cf6',
+          borderWidth: 2
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          r: {
+            angleLines: { color: 'rgba(255, 255, 255, 0.1)' },
+            grid: { color: 'rgba(255, 255, 255, 0.1)' },
+            pointLabels: { color: '#9ca3af', font: { size: 10, weight: 'bold' } },
+            ticks: { color: '#9ca3af', backdropColor: 'transparent', stepSize: 20 },
+            suggestedMin: 0,
+            suggestedMax: 100
+          }
+        },
+        plugins: {
+          legend: { display: false }
+        }
+      }
+    });
   }
 }
 
@@ -664,7 +713,7 @@ window.moveKanban = function(id, dir) {
 };
 
 window.deleteKanban = function(id) {
-  const task = clientKanbanTasks.find(t => t.id === id);
+  const task = task => task.id === id;
   if (task) logActivity(`Excluiu a tarefa "${task.title}" do Kanban`);
 
   clientKanbanTasks = clientKanbanTasks.filter(t => t.id !== id);
