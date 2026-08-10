@@ -89,8 +89,8 @@ const DEFAULT_USERS = {
   fabio: { username: 'fabio.comercial', password: '5s2026', name: 'Fabio', role: 'lider_diario', level: 'diario', sector: 'Comercial Usinados', title: 'Grupo 1: Líder Comercial Usinados' },
   andre: { username: 'andre.comercial', password: '5s2026', name: 'Andre', role: 'lider_diario', level: 'diario', sector: 'Comercial Portas, Armários e Cortinas', title: 'Grupo 1: Líder Comercial Portas/Armários/Cortinas' },
   
-  // CONTA ESPECIAL PARA TELÕES DA FÁBRICA & ESCRITÓRIO (GESTAO VISUAL 5S)
-  monitor: { username: 'monitor', password: '5s2026', name: 'Painel TV Fábrica & Escritório', role: 'monitor', level: 'monitor', title: '📺 Painel de Gestão Visual (TV)' }
+  // CONTA ESPECIAL PARA TELÕES DA FÁBRICA & ESCRITÓRIO (GESTAO VISUAL 5S 16:9)
+  monitor: { username: 'monitor', password: '5s2026', name: 'Gestão Visual TV Fábrica & Escritório', role: 'monitor', level: 'monitor', title: '📺 Gestão Visual 5S (TV 16:9)' }
 };
 
 // Estado Global
@@ -161,6 +161,7 @@ window.handleLogin = function(e) {
 
 window.clearSystemSession = function() {
   if (autoRefreshTimer) clearInterval(autoRefreshTimer);
+  document.body.classList.remove('monitor-mode');
   localStorage.clear();
   location.reload();
 };
@@ -299,11 +300,12 @@ function handleSelfRegister(e) {
   logActivity(`Novo integrante registrado (${name} - Setor Origem: ${userSector} - Grupo 1)`);
 }
 
-// 4. CONTROLE ESTRITO DE SESSÃO E VISIBILIDADE POR GRUPO (1, 2, 3 E MODO MONITOR TV)
+// 4. CONTROLE ESTRITO DE SESSÃO E VISIBILIDADE POR GRUPO (1, 2, 3 E MODO MONITOR TV 16:9)
 function checkAuthSession() {
   const loginOverlay = document.getElementById('login-overlay');
 
   if (!currentUser) {
+    document.body.classList.remove('monitor-mode');
     if (loginOverlay) {
       loginOverlay.style.display = 'flex';
       loginOverlay.classList.remove('hidden');
@@ -319,7 +321,7 @@ function checkAuthSession() {
   const level = currentUser.level || 'diario';
   const role = currentUser.role || 'lider_diario';
 
-  const isMonitor = (role === 'monitor' || level === 'monitor'); // CONTA TV MONITOR
+  const isMonitor = (role === 'monitor' || level === 'monitor'); // CONTA TV MONITOR 16:9
   const isSenior = (role === 'administrador' || level === 'senior'); // GRUPO 3
   const isSemanal = (role === 'auditor_semanal' || level === 'semanal'); // GRUPO 2
   const isDiario = (!isSenior && !isSemanal && !isMonitor); // GRUPO 1
@@ -335,14 +337,15 @@ function checkAuthSession() {
 
   if (isMonitor) {
     // ---------------------------------------------------------------------
-    // CONTA MONITOR (TV FÁBRICA & ESCRITÓRIO): GESTÃO VISUAL EM TEMPO REAL
+    // CONTA MONITOR (TV FÁBRICA & ESCRITÓRIO): LAYOUT 16:9 ELEGANTE (ZERO FEED / ANONIMATO)
     // ---------------------------------------------------------------------
-    activeFactorySectorFilter = 'ALL'; // Visão Geral Consolidada Padrão na TV
+    document.body.classList.add('monitor-mode');
+    activeFactorySectorFilter = 'ALL';
 
     if (cardMaturity) cardMaturity.style.display = 'block';
     if (cardFactoryBoard) cardFactoryBoard.style.display = 'block';
-    if (cardActivityFeed) cardActivityFeed.style.display = 'block';
-    if (cardAuditChecklist) cardAuditChecklist.style.display = 'none'; // Sem formulário de perguntas na TV
+    if (cardActivityFeed) cardActivityFeed.style.display = 'none'; // REMOVIDO PARA ANONIMATO
+    if (cardAuditChecklist) cardAuditChecklist.style.display = 'none'; // Sem formulário de perguntas
 
     if (navTabsContainer) navTabsContainer.style.display = 'none';
     if (navBtnTools) navBtnTools.style.display = 'none';
@@ -358,52 +361,51 @@ function checkAuthSession() {
       }, 30000);
     }
 
-  } else if (isDiario) {
-    // ---------------------------------------------------------------------
-    // GRUPO 1 (LÍDERES DIÁRIOS): SOMENTE O QUADRO DO SETOR DESTINO NO RODÍZIO
-    // ---------------------------------------------------------------------
-    if (cardFactoryBoard) cardFactoryBoard.style.display = 'block';
-    if (cardMaturity) cardMaturity.style.display = 'none';
-    if (cardActivityFeed) cardActivityFeed.style.display = 'none';
-    if (cardAuditChecklist) cardAuditChecklist.style.display = 'none';
-
-    if (navTabsContainer) navTabsContainer.style.display = 'none';
-    if (navBtnTools) navBtnTools.style.display = 'none';
-    if (navBtnManual) navBtnManual.style.display = 'none';
-
-    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-    document.getElementById('tab-dashboard')?.classList.add('active');
-
-  } else if (isSemanal) {
-    // ---------------------------------------------------------------------
-    // GRUPO 2 (AUDITORES SEMANAIS / ENCARREGADOS): QUADRO + CHECKLIST + MATURIDADE + FEED
-    // ---------------------------------------------------------------------
-    if (cardFactoryBoard) cardFactoryBoard.style.display = 'block';
-    if (cardMaturity) cardMaturity.style.display = 'block';
-    if (cardActivityFeed) cardActivityFeed.style.display = 'block';
-    if (cardAuditChecklist) cardAuditChecklist.style.display = 'block';
-
-    if (navTabsContainer) navTabsContainer.style.display = 'flex';
-    if (navBtnTools) navBtnTools.style.display = 'none';
-    if (navBtnManual) navBtnManual.style.display = 'none';
-
-    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-    document.querySelector('.nav-btn[data-tab="tab-dashboard"]')?.classList.add('active');
-    document.getElementById('tab-dashboard')?.classList.add('active');
-
   } else {
-    // ---------------------------------------------------------------------
-    // GRUPO 3 (AUDITORES SÊNIOR / ADM & GERÊNCIA/DIRETORIA): ACESSO TOTAL COMPLETO
-    // ---------------------------------------------------------------------
-    if (cardFactoryBoard) cardFactoryBoard.style.display = 'block';
-    if (cardMaturity) cardMaturity.style.display = 'block';
-    if (cardActivityFeed) cardActivityFeed.style.display = 'block';
-    if (cardAuditChecklist) cardAuditChecklist.style.display = 'block';
+    document.body.classList.remove('monitor-mode');
+    if (autoRefreshTimer) {
+      clearInterval(autoRefreshTimer);
+      autoRefreshTimer = null;
+    }
 
-    if (navTabsContainer) navTabsContainer.style.display = 'flex';
-    if (navBtnTools) navBtnTools.style.display = 'flex';
-    if (navBtnManual) navBtnManual.style.display = 'flex';
+    if (isDiario) {
+      if (cardFactoryBoard) cardFactoryBoard.style.display = 'block';
+      if (cardMaturity) cardMaturity.style.display = 'none';
+      if (cardActivityFeed) cardActivityFeed.style.display = 'none';
+      if (cardAuditChecklist) cardAuditChecklist.style.display = 'none';
+
+      if (navTabsContainer) navTabsContainer.style.display = 'none';
+      if (navBtnTools) navBtnTools.style.display = 'none';
+      if (navBtnManual) navBtnManual.style.display = 'none';
+
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      document.getElementById('tab-dashboard')?.classList.add('active');
+
+    } else if (isSemanal) {
+      if (cardFactoryBoard) cardFactoryBoard.style.display = 'block';
+      if (cardMaturity) cardMaturity.style.display = 'block';
+      if (cardActivityFeed) cardActivityFeed.style.display = 'block';
+      if (cardAuditChecklist) cardAuditChecklist.style.display = 'block';
+
+      if (navTabsContainer) navTabsContainer.style.display = 'flex';
+      if (navBtnTools) navBtnTools.style.display = 'none';
+      if (navBtnManual) navBtnManual.style.display = 'none';
+
+      document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      document.querySelector('.nav-btn[data-tab="tab-dashboard"]')?.classList.add('active');
+      document.getElementById('tab-dashboard')?.classList.add('active');
+
+    } else {
+      if (cardFactoryBoard) cardFactoryBoard.style.display = 'block';
+      if (cardMaturity) cardMaturity.style.display = 'block';
+      if (cardActivityFeed) cardActivityFeed.style.display = 'block';
+      if (cardAuditChecklist) cardAuditChecklist.style.display = 'block';
+
+      if (navTabsContainer) navTabsContainer.style.display = 'flex';
+      if (navBtnTools) navBtnTools.style.display = 'flex';
+      if (navBtnManual) navBtnManual.style.display = 'flex';
+    }
   }
 
   const headerLogoImg = document.getElementById('header-company-logo');
@@ -418,7 +420,7 @@ function checkAuthSession() {
   const targetAuditSector = SECTOR_ROTATION_MAP[userSector] || 'Holter';
 
   const levelLabels = {
-    monitor: '📺 Painel de Gestão Visual (TV Fábrica & Escritório)',
+    monitor: '📺 Painel de Gestão Visual 16:9 (TV Fábrica & Escritório)',
     senior: '👑 Grupo 3: Auditor Sênior (Adm / Gerência & Diretoria)',
     semanal: '🔍 Grupo 2: Auditor Semanal (Encarregado)',
     diario: `📋 Grupo 1: Líder (Origem: ${userSector} ➔ Auditoria Cruzada: ${targetAuditSector})`
@@ -439,6 +441,7 @@ function checkAuthSession() {
 
 window.handleLogout = function() {
   if (autoRefreshTimer) clearInterval(autoRefreshTimer);
+  document.body.classList.remove('monitor-mode');
   currentUser = null;
   localStorage.removeItem('5s_impaktto_session');
   location.reload();
@@ -604,7 +607,7 @@ window.selectScore3Level = function(sensoName, qNum, qKey, level) {
   logActivity(`Avaliou o item ${sensoName.toUpperCase()} #${qNum} como ${labelMap[level]}`);
 };
 
-// 5. RENDEREZAÇÃO DO QUADRO COM RODÍZIO COMPETENTE 5X5 E MODO TV MONITOR
+// 5. RENDEREZAÇÃO DO QUADRO COM MODO TV MONITOR 16:9 ELEGANTE
 function renderFactoryBoard() {
   const container = document.getElementById('factory-board-container');
   const titleEl = document.getElementById('factory-board-title');
@@ -628,7 +631,7 @@ function renderFactoryBoard() {
   // Atualizar Título Dinâmico do Card
   if (titleEl) {
     if (isMonitor) {
-      titleEl.innerHTML = `📺 Quadro Geral Consolidado em Tempo Real (GESTAO VISUAL IMPAK TTO)`;
+      titleEl.innerHTML = `📺 Quadro Geral Consolidado da Fábrica (IMPAK TTO)`;
     } else if (isDiario) {
       titleEl.innerHTML = `📋 Quadro da Fábrica: COMO ESTÁ NOSSA ÁREA?`;
     } else if (selectedSector === 'ALL') {
@@ -643,12 +646,12 @@ function renderFactoryBoard() {
     if (isMonitor) {
       filterSelectContainer.style.display = 'block';
       filterSelectContainer.innerHTML = `
-        <div style="background: rgba(6, 182, 212, 0.15); border: 1px solid var(--accent-cyan); padding: 0.75rem 1.1rem; border-radius: var(--radius-md); margin-bottom: 1.25rem; display: flex; justify-content: space-between; align-items: center;">
+        <div style="background: rgba(6, 182, 212, 0.12); border: 1px solid var(--accent-cyan); padding: 0.5rem 0.85rem; border-radius: var(--radius-md); margin-bottom: 0.75rem; display: flex; justify-content: space-between; align-items: center;">
           <div>
-            <span style="font-size:0.85rem; font-weight:800; color:var(--accent-cyan);">📺 MODO TV / KIOSK DE FÁBRICA & ESCRITÓRIO:</span>
-            <span style="font-size:0.82rem; color:var(--text-muted); margin-left:0.5rem;">Atualização automática ao vivo a cada 30s.</span>
+            <span style="font-size:0.8rem; font-weight:800; color:var(--accent-cyan);">📺 GESTÃO VISUAL 16:9 • AO VIVO NO TELÃO</span>
+            <span style="font-size:0.75rem; color:var(--text-muted); margin-left:0.5rem;">Atualização automática a cada 30s</span>
           </div>
-          <span class="badge-seiton" style="padding:0.3rem 0.65rem; font-size:0.75rem;">🔴 AO VIVO NO TELÃO</span>
+          <span class="badge-seiso" style="padding:0.25rem 0.5rem; font-size:0.72rem; font-weight:700;">🟢 SISTEMA 100% OPERACIONAL</span>
         </div>
       `;
     } else if (isDiario) {
@@ -701,7 +704,7 @@ function renderFactoryBoard() {
     <table class="factory-board-table">
       <thead>
         <tr>
-          <th style="text-align:left; width: 280px;">CONCEITO 5S (RODÍZIO 5X5)</th>
+          <th style="text-align:left; width: 260px;">CONCEITO 5S (RODÍZIO 5X5)</th>
           ${days.map(d => `<th style="${d === currentDayCode ? 'background:rgba(99,102,241,0.3); color:#fff; border-bottom:2px solid var(--primary);' : ''}">${d} ${d === currentDayCode ? '⭐ (Hoje)' : ''}</th>`).join('')}
         </tr>
       </thead>
@@ -713,9 +716,9 @@ function renderFactoryBoard() {
 
     html += `
       <tr style="${isFocusToday ? 'background: rgba(99,102,241,0.06);' : ''}">
-        <td style="text-align:left; vertical-align:middle; padding: 0.85rem;">
-          <span class="senso-badge-title ${s.class}" style="margin:0 0 0.25rem 0;">${s.name}</span>
-          <div style="font-size:0.75rem; color:#9ca3af; line-height:1.25; font-weight: 500;">
+        <td style="text-align:left; vertical-align:middle; padding: ${isMonitor ? '0.5rem 0.6rem' : '0.85rem'};">
+          <span class="senso-badge-title ${s.class}" style="margin:0 0 0.15rem 0;">${s.name}</span>
+          <div style="font-size:0.7rem; color:#9ca3af; line-height:1.25; font-weight: 500;">
             💡 ${s.desc}
           </div>
         </td>
@@ -746,7 +749,7 @@ function renderFactoryBoard() {
 
             return `
               <td style="vertical-align:middle;">
-                <span class="score-btn-factory selected" data-level="${currentStatus}" style="display:inline-block; padding:0.35rem 0.5rem; font-size:0.75rem; font-weight:700;">
+                <span class="score-btn-factory selected" data-level="${currentStatus}" style="display:inline-block; padding:${isMonitor ? '0.3rem 0.45rem' : '0.35rem 0.5rem'}; font-size:0.75rem; font-weight:700;">
                   ${labelText}
                 </span>
               </td>
