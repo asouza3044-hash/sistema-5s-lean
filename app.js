@@ -321,10 +321,10 @@ function checkAuthSession() {
   const level = currentUser.level || 'diario';
   const role = currentUser.role || 'lider_diario';
 
-  const isMonitor = (role === 'monitor' || level === 'monitor'); // CONTA TV MONITOR 16:9
-  const isSenior = (role === 'administrador' || level === 'senior'); // GRUPO 3
-  const isSemanal = (role === 'auditor_semanal' || level === 'semanal'); // GRUPO 2
-  const isDiario = (!isSenior && !isSemanal && !isMonitor); // GRUPO 1
+  const isMonitor = (role === 'monitor' || level === 'monitor');
+  const isSenior = (role === 'administrador' || level === 'senior');
+  const isSemanal = (role === 'auditor_semanal' || level === 'semanal');
+  const isDiario = (!isSenior && !isSemanal && !isMonitor);
 
   const cardFactoryBoard = document.getElementById('card-factory-board');
   const cardMaturity = document.getElementById('card-maturity-dashboard');
@@ -693,7 +693,6 @@ function renderFactoryBoard() {
 
   const days = ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
 
-  // SE FOR MODO TV MONITOR OU SELETOR ALL: MOSTRAR MATRIZ DOS 7 SETORES INDIVIDUAIS + FECHAMENTO COLETIVO!
   if (isMonitor || selectedSector === 'ALL') {
     const sensos = [
       { key: 'seiri', dayCode: 'SEG', name: '1. SEIRI (Seg)' },
@@ -718,7 +717,6 @@ function renderFactoryBoard() {
         <tbody>
     `;
 
-    // 1. LINHAS INDIVIDUAIS DE CADA UM DOS 7 SETORES DA IMPAK TTO
     IMPAKTTO_SECTORS.forEach(sec => {
       html += `
         <tr>
@@ -730,7 +728,6 @@ function renderFactoryBoard() {
             const isFuture = (dayIdx > todayIndexInWeek);
 
             if (isFuture) {
-              // DIA FUTURO: EXIBIR BLOQUEADO/PENDENTE SEM PREENCHIMENTO FALSO
               return `
                 <td style="vertical-align:middle; padding:0.3rem 0.2rem; opacity:0.4;">
                   <span style="display:inline-block; padding:0.25rem 0.4rem; font-size:0.72rem; font-weight:500; color:var(--text-muted); border:1px dashed var(--border-color); border-radius:6px;">
@@ -756,7 +753,6 @@ function renderFactoryBoard() {
       `;
     });
 
-    // 2. LINHA ESPECIAL DE FECHAMENTO COLETIVO DA SEMANA (TOTAL EMPRESA)
     html += `
       <tr style="background: rgba(99, 102, 241, 0.18); border-top: 2px solid var(--primary);">
         <td style="text-align:left; font-weight:800; font-size:0.85rem; color:var(--accent-cyan); padding: 0.6rem 0.6rem;">
@@ -814,7 +810,6 @@ function renderFactoryBoard() {
     container.innerHTML = html;
 
   } else {
-    // SE FOR VISÃO INDIVIDUAL DO LÍDER NO GRUPO 1: QUADRO DO SETOR COM BLOQUEIO TEMPORAL FUTURO
     const sensos = [
       { key: 'seiri', dayCode: 'SEG', name: 'UTILIZAÇÃO (SEIRI)', class: 'badge-seiri', desc: 'Segunda: Separar o útil do inútil • Descarte de desnecessários' },
       { key: 'seiton', dayCode: 'TER', name: 'ORGANIZAÇÃO (SEITON)', class: 'badge-seiton', desc: 'Terça: Um lugar para cada coisa • Identificação visual' },
@@ -879,7 +874,7 @@ function renderFactoryBoard() {
       `;
     });
 
-    html += `</tbody></table>`;
+    html += `</tbody>mtable>`;
     container.innerHTML = html;
   }
 }
@@ -905,6 +900,7 @@ window.cycleFactoryBoard = function(sectorName, boardKey, sensoName, day) {
   logActivity(`Marcou ${sensoName} na ${day} como ${labelMap[next]} no Setor ${sectorName} (Auditoria Cruzada por ${auditorName} - Origem: ${originSector})`);
 };
 
+// 6. CÁLCULO DE RESULTADOS E TERMÔMETRO DO PROGRAMA DE PREMIAÇÃO MENSAL EM DINHEIRO (META >= 90%)
 function calculateAuditResults() {
   const totals = { seiri: 0, seiton: 0, seiso: 0, seiketsu: 0, shitsuke: 0 };
   const maxPerSenso = 30;
@@ -953,6 +949,37 @@ function calculateAuditResults() {
     } else {
       elStatus.innerText = 'Insuficiente (Nível 1/2 - Requer Ação)';
       elStatus.style.color = '#ef4444';
+    }
+  }
+
+  // ATUALIZAÇÃO DO TERMÔMETRO DO PRÊMIO MENSAL EM DINHEIRO (META >= 90%)
+  const rewardBadgeEl = document.getElementById('monthly-reward-badge');
+  if (rewardBadgeEl) {
+    if (globalPct >= 90) {
+      rewardBadgeEl.innerHTML = `
+        <div style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(245, 158, 11, 0.2)); border: 2px solid #f59e0b; padding: 0.85rem 1.25rem; border-radius: var(--radius-md); margin-top: 0.75rem; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 0 20px rgba(245, 158, 11, 0.3);">
+          <div>
+            <span style="font-size: 0.78rem; font-weight: 800; color: #fde047; text-transform: uppercase; letter-spacing:0.05em;">🏆 PROGRAMA DE PREMIAÇÃO MENSAL EM DINHEIRO (META IMPAK TTO)</span>
+            <div style="font-size: 1.05rem; font-weight: 800; color: #ffffff; margin-top: 0.15rem;">
+              🎉 META DE 90% ALCANÇADA! (${globalPct}%) - FÁBRICA ELEGÍVEL AO PRÊMIO EM DINHEIRO MENSAL!
+            </div>
+          </div>
+          <span style="font-size: 1.8rem; filter: drop-shadow(0 0 10px rgba(245, 158, 11, 0.8));">💰</span>
+        </div>
+      `;
+    } else {
+      const remaining = 90 - globalPct;
+      rewardBadgeEl.innerHTML = `
+        <div style="background: rgba(255, 255, 255, 0.04); border: 1px solid var(--border-color); padding: 0.75rem 1rem; border-radius: var(--radius-md); margin-top: 0.75rem; display: flex; align-items: center; justify-content: space-between;">
+          <div>
+            <span style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">🏆 PROGRAMA DE PREMIAÇÃO MENSAL EM DINHEIRO (META: 90%)</span>
+            <div style="font-size: 0.88rem; font-weight: 700; color: var(--text-main); margin-top: 0.15rem;">
+              Nota Atual da Auditoria: ${globalPct}% • <span style="color: var(--status-regular);">Faltam ${remaining}% para alcançar a Meta do Prêmio em Dinheiro!</span>
+            </div>
+          </div>
+          <span style="font-size: 1.4rem;">🎯</span>
+        </div>
+      `;
     }
   }
 

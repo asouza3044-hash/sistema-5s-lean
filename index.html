@@ -10,10 +10,10 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
   <!-- Chart.js para o Gráfico Radar dos 5 Sensos -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <!-- Local Styles com Cache Busting v10.0 -->
-  <link rel="stylesheet" href="styles.css?v=10.0">
+  <!-- Local Styles com Cache Busting v11.0 -->
+  <link rel="stylesheet" href="styles.css?v=11.0">
   <!-- JavaScript Principal Carregado no Head -->
-  <script src="app.js?v=10.0"></script>
+  <script src="app.js?v=11.0"></script>
 </head>
 <body>
 
@@ -150,7 +150,7 @@
          =================================================================== -->
     <section id="tab-dashboard" class="tab-content active">
       
-      <!-- CARD 1: PAINEL DE MATURIDADE GLOBAL DA EMPRESA (RADAR 5S - EXIBIDO NO MODO TV & GESTÃO) -->
+      <!-- CARD 1: PAINEL DE MATURIDADE GLOBAL DA EMPRESA (RADAR 5S & PROGRAMA DE PREMIAÇÃO MENSAL EM DINHEIRO) -->
       <div id="card-maturity-dashboard" class="card">
         <div class="card-header">
           <h2 class="card-title">🏆 Nível de Maturidade 5S - IMPAK TTO</h2>
@@ -158,13 +158,13 @@
         </div>
 
         <!-- GRÁFICO RADAR DOS 5 SENSOS -->
-        <div class="grid-2col" style="margin-bottom: 1.5rem; align-items: center;">
+        <div class="grid-2col" style="margin-bottom: 1rem; align-items: center;">
           <div style="background: rgba(0,0,0,0.25); padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--border-color); height: 300px; display: flex; justify-content: center; align-items: center;">
             <canvas id="radarChart5S"></canvas>
           </div>
 
           <div>
-            <div class="grid-metrics" style="grid-template-columns: 1fr 1fr; margin-bottom: 1rem;">
+            <div class="grid-metrics" style="grid-template-columns: 1fr 1fr; margin-bottom: 0.75rem;">
               <div class="metric-card seiri">
                 <div class="metric-label">1. Utilização (Seiri)</div>
                 <div class="metric-value" id="score-seiri">100%</div>
@@ -190,24 +190,27 @@
               </div>
             </div>
 
-            <div class="metric-card shitsuke" style="margin-bottom: 1rem;">
+            <div class="metric-card shitsuke" style="margin-bottom: 0.75rem;">
               <div class="metric-label">5. Disciplina (Shitsuke)</div>
               <div class="metric-value" id="score-shitsuke">100%</div>
               <div class="progress-bar-container"><div class="progress-bar-fill" id="bar-shitsuke"></div></div>
             </div>
 
-            <div style="background: rgba(99, 102, 241, 0.1); padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--border-highlight); display: flex; justify-content: space-between; align-items: center;">
+            <div style="background: rgba(99, 102, 241, 0.1); padding: 0.85rem; border-radius: var(--radius-md); border: 1px solid var(--border-highlight); display: flex; justify-content: space-between; align-items: center;">
               <div>
-                <span style="font-size: 0.8rem; color: var(--text-muted);">Índice Geral de Maturidade:</span>
-                <h3 id="global-maturity-score" style="font-size: 1.8rem; font-family: var(--font-display); color: var(--primary);">100%</h3>
+                <span style="font-size: 0.78rem; color: var(--text-muted);">Índice Geral de Maturidade:</span>
+                <h3 id="global-maturity-score" style="font-size: 1.7rem; font-family: var(--font-display); color: var(--primary);">100%</h3>
               </div>
               <div style="text-align: right;">
-                <span style="font-size: 0.8rem; color: var(--text-muted);">Status da Empresa:</span>
-                <div id="global-maturity-status" style="font-weight: 700; font-size: 1rem;">Excelente (Nível 5)</div>
+                <span style="font-size: 0.78rem; color: var(--text-muted);">Status da Empresa:</span>
+                <div id="global-maturity-status" style="font-weight: 700; font-size: 0.95rem;">Excelente (Nível 5)</div>
               </div>
             </div>
           </div>
         </div>
+
+        <!-- CONTAINER DO PROGRAMA DE PREMIAÇÃO MENSAL EM DINHEIRO (META >= 90%) -->
+        <div id="monthly-reward-badge"></div>
 
       </div>
 
@@ -238,14 +241,14 @@
         </div>
       </div>
 
-      <!-- CARD 4: CHECKLIST OFICIAL DE AUDITORIA 5S DE CAMPO (GRUPO 2 E 3) -->
+      <!-- CARD 4: CHECKLIST OFICIAL DE AUDITORIA MENSAL 5S (GRUPO 2 E GRUPO 3 - AVALIAÇÃO DA PREMIAÇÃO) -->
       <div id="card-audit-checklist" class="card">
         <div class="card-header">
-          <h2 class="card-title">📋 Checklist Oficial de Auditoria 5S de Campo</h2>
+          <h2 class="card-title">📋 Checklist Oficial da Auditoria Mensal 5S (Validação do Prêmio ≥90%)</h2>
           <button class="btn btn-danger" onclick="resetAudit()">🔄 Redefinir Respostas</button>
         </div>
         <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.5rem;">
-          Selecione a avaliação simplificada de 3 níveis para cada item: <strong>🟢 Bom (100%)</strong>, <strong>🟡 Regular (50%)</strong> ou <strong>🔴 Ruim (0%)</strong>.
+          Auditoria realizada 1 vez ao mês pelos Grupos 2 e 3. Selecione a avaliação simplificada de 3 níveis: <strong>🟢 Bom (100%)</strong>, <strong>🟡 Regular (50%)</strong> ou <strong>🔴 Ruim (0%)</strong>.
         </p>
 
         <!-- Container das Perguntas de 3 Níveis -->
@@ -464,11 +467,11 @@
           <p>O Manual completo de implantação é de acesso estritamente restrito à gestão de projeto e diretoria (Auditores Sênior).</p>
           <hr style="border-color: var(--border-color); margin: 1.5rem 0;">
           
-          <h4 style="color: var(--accent-cyan); margin-bottom: 0.5rem;">Diretrizes da Governança em 3 Níveis da Impaktto:</h4>
+          <h4 style="color: var(--accent-cyan); margin-bottom: 0.5rem;">Diretrizes da Governança & Premiação em Dinheiro Mensal (Meta ≥90%):</h4>
           <ul style="list-style: square inside; margin-left: 1rem;">
-            <li><strong>Nível 1 (Grupo 1 - Líderes Diários):</strong> Alexandre (Usinagem), Marcos (Holter), Bruno (Armários), Elton (Portas/Cortinas), Giovanna (Acabamento), Fabio (Comercial Usinados), Andre (Comercial Portas/Armários/Cortinas).</li>
-            <li><strong>Nível 2 (Grupo 2 - Auditores Semanais):</strong> Diego (Encarregado Fábrica), Filipe (Encarregado RH - 5S).</li>
-            <li><strong>Nível 3 (Grupo 3 - Auditores Sênior):</strong> Kaio (Diretor), Alexandre Souza (Gerente de Projeto / Consultor Mestre).</li>
+            <li><strong>Nível 1 (Grupo 1 - Líderes Diários):</strong> Avaliação rápida diária no rodízio de auditoria cruzada. Ao virar a semana, limpa o quadro para o novo ciclo.</li>
+            <li><strong>Nível 2 e 3 (Auditores Mensais):</strong> Auditoria Oficial realizada 1 vez ao mês pelos Grupos 2 e 3 via Checklist de 50 Perguntas.</li>
+            <li><strong>Prêmio em Dinheiro (Meta ≥ 90%):</strong> O setor/empresa que atingir 90% de conformidade na auditoria mensal conquista o Prêmio em Dinheiro 5S Impaktto!</li>
             <li><strong>Perfil Especial TV / Monitor:</strong> <code>monitor</code> / <code>5s2026</code> (Painel de Gestão Visual 16:9 sem Rolagem).</li>
           </ul>
         </div>
