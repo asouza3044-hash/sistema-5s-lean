@@ -177,7 +177,7 @@ const AUDIT_QUESTIONS = {
     "Os materiais e ferramentas necessários para o trabalho estão em locais definidos?",
     "O material separado para reparo/devolução está em local seguro e identificado?",
     "Há controle sobre materiais e componentes que ficaram parados por muito tempo?",
-    "Os documentos impressos (OPs, relatórios, NFs) estão organizados e separados?",
+    "Os documentos impressos (OPs, relatórios, NFs) estão organizedos e separados?",
     "Os produtos acabados/componentes sem uso imediato estão em locais específicos?"
   ],
   seiton: [
@@ -321,10 +321,10 @@ function checkAuthSession() {
   const level = currentUser.level || 'diario';
   const role = currentUser.role || 'lider_diario';
 
-  const isMonitor = (role === 'monitor' || level === 'monitor');
-  const isSenior = (role === 'administrador' || level === 'senior');
-  const isSemanal = (role === 'auditor_semanal' || level === 'semanal');
-  const isDiario = (!isSenior && !isSemanal && !isMonitor);
+  const isMonitor = (role === 'monitor' || level === 'monitor'); // CONTA TV MONITOR 16:9
+  const isSenior = (role === 'administrador' || level === 'senior'); // GRUPO 3
+  const isSemanal = (role === 'auditor_semanal' || level === 'semanal'); // GRUPO 2
+  const isDiario = (!isSenior && !isSemanal && !isMonitor); // GRUPO 1
 
   const cardFactoryBoard = document.getElementById('card-factory-board');
   const cardMaturity = document.getElementById('card-maturity-dashboard');
@@ -336,13 +336,17 @@ function checkAuthSession() {
   const navBtnManual = document.querySelector('.nav-btn[data-tab="tab-manual"]');
 
   if (isMonitor) {
+    // ---------------------------------------------------------------------
+    // CONTA MONITOR (TV FÁBRICA & ESCRITÓRIO): SOMENTE O QUADRO DA FÁBRICA EM TELA CHEIA
+    // MATURIDADE REMOVIDA CONFORME DIRETRIZ DE GOVERNANÇA
+    // ---------------------------------------------------------------------
     document.body.classList.add('monitor-mode');
     activeFactorySectorFilter = 'ALL';
 
-    if (cardMaturity) cardMaturity.style.display = 'block';
     if (cardFactoryBoard) cardFactoryBoard.style.display = 'block';
-    if (cardActivityFeed) cardActivityFeed.style.display = 'none';
-    if (cardAuditChecklist) cardAuditChecklist.style.display = 'none';
+    if (cardMaturity) cardMaturity.style.display = 'none'; // REMOVIDO DO MONITOR
+    if (cardActivityFeed) cardActivityFeed.style.display = 'none'; // REMOVIDO PARA ANONIMATO
+    if (cardAuditChecklist) cardAuditChecklist.style.display = 'none'; // Sem formulário de perguntas
 
     if (navTabsContainer) navTabsContainer.style.display = 'none';
     if (navBtnTools) navBtnTools.style.display = 'none';
@@ -365,8 +369,12 @@ function checkAuthSession() {
     }
 
     if (isDiario) {
+      // ---------------------------------------------------------------------
+      // GRUPO 1 (LÍDERES DIÁRIOS): SOMENTE O QUADRO DA ÁREA AUDITADA NO RODÍZIO
+      // MATURIDADE REMOVIDA CONFORME DIRETRIZ DE GOVERNANÇA
+      // ---------------------------------------------------------------------
       if (cardFactoryBoard) cardFactoryBoard.style.display = 'block';
-      if (cardMaturity) cardMaturity.style.display = 'none';
+      if (cardMaturity) cardMaturity.style.display = 'none'; // REMOVIDO DO GRUPO 1
       if (cardActivityFeed) cardActivityFeed.style.display = 'none';
       if (cardAuditChecklist) cardAuditChecklist.style.display = 'none';
 
@@ -378,6 +386,9 @@ function checkAuthSession() {
       document.getElementById('tab-dashboard')?.classList.add('active');
 
     } else if (isSemanal) {
+      // ---------------------------------------------------------------------
+      // GRUPO 2 (AUDITORES SEMANAIS / ENCARREGADOS): QUADRO + CHECKLIST + MATURIDADE + FEED
+      // ---------------------------------------------------------------------
       if (cardFactoryBoard) cardFactoryBoard.style.display = 'block';
       if (cardMaturity) cardMaturity.style.display = 'block';
       if (cardActivityFeed) cardActivityFeed.style.display = 'block';
@@ -393,6 +404,9 @@ function checkAuthSession() {
       document.getElementById('tab-dashboard')?.classList.add('active');
 
     } else {
+      // ---------------------------------------------------------------------
+      // GRUPO 3 (AUDITORES SÊNIOR / ADM & GERÊNCIA/DIRETORIA): ACESSO TOTAL COMPLETO
+      // ---------------------------------------------------------------------
       if (cardFactoryBoard) cardFactoryBoard.style.display = 'block';
       if (cardMaturity) cardMaturity.style.display = 'block';
       if (cardActivityFeed) cardActivityFeed.style.display = 'block';
@@ -874,7 +888,7 @@ function renderFactoryBoard() {
       `;
     });
 
-    html += `</tbody>mtable>`;
+    html += `</tbody></table>`;
     container.innerHTML = html;
   }
 }
