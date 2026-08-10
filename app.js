@@ -82,6 +82,7 @@ let clientKanbanTasks = [];
 let clientIshikawaData = {};
 let clientActivityLogs = [];
 let clientFactoryBoard = {};
+let activeFactorySectorFilter = 'ALL'; // 'ALL' para visão geral consolidada
 let radarChartInstance = null;
 
 // 3. FUNÇÃO GLOBAL DE LOGIN DIRETO IMPAK TTO (SUPORTE A TODOS OS INTEGRANTES)
@@ -240,7 +241,7 @@ function handleSelfRegister(e) {
     return;
   }
 
-  // Novos cadastros pertencem por padrão ao GRUPO 1 (Líder Diário)
+  // Novos cadastros pertencem por padrão ao GRUPO 1 (Líder Diário do Setor selecionado)
   const newUser = {
     username,
     password,
@@ -308,7 +309,7 @@ function checkAuthSession() {
 
   if (isDiario) {
     // ---------------------------------------------------------------------
-    // GRUPO 1: SOMENTE E SOMENTE DEVERÁ APARECER O QUADRO DA FÁBRICA
+    // GRUPO 1: SOMENTE E SOMENTE DEVERÁ APARECER O QUADRO DO SEU SETOR
     // ---------------------------------------------------------------------
     if (cardFactoryBoard) cardFactoryBoard.style.display = 'block';
     if (cardMaturity) cardMaturity.style.display = 'none';
@@ -366,7 +367,7 @@ function checkAuthSession() {
   const levelLabels = {
     senior: '👑 Grupo 3: Auditor Sênior (Adm/Diretoria)',
     semanal: '🔍 Grupo 2: Auditor Semanal (Encarregado)',
-    diario: '📋 Grupo 1: Líder Diário de Setor'
+    diario: `📋 Grupo 1: Líder do Setor ${currentUser.sector || 'Usinagem'}`
   };
 
   const levelBadgeText = levelLabels[level] || '📋 Grupo 1: Líder Diário';
@@ -548,9 +549,47 @@ window.selectScore3Level = function(sensoName, qNum, qKey, level) {
   logActivity(`Avaliou o item ${sensoName.toUpperCase()} #${qNum} como ${labelMap[level]}`);
 };
 
+// 5. RENDEREZAÇÃO DO QUADRO INDIVIDUAL POR SETOR E CONSOLIDAÇÃO GERAL DA FÁBRICA
 function renderFactoryBoard() {
   const container = document.getElementById('factory-board-container');
+  const titleEl = document.getElementById('factory-board-title');
+  const filterSelectContainer = document.getElementById('factory-board-filter-container');
   if (!container) return;
+
+  const userSector = currentUser ? (currentUser.sector || 'Usinagem') : 'Usinagem';
+  const isDiario = (currentUser && currentUser.level === 'diario');
+
+  // Definir setor ativo para exibição
+  let selectedSector = isDiario ? userSector : (activeFactorySectorFilter || 'ALL');
+
+  // Atualizar Título Dinâmico do Card
+  if (titleEl) {
+    if (isDiario) {
+      titleEl.innerHTML = `📋 Quadro do Setor: <span style="color:var(--primary); font-weight:800;">${userSector}</span> (COMO ESTÁ NOSSA ÁREA?)`;
+    } else if (selectedSector === 'ALL') {
+      titleEl.innerHTML = `📋 Quadro Geral Consolidado (COMO ESTÁ A IMPAK TTO?)`;
+    } else {
+      titleEl.innerHTML = `📋 Quadro do Setor: <span style="color:var(--primary); font-weight:800;">${selectedSector}</span> (COMO ESTÁ NOSSA ÁREA?)`;
+    }
+  }
+
+  // Renderizar Seletor de Filtro apenas para Grupo 2 e Grupo 3
+  if (filterSelectContainer) {
+    if (isDiario) {
+      filterSelectContainer.style.display = 'none';
+    } else {
+      filterSelectContainer.style.display = 'block';
+      filterSelectContainer.innerHTML = `
+        <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:1rem; flex-wrap:wrap;">
+          <span style="font-size:0.82rem; font-weight:700; color:var(--accent-cyan);">🔍 Visualização do Gestor / Auditor:</span>
+          <select class="form-control" style="width:auto; padding:0.4rem 0.8rem; font-size:0.85rem;" onchange="changeFactorySectorFilter(this.value)">
+            <option value="ALL" ${selectedSector === 'ALL' ? 'selected' : ''}>🌐 Visão Geral Consolidada (Consolidação dos 7 Setores)</option>
+            ${IMPAKTTO_SECTORS.map(s => `<option value="${s}" ${selectedSector === s ? 'selected' : ''}>📍 Setor: ${s}</option>`).join('')}
+          </select>
+        </div>
+      `;
+    }
+  }
 
   const days = ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
   const sensos = [
@@ -582,17 +621,53 @@ function renderFactoryBoard() {
           </div>
         </td>
         ${days.map(day => {
-          const boardKey = `${s.key}_${day}`;
-          const currentStatus = clientFactoryBoard[boardKey] || 'bom';
-          const iconMap = { bom: '🟢 Bom', regular: '🟡 Regular', ruim: '🔴 Ruim' };
-          
-          return `
-            <td style="vertical-align:middle;">
-              <button class="btn btn-secondary" style="padding:0.3rem 0.6rem; font-size:0.78rem;" onclick="cycleFactoryBoard('${boardKey}', '${s.name}', '${day}')">
-                ${iconMap[currentStatus]}
-              </button>
-            </td>
-          `;
+          if (selectedSector === 'ALL') {
+            // VISÃO GERAL CONSOLIDADA: Acumula a pior nota dos 7 setores para alerta imediato
+            let hasRuim = false;
+            let hasRegular = false;
+            let countRuim = 0;
+            let countRegular = 0;
+
+            IMPAKTTO_SECTORS.forEach(sec => {
+              const bKey = `${sec}_${s.key}_${day}`;
+              const val = clientFactoryBoard[bKey] || 'bom';
+              if (val === 'ruim') { hasRuim = true; countRuim++; }
+              if (val === 'regular') { hasRegular = true; countRegular++; }
+            });
+
+            let currentStatus = 'bom';
+            let labelText = '🟢 Bom (7/7)';
+
+            if (hasRuim) {
+              currentStatus = 'ruim';
+              labelText = `🔴 Ruim (${countRuim} set.)`;
+            } else if (hasRegular) {
+              currentStatus = 'regular';
+              labelText = `🟡 Reg (${countRegular} set.)`;
+            }
+
+            return `
+              <td style="vertical-align:middle;">
+                <span class="score-btn-factory selected" data-level="${currentStatus}" style="display:inline-block; padding:0.35rem 0.5rem; font-size:0.75rem; font-weight:700;">
+                  ${labelText}
+                </span>
+              </td>
+            `;
+
+          } else {
+            // VISÃO INDIVIDUAL DO SETOR
+            const boardKey = `${selectedSector}_${s.key}_${day}`;
+            const currentStatus = clientFactoryBoard[boardKey] || 'bom';
+            const iconMap = { bom: '🟢 Bom', regular: '🟡 Regular', ruim: '🔴 Ruim' };
+
+            return `
+              <td style="vertical-align:middle;">
+                <button class="btn btn-secondary" style="padding:0.3rem 0.6rem; font-size:0.78rem;" onclick="cycleFactoryBoard('${selectedSector}', '${boardKey}', '${s.name}', '${day}')">
+                  ${iconMap[currentStatus]}
+                </button>
+              </td>
+            `;
+          }
         }).join('')}
       </tr>
     `;
@@ -602,7 +677,12 @@ function renderFactoryBoard() {
   container.innerHTML = html;
 }
 
-window.cycleFactoryBoard = function(boardKey, sensoName, day) {
+window.changeFactorySectorFilter = function(val) {
+  activeFactorySectorFilter = val;
+  renderFactoryBoard();
+};
+
+window.cycleFactoryBoard = function(sectorName, boardKey, sensoName, day) {
   const current = clientFactoryBoard[boardKey] || 'bom';
   const nextMap = { bom: 'regular', regular: 'ruim', ruim: 'bom' };
   const next = nextMap[current];
@@ -612,7 +692,7 @@ window.cycleFactoryBoard = function(boardKey, sensoName, day) {
 
   renderFactoryBoard();
   const labelMap = { bom: '🟢 BOM', regular: '🟡 REGULAR', ruim: '🔴 RUIM' };
-  logActivity(`Marcou ${sensoName} na ${day} como ${labelMap[next]} no Quadro da Área`);
+  logActivity(`Marcou ${sensoName} na ${day} como ${labelMap[next]} no Setor ${sectorName}`);
 };
 
 function calculateAuditResults() {

@@ -10,10 +10,10 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
   <!-- Chart.js para o Gráfico Radar dos 5 Sensos -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <!-- Local Styles com Cache Busting v7.0 -->
-  <link rel="stylesheet" href="styles.css?v=7.0">
+  <!-- Local Styles com Cache Busting v8.0 -->
+  <link rel="stylesheet" href="styles.css?v=8.0">
   <!-- JavaScript Principal Carregado no Head -->
-  <script src="app.js?v=7.0"></script>
+  <script src="app.js?v=8.0"></script>
 </head>
 <body>
 
@@ -150,13 +150,17 @@
          =================================================================== -->
     <section id="tab-dashboard" class="tab-content active">
       
-      <!-- CARD 1: QUADRO DIGITAL "COMO ESTÁ NOSSA ÁREA?" (EXCLUSIVO GRUPO 1, 2 E 3) -->
+      <!-- CARD 1: QUADRO DIGITAL "COMO ESTÁ NOSSA ÁREA?" (INDIVIDUAL POR SETOR E GERENCIADO) -->
       <div id="card-factory-board" class="card" style="border-color: rgba(245, 158, 11, 0.4); background: rgba(245, 158, 11, 0.03);">
         <div class="card-header">
-          <h2 class="card-title" style="color: var(--status-regular);">📋 Quadro da Fábrica: COMO ESTÁ NOSSA ÁREA?</h2>
+          <h2 id="factory-board-title" class="card-title" style="color: var(--status-regular);">📋 Quadro da Fábrica: COMO ESTÁ NOSSA ÁREA?</h2>
         </div>
+        
+        <!-- SELETOR DE VISUALIZAÇÃO POR SETOR (EXIBIDO PARA GRUPO 2 E GRUPO 3) -->
+        <div id="factory-board-filter-container"></div>
+
         <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem;">
-          Avaliação diária de 3 Níveis (<strong>🟢 Bom | 🟡 Regular | 🔴 Ruim</strong>). Clique no botão do dia para alternar o status:
+          Avaliação diária de 3 Níveis (<strong>🟢 Bom | 🟡 Regular | 🔴 Ruim</strong>). Clique no botão do dia para alternar o status do seu setor:
         </p>
         <div id="factory-board-container" style="overflow-x: auto;"></div>
       </div>
