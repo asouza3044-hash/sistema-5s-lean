@@ -43,19 +43,41 @@
       <form id="register-form">
         <div class="form-group" style="text-align: left;">
           <label>Nome</label>
-          <input type="text" id="reg-name" class="form-control" placeholder="Ex: João (SENAI)" required>
+          <input type="text" id="reg-name" class="form-control" placeholder="Ex: Alexandre, Diego, Kaio..." required>
         </div>
 
         <div class="form-group" style="text-align: left;">
           <label>Empresa / Projeto</label>
-          <!-- CAMPO BLOQUEADO DE EMPRESA (SEM NENHUMA OPÇÃO DE TROCA) -->
+          <!-- CAMPO BLOQUEADO DE EMPRESA -->
           <input type="text" id="reg-company-locked-name" class="form-control" value="🔒 IMPAK TTO Plásticos de Engenharia" style="background: rgba(99, 102, 241, 0.15); font-weight: bold; border-color: var(--primary); color: #a5b4fc;" readonly>
           <input type="hidden" id="reg-company-locked-id" value="impaktto">
         </div>
 
         <div class="form-group" style="text-align: left;">
+          <label>Nível de Atuação 5S</label>
+          <select id="reg-level" class="form-control">
+            <option value="diario" selected>📋 Líder Diário (Inspeciona Setor)</option>
+            <option value="semanal">🔍 Auditor Semanal (Valida Apuração)</option>
+            <option value="senior">👑 Auditor Sênior / Gerência</option>
+          </select>
+        </div>
+
+        <div class="form-group" style="text-align: left;">
+          <label>Setor de Atuação</label>
+          <select id="reg-sector" class="form-control">
+            <option value="Usinagem">Usinagem</option>
+            <option value="Holter">Holter</option>
+            <option value="Armários">Armários</option>
+            <option value="Portas / Cortinas">Portas / Cortinas</option>
+            <option value="Acabamento">Acabamento</option>
+            <option value="Comercial Usinados">Comercial Usinados</option>
+            <option value="Comercial Portas, Armários e Cortinas">Comercial Portas, Armários e Cortinas</option>
+          </select>
+        </div>
+
+        <div class="form-group" style="text-align: left;">
           <label>Crie um Usuário de Acesso</label>
-          <input type="text" id="reg-username" class="form-control" placeholder="Ex: joao.impaktto" required>
+          <input type="text" id="reg-username" class="form-control" placeholder="Ex: alexandre.usinagem" required>
         </div>
 
         <div class="form-group" style="text-align: left;">
@@ -72,7 +94,7 @@
       <form id="login-form" style="display: none;">
         <div class="form-group" style="text-align: left;">
           <label>Usuário de Acesso</label>
-          <input type="text" id="login-username" class="form-control" placeholder="Ex: impaktto ou admin" required>
+          <input type="text" id="login-username" class="form-control" placeholder="Ex: alexandre.usinagem ou admin" required>
         </div>
 
         <div class="form-group" style="text-align: left;">
@@ -127,8 +149,9 @@
       <button class="nav-btn" data-tab="tab-tools">
         🛠️ Ferramentas da Qualidade
       </button>
-      <button class="nav-btn" data-tab="tab-manual">
-        📖 Manual de Implantação
+      <!-- MANUAL EXCLUSIVO E RESTRITO AO ADM / CONSULTOR MESTRE -->
+      <button class="nav-btn" data-tab="tab-manual" style="display: none;">
+        📖 Manual de Implantação (Restrito ADM)
       </button>
     </nav>
   </header>
@@ -506,26 +529,25 @@
     </section>
 
     <!-- ===================================================================
-         ABA 3: MANUAL DE IMPLANTAÇÃO COMPLETO
+         ABA 3: MANUAL DE IMPLANTAÇÃO COMPLETO (EXTRITAMENTE RESTRITO AO ADM)
          =================================================================== -->
     <section id="tab-manual" class="tab-content">
-      <div class="card">
+      <div class="card" style="border-color: var(--border-highlight); background: rgba(99, 102, 241, 0.05);">
         <div class="card-header">
-          <h2 class="card-title">📚 Manual Corporativo de Implantação 5S</h2>
+          <h2 class="card-title">📚 Manual Corporativo de Implantação 5S (Exclusivo ADM)</h2>
           <a href="manual_implementacao_5s_qualidade.md" target="_blank" class="btn btn-secondary">📥 Ver Arquivo Markdown Original</a>
         </div>
         
         <div style="font-size: 0.95rem; line-height: 1.8; color: #d1d5db; padding: 1rem; background: rgba(0,0,0,0.3); border-radius: var(--radius-md);">
-          <h3 style="color: var(--primary); margin-bottom: 1rem;">Visão Geral do Manual</h3>
-          <p>O Manual completo de implantação está disponível para consulta e exportação.</p>
+          <h3 style="color: var(--primary); margin-bottom: 1rem;">Visão Geral do Manual de Governança</h3>
+          <p>O Manual completo de implantação é de acesso estritamente restrito à gestão de projeto e diretoria (Auditores Sênior).</p>
           <hr style="border-color: var(--border-color); margin: 1.5rem 0;">
           
-          <h4 style="color: var(--accent-cyan); margin-bottom: 0.5rem;">Estrutura de Implantação:</h4>
+          <h4 style="color: var(--accent-cyan); margin-bottom: 0.5rem;">Diretrizes da Governança em 3 Níveis:</h4>
           <ul style="list-style: square inside; margin-left: 1rem;">
-            <li><strong>Sensibilização & Treinamentos:</strong> Metodologia de engajamento da equipe.</li>
-            <li><strong>O "Dia D" de Descarte:</strong> Separação de desnecessários e aplicação de cartões vermelhos.</li>
-            <li><strong>Controle de Auditorias:</strong> Escala de pontuação (Bom, Regular, Ruim) e avaliação contínua.</li>
-            <li><strong>Ferramentas Lean Integradas:</strong> Ishikawa, 5 Porquês, GUT e Kanban 5W2H.</li>
+            <li><strong>Nível 1 (Líderes Diários):</strong> Inspeção operacional contínua por setor.</li>
+            <li><strong>Nível 2 (Auditores Semanais):</strong> Validação de encarregados e equipe de RH.</li>
+            <li><strong>Nível 3 (Auditores Sênior):</strong> Consolidação mensal, relatórios executivos e auditoria mestre.</li>
           </ul>
         </div>
       </div>

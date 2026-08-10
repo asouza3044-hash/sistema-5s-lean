@@ -1,5 +1,5 @@
 /* ==========================================================================
-   PORTAL DE CONSULTORIA 5S & QUALIDADE (SISTEMA EXCLUSIVO IMPAK TTO)
+   PORTAL DE CONSULTORIA 5S & QUALIDADE (ARQUITETURA DE GOVERNANÇA IMPAK TTO)
    ========================================================================== */
 
 // Base de Dados Oficial de Perguntas dos 5 Sensos (50 Itens Oficiais)
@@ -66,33 +66,53 @@ const AUDIT_QUESTIONS = {
   ]
 };
 
-// Base de Empresas
+// Setores Oficiais da Impaktto
+const IMPAK TTO_SECTORS = [
+  "Usinagem",
+  "Holter",
+  "Armários",
+  "Portas / Cortinas",
+  "Acabamento",
+  "Comercial Usinados",
+  "Comercial Portas, Armários e Cortinas"
+];
+
+// Base de Empresas Inicial
 const DEFAULT_COMPANIES = {
   impaktto: {
     id: 'impaktto',
     name: 'IMPAK TTO Plásticos de Engenharia',
     subtitle: 'Projeto Especial de Implantação 5S & SENAI',
-    logo: 'logo_impaktto.png'
+    logo: 'logo_impaktto.png',
+    sectors: IMPAK TTO_SECTORS
   },
   sohipren: {
     id: 'sohipren',
     name: 'Sohipren S.A. Oleohidráulica',
     subtitle: 'Metodologia 5S & Gestão da Qualidade ISO 9001',
-    logo: ''
-  },
-  logistica: {
-    id: 'logistica',
-    name: 'Logística & Operações Especiais',
-    subtitle: 'Programa 5S & Excelência Operacional no Armazém',
-    logo: ''
+    logo: '',
+    sectors: ["Usinagem", "Montagem", "Estoque", "Qualidade"]
   }
 };
 
-// Base de Usuários Inicial
+// Base de Usuários com a Estrutura de 3 Níveis da Impaktto
 const DEFAULT_USERS = {
-  admin: { username: 'admin', password: 'mestre5s', name: 'Consultor Mestre (Xandinho)', role: 'administrador', companyId: 'impaktto' },
-  impaktto: { username: 'impaktto', password: '5s2026', name: 'Equipe Impaktto', role: 'auditor', companyId: 'impaktto' },
-  senai: { username: 'senai', password: '5s2026', name: 'Equipe SENAI', role: 'auditor', companyId: 'impaktto' }
+  // Nível 3: Auditores Sênior / Gerência (Acesso Admin Completo + Manual Restrito)
+  admin: { username: 'admin', password: 'mestre5s', name: 'Alexandre Souza', role: 'administrador', level: 'senior', title: 'Gerente de Projeto / Consultor Mestre', companyId: 'impaktto' },
+  kaio: { username: 'kaio.diretor', password: '5s2026', name: 'Kaio', role: 'administrador', level: 'senior', title: 'Diretor', companyId: 'impaktto' },
+
+  // Nível 2: Auditores Semanais (Encarregados)
+  diego: { username: 'diego.fabrica', password: '5s2026', name: 'Diego', role: 'auditor_semanal', level: 'semanal', title: 'Encarregado de Fábrica', companyId: 'impaktto' },
+  filipe: { username: 'filipe.rh', password: '5s2026', name: 'Filipe', role: 'auditor_semanal', level: 'semanal', title: 'Encarregado RH - 5S', companyId: 'impaktto' },
+
+  // Nível 1: Auditores Diários (Líderes de Setor)
+  alexandre_u: { username: 'alexandre.usinagem', password: '5s2026', name: 'Alexandre', role: 'lider_diario', level: 'diario', sector: 'Usinagem', title: 'Líder de Usinagem', companyId: 'impaktto' },
+  marcos: { username: 'marcos.holter', password: '5s2026', name: 'Marcos', role: 'lider_diario', level: 'diario', sector: 'Holter', title: 'Líder de Holter', companyId: 'impaktto' },
+  bruno: { username: 'bruno.armarios', password: '5s2026', name: 'Bruno', role: 'lider_diario', level: 'diario', sector: 'Armários', title: 'Líder de Armários', companyId: 'impaktto' },
+  elton: { username: 'elton.portas', password: '5s2026', name: 'Elton', role: 'lider_diario', level: 'diario', sector: 'Portas / Cortinas', title: 'Líder de Portas / Cortinas', companyId: 'impaktto' },
+  giovanna: { username: 'giovanna.acabamento', password: '5s2026', name: 'Giovanna', role: 'lider_diario', level: 'diario', sector: 'Acabamento', title: 'Líder de Acabamento', companyId: 'impaktto' },
+  fabio: { username: 'fabio.comercial', password: '5s2026', name: 'Fabio', role: 'lider_diario', level: 'diario', sector: 'Comercial Usinados', title: 'Líder Comercial Usinados', companyId: 'impaktto' },
+  andre: { username: 'andre.comercial', password: '5s2026', name: 'Andre', role: 'lider_diario', level: 'diario', sector: 'Comercial Portas, Armários e Cortinas', title: 'Líder Comercial Portas/Armários/Cortinas', companyId: 'impaktto' }
 };
 
 // Estado Global
@@ -136,12 +156,8 @@ function checkURLParams() {
   const regCompanyLockedName = document.getElementById('reg-company-locked-name');
   const regCompanyLockedId = document.getElementById('reg-company-locked-id');
 
-  if (regCompanyLockedName) {
-    regCompanyLockedName.value = `🔒 ${targetCompany.name}`;
-  }
-  if (regCompanyLockedId) {
-    regCompanyLockedId.value = targetCompany.id;
-  }
+  if (regCompanyLockedName) regCompanyLockedName.value = `🔒 ${targetCompany.name}`;
+  if (regCompanyLockedId) regCompanyLockedId.value = targetCompany.id;
 
   updateWelcomeBanner(targetCompanyId);
 }
@@ -180,6 +196,8 @@ function handleSelfRegister(e) {
   const companyId = document.getElementById('reg-company-locked-id').value || 'impaktto';
   const username = document.getElementById('reg-username').value.trim().toLowerCase();
   const password = document.getElementById('reg-password').value.trim();
+  const userLevel = document.getElementById('reg-level').value || 'diario';
+  const userSector = document.getElementById('reg-sector').value || 'Usinagem';
 
   if (!name || !username || !password) return;
 
@@ -188,7 +206,22 @@ function handleSelfRegister(e) {
     return;
   }
 
-  const newUser = { username, password, name, role: 'auditor', companyId };
+  const roleMap = {
+    diario: 'lider_diario',
+    semanal: 'auditor_semanal',
+    senior: 'administrador'
+  };
+
+  const newUser = {
+    username,
+    password,
+    name,
+    role: roleMap[userLevel] || 'lider_diario',
+    level: userLevel,
+    sector: userSector,
+    companyId
+  };
+
   userDatabase[username] = newUser;
   localStorage.setItem('5s_user_database', JSON.stringify(userDatabase));
 
@@ -196,7 +229,7 @@ function handleSelfRegister(e) {
   localStorage.setItem('5s_current_session', JSON.stringify(currentUser));
   checkAuthSession();
 
-  logActivity(`Novo integrante registrado na inspeção (${name})`);
+  logActivity(`Novo integrante registrado (${name} - ${userLevel.toUpperCase()})`);
 }
 
 function handleAdminCreateCompany(e) {
@@ -234,6 +267,7 @@ window.copyGeneratedLink = function() {
   }
 };
 
+// RESTRIÇÃO ESTRITA DE NÍVEIS E DO MANUAL DE IMPLANTAÇÃO
 function checkAuthSession() {
   const loginOverlay = document.getElementById('login-overlay');
 
@@ -244,7 +278,8 @@ function checkAuthSession() {
 
   if (loginOverlay) loginOverlay.classList.add('hidden');
 
-  const isAdmin = (currentUser.role === 'administrador');
+  // Apenas o Administrador / Auditor Sênior possui acesso ao Manual e Ferramentas Mestre
+  const isAdmin = (currentUser.role === 'administrador' || currentUser.level === 'senior');
 
   const navBtnTools = document.querySelector('.nav-btn[data-tab="tab-tools"]');
   const navBtnManual = document.querySelector('.nav-btn[data-tab="tab-manual"]');
@@ -256,7 +291,10 @@ function checkAuthSession() {
     if (adminClientSelector) adminClientSelector.style.display = 'block';
     if (adminAddUserCard) adminAddUserCard.style.display = 'block';
     if (navBtnTools) navBtnTools.style.display = 'flex';
+    
+    // MANUAL CORPORATIVO DE IMPLANTAÇÃO: EXCLUSIVO E RESTRITO AO ADM
     if (navBtnManual) navBtnManual.style.display = 'flex';
+
     populateAdminClientDropdown();
   } else {
     selectedClientId = currentUser.companyId || 'impaktto';
@@ -264,6 +302,8 @@ function checkAuthSession() {
     if (adminAddUserCard) adminAddUserCard.style.display = 'none';
     
     if (navBtnTools) navBtnTools.style.display = 'none';
+    
+    // ESCONDER MANUAL DE IMPLANTAÇÃO PARA LÍDERES DIÁRIOS E AUDITORES SEMANAIS
     if (navBtnManual) navBtnManual.style.display = 'none';
 
     document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
@@ -276,7 +316,15 @@ function checkAuthSession() {
   
   const activeCompanyObj = companyDatabase[selectedClientId] || { name: 'IMPAK TTO Plásticos de Engenharia' };
   document.getElementById('active-client-name').innerText = `🏢 ${activeCompanyObj.name}`;
-  document.getElementById('logged-user-name').innerText = `👤 ${currentUser.name} ${isAdmin ? '(Consultor Mestre)' : '(Inspetor de Fábrica)'}`;
+  
+  const levelLabels = {
+    senior: '👑 Auditor Sênior (Adm)',
+    semanal: '🔍 Auditor Semanal',
+    diario: '📋 Líder Diário'
+  };
+
+  const levelBadgeText = levelLabels[currentUser.level || 'diario'] || '📋 Integrante';
+  document.getElementById('logged-user-name').innerText = `👤 ${currentUser.name} (${levelBadgeText})`;
 
   loadClientData(selectedClientId);
 }
@@ -337,7 +385,7 @@ function handleCreateNewUser(e) {
     localStorage.setItem('5s_company_database', JSON.stringify(companyDatabase));
   }
 
-  userDatabase[username] = { username, password, name, role: 'auditor', companyId };
+  userDatabase[username] = { username, password, name, role: 'auditor_semanal', companyId };
   localStorage.setItem('5s_user_database', JSON.stringify(userDatabase));
 
   alert(`Integrante registrado!\nNome: ${name}\nUsuário: ${username}`);
@@ -353,8 +401,8 @@ function loadClientData(clientId) {
   clientAuditScores = JSON.parse(localStorage.getItem(`5s_audit_scores_${clientId}`)) || {};
   clientGutMatrix = JSON.parse(localStorage.getItem(`5s_gut_matrix_${clientId}`)) || [];
   clientKanbanTasks = JSON.parse(localStorage.getItem(`5s_kanban_tasks_${clientId}`)) || [
-    { id: '1', title: 'Demarcar corredores de circulação no chão de fábrica', senso: 'seiton', status: 'a-fazer', owner: 'Manutenção', date: '2026-08-20', createdBy: 'Consultor Mestre' },
-    { id: '2', title: 'Implantar quadro shadowboard para ferramentas de usinagem', senso: 'seiri', status: 'em-andamento', owner: 'Liderança Fábrica', date: '2026-08-15', createdBy: 'Equipe SENAI' }
+    { id: '1', title: 'Demarcar corredores de circulação no chão de fábrica', senso: 'seiton', status: 'a-fazer', owner: 'Diego (Encarregado Fábrica)', date: '2026-08-20', createdBy: 'Alexandre Souza' },
+    { id: '2', title: 'Implantar quadro shadowboard para ferramentas de usinagem', senso: 'seiri', status: 'em-andamento', owner: 'Alexandre (Usinagem)', date: '2026-08-15', createdBy: 'Kaio' }
   ];
   clientIshikawaData = JSON.parse(localStorage.getItem(`5s_ishikawa_${clientId}`)) || {
     problem: `Auditoria de Campo 5S - ${companyDatabase[clientId]?.name || 'Impaktto'}`,
@@ -363,7 +411,7 @@ function loadClientData(clientId) {
     maquina: ['Identificação dos pontos de lubrificação'],
     material: ['Triagem de insumos no estoque intermediário'],
     meioAmbiente: ['Organização de fiação elétrica e pneumática'],
-    medicao: ['Rondas semanais da Comissão de Qualidade']
+    medicao: ['Rondas semanais dos auditores']
   };
   clientActivityLogs = JSON.parse(localStorage.getItem(`5s_activity_logs_${clientId}`)) || [];
   clientFactoryBoard = JSON.parse(localStorage.getItem(`5s_factory_board_${clientId}`)) || {};
@@ -509,7 +557,6 @@ window.selectScore3Level = function(sensoName, qNum, qKey, level) {
   logActivity(`Avaliou o item ${sensoName.toUpperCase()} #${qNum} como ${labelMap[level]}`);
 };
 
-// Renderizar Quadro Virtual "COMO ESTÁ NOSSA ÁREA?" com Resumo Explicativo abaixo de cada Senso
 function renderFactoryBoard() {
   const container = document.getElementById('factory-board-container');
   if (!container) return;
