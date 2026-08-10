@@ -3,9 +3,8 @@
    PROJETO ESPECIAL DE IMPLANTAÇÃO 5S & QUALIDADE (SENAI)
    ========================================================================== */
 
-// ENDPOINT GLOBAL DE SINCRONIZAÇÃO EM NUVEM PARA MULTI-DISPOSITIVOS (CELULARES, NOTEBOOKS E TVS)
-const CLOUD_SYNC_URL = 'https://kvdb.io/8xQ9mZ2kP5wL1v7n/5s_impaktto_master_db_v3';
-const LOCAL_API_SYNC = '/api/sync';
+// BANCO DE DADOS CENTRALIZADO EM NUVEM MASTER (RESTRITO IMPAK TTO - 100% REALTIME)
+const CLOUD_MASTER_API = 'https://api.restful-api.dev/objects/ff8081819f7e10ae019fed7272c0202b';
 
 // CANAL DE TRANSMISSÃO EM TEMPO REAL CROSS-TAB
 const syncChannel = (typeof BroadcastChannel !== 'undefined') ? new BroadcastChannel('5s_impaktto_sync_channel') : null;
@@ -139,112 +138,127 @@ let activeFactorySectorFilter = 'ALL';
 let radarChartInstance = null;
 let autoRefreshTimer = null;
 
-// FUNÇÃO GLOBAL DE TRANSMISSÃO E SINCRONIZAÇÃO EM NUVEM E LOCAL
+// FUNÇÕES MESTRE DE SINCRONIZAÇÃO EM NUVEM REALTIME
 async function pushDataToServer() {
+  let remoteUsers = {};
+  let remoteLogs = [];
+  let remoteBoard = {};
+
+  try {
+    const res = await fetch(CLOUD_MASTER_API + '?t=' + Date.now());
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.data) {
+        remoteUsers = data.data.users || {};
+        remoteLogs = data.data.activity_logs || [];
+        remoteBoard = data.data.factory_board || {};
+      }
+    }
+  } catch(e) {}
+
+  // Mesclar Usuários
+  userDatabase = { ...remoteUsers, ...userDatabase };
+  localStorage.setItem('5s_impaktto_users', JSON.stringify(userDatabase));
+
+  // Mesclar Logs do Feed
+  const existingLogIds = new Set(clientActivityLogs.map(l => l.id));
+  remoteLogs.forEach(rLog => {
+    if (rLog && rLog.id && !existingLogIds.has(rLog.id)) {
+      clientActivityLogs.unshift(rLog);
+      existingLogIds.add(rLog.id);
+    }
+  });
+  clientActivityLogs.sort((a, b) => b.id - a.id);
+  clientActivityLogs = clientActivityLogs.slice(0, 60);
+  localStorage.setItem('5s_activity_logs_impaktto', JSON.stringify(clientActivityLogs));
+
+  // Mesclar Quadro da Fábrica
+  clientFactoryBoard = { ...remoteBoard, ...clientFactoryBoard };
+  localStorage.setItem('5s_factory_board_impaktto', JSON.stringify(clientFactoryBoard));
+
+  // Salvar Estado Mestre Atualizado na Nuvem
   const payload = {
-    activity_logs: clientActivityLogs,
-    factory_board: clientFactoryBoard,
-    audit_scores: clientAuditScores,
-    users: userDatabase,
-    lastUpdate: Date.now()
+    name: '5s_impaktto_master_db_prod',
+    data: {
+      users: userDatabase,
+      activity_logs: clientActivityLogs,
+      factory_board: clientFactoryBoard,
+      audit_scores: clientAuditScores
+    }
   };
 
-  // 1. Tentar enviar para API local
   try {
-    fetch(LOCAL_API_SYNC, {
-      method: 'POST',
+    await fetch(CLOUD_MASTER_API, {
+      method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
-    }).catch(() => {});
-  } catch (e) {}
-
-  // 2. Enviar para a Nuvem KVDB (garante que todos os celulares sincronizam cadastros e votos)
-  try {
-    fetch(CLOUD_SYNC_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    }).catch(() => {});
-  } catch (e) {}
+    });
+  } catch (e) {
+    console.error('Erro no Push da Nuvem:', e);
+  }
 
   if (syncChannel) {
-    try {
-      syncChannel.postMessage({ type: 'SYNC_ALL_DATA', timestamp: Date.now() });
-    } catch (e) {}
+    try { syncChannel.postMessage({ type: 'SYNC_ALL_DATA', timestamp: Date.now() }); } catch (e) {}
   }
 }
 
 async function pullDataFromServer() {
-  let fetchedData = null;
-
-  // Tentar API local primeiro
   try {
-    const res = await fetch(LOCAL_API_SYNC + '?t=' + Date.now());
+    const res = await fetch(CLOUD_MASTER_API + '?t=' + Date.now());
     if (res.ok) {
-      fetchedData = await res.json();
-    }
-  } catch (e) {}
+      const remoteData = await res.json();
+      if (remoteData && remoteData.data) {
+        const d = remoteData.data;
 
-  // Se não funcionou, tentar nuvem KVDB
-  if (!fetchedData || !fetchedData.users) {
-    try {
-      const res = await fetch(CLOUD_SYNC_URL + '?t=' + Date.now());
-      if (res.ok) {
-        fetchedData = await res.json();
-      }
-    } catch (e) {}
-  }
+        // 1. Sincronizar Usuários (Cadastros feitos em qualquer celular)
+        if (d.users && typeof d.users === 'object') {
+          let hasNewUser = false;
+          for (const [uname, uobj] of Object.entries(d.users)) {
+            if (!userDatabase[uname]) {
+              userDatabase[uname] = uobj;
+              hasNewUser = true;
+            }
+          }
+          if (hasNewUser) {
+            localStorage.setItem('5s_impaktto_users', JSON.stringify(userDatabase));
+            renderUserManagementTable();
+          }
+        }
 
-  if (fetchedData && typeof fetchedData === 'object') {
-    // 1. Sincronização de Usuários (Cadastros Novos como a Ararinha Azul)
-    if (fetchedData.users && typeof fetchedData.users === 'object') {
-      const remoteUsers = fetchedData.users;
-      let hasNewUsers = false;
+        // 2. Sincronizar Logs do Feed
+        if (Array.isArray(d.activity_logs) && d.activity_logs.length > 0) {
+          const existingIds = new Set(clientActivityLogs.map(l => l.id));
+          let hasNewLog = false;
 
-      for (const [uname, uobj] of Object.entries(remoteUsers)) {
-        if (!userDatabase[uname]) {
-          userDatabase[uname] = uobj;
-          hasNewUsers = true;
+          d.activity_logs.forEach(rLog => {
+            if (rLog && rLog.id && !existingIds.has(rLog.id)) {
+              clientActivityLogs.unshift(rLog);
+              existingIds.add(rLog.id);
+              hasNewLog = true;
+            }
+          });
+
+          if (hasNewLog) {
+            clientActivityLogs.sort((a, b) => b.id - a.id);
+            clientActivityLogs = clientActivityLogs.slice(0, 60);
+            localStorage.setItem('5s_activity_logs_impaktto', JSON.stringify(clientActivityLogs));
+            renderActivityLogs();
+          }
+        }
+
+        // 3. Sincronizar Quadro da Fábrica
+        if (d.factory_board && typeof d.factory_board === 'object') {
+          const merged = { ...clientFactoryBoard, ...d.factory_board };
+          if (JSON.stringify(merged) !== JSON.stringify(clientFactoryBoard)) {
+            clientFactoryBoard = merged;
+            localStorage.setItem('5s_factory_board_impaktto', JSON.stringify(clientFactoryBoard));
+            renderFactoryBoard();
+          }
         }
       }
-
-      if (hasNewUsers) {
-        localStorage.setItem('5s_impaktto_users', JSON.stringify(userDatabase));
-        renderUserManagementTable();
-      }
     }
-
-    // 2. Sincronização de Logs do Feed
-    if (Array.isArray(fetchedData.activity_logs) && fetchedData.activity_logs.length > 0) {
-      const existingLogs = JSON.parse(localStorage.getItem('5s_activity_logs_impaktto')) || clientActivityLogs;
-      const existingIds = new Set(existingLogs.map(l => l.id));
-      let hasNewLogs = false;
-
-      fetchedData.activity_logs.forEach(remoteLog => {
-        if (remoteLog && remoteLog.id && !existingIds.has(remoteLog.id)) {
-          existingLogs.unshift(remoteLog);
-          existingIds.add(remoteLog.id);
-          hasNewLogs = true;
-        }
-      });
-
-      if (hasNewLogs) {
-        existingLogs.sort((a, b) => b.id - a.id);
-        clientActivityLogs = existingLogs.slice(0, 60);
-        localStorage.setItem('5s_activity_logs_impaktto', JSON.stringify(clientActivityLogs));
-        renderActivityLogs();
-      }
-    }
-
-    // 3. Sincronização do Quadro da Fábrica
-    if (fetchedData.factory_board && typeof fetchedData.factory_board === 'object') {
-      const mergedBoard = { ...clientFactoryBoard, ...fetchedData.factory_board };
-      if (JSON.stringify(mergedBoard) !== JSON.stringify(clientFactoryBoard)) {
-        clientFactoryBoard = mergedBoard;
-        localStorage.setItem('5s_factory_board_impaktto', JSON.stringify(clientFactoryBoard));
-        renderFactoryBoard();
-      }
-    }
+  } catch (e) {
+    console.error('Erro no Pull da Nuvem:', e);
   }
 }
 
@@ -254,7 +268,7 @@ window.forceCloudSyncNow = async function() {
   renderUserManagementTable();
   renderActivityLogs();
   renderFactoryBoard();
-  alert('🔄 Sincronização em Nuvem Concluída! Todos os cadastros e votos foram sincronizados.');
+  alert('🎉 Sincronização Mestre de Nuvem Concluída! Todos os cadastros e votos de celulares estão atualizados.');
 };
 
 // FUNÇÃO GLOBAL DE LOGIN DIRETO IMPAK TTO
@@ -308,7 +322,7 @@ window.handleLogin = function(e) {
 };
 
 // AUTO-CADASTRO DE NOVOS INTEGRANTES (ENTRAM COMO GRUPO 1: COLABORADOR POR PADRÃO)
-function handleSelfRegister(e) {
+async function handleSelfRegister(e) {
   if (e) e.preventDefault();
   
   const name = document.getElementById('reg-name').value.trim();
@@ -345,14 +359,14 @@ function handleSelfRegister(e) {
     loginOverlay.classList.add('hidden');
   }
 
+  logActivity(`✨ Novo colaborador registrado (${name} - Setor: ${userSector} - Participação Aberta no 5S)`);
+  await pushDataToServer();
+
   try {
     checkAuthSession();
   } catch (err) {
     console.error('Erro ao carregar sessão pós-registro:', err);
   }
-
-  logActivity(`✨ Novo colaborador registrado (${name} - Setor: ${userSector} - Participação Aberta no 5S)`);
-  pushDataToServer();
 }
 
 // 3. CONTROLE DE TROCA DE SENHA PESSOAL E SEGURANÇA
@@ -565,7 +579,7 @@ function checkAuthSession() {
   if (!autoRefreshTimer) {
     autoRefreshTimer = setInterval(() => {
       pullDataFromServer();
-    }, 2500);
+    }, 2000);
   }
 
   if (isMonitor) {
@@ -710,9 +724,9 @@ function renderUserManagementTable() {
   const todayDateStr = new Date().toISOString().split('T')[0];
 
   let html = `
-    <div style="margin-bottom:0.75rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem;">
-      <span style="font-size:0.82rem; color:var(--text-muted);">Total de Integrantes Cadastrados: <strong>${usersList.length}</strong></span>
-      <button class="btn btn-secondary" style="padding:0.25rem 0.6rem; font-size:0.75rem;" onclick="forceCloudSyncNow()">
+    <div style="margin-bottom:0.75rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem; background:rgba(6,182,212,0.1); padding:0.6rem 0.85rem; border-radius:8px; border:1px solid var(--accent-cyan);">
+      <span style="font-size:0.85rem; color:#e2e8f0; font-weight:700;">🌐 BANCO DE DADOS EM NUVEM CONECTADO • Integrantes: <strong>${usersList.length}</strong></span>
+      <button class="btn btn-secondary" style="padding:0.3rem 0.75rem; font-size:0.78rem; font-weight:700;" onclick="forceCloudSyncNow()">
         🔄 Sincronizar Nuvem Agora (Buscar Cadastros)
       </button>
     </div>
@@ -1039,7 +1053,7 @@ function renderFactoryBoard() {
         <div style="background: rgba(6, 182, 212, 0.12); border: 1px solid var(--accent-cyan); padding: 0.5rem 0.85rem; border-radius: var(--radius-md); margin-bottom: 0.75rem; display: flex; justify-content: space-between; align-items: center;">
           <div>
             <span style="font-size:0.8rem; font-weight:800; color:var(--accent-cyan);">📺 GESTÃO VISUAL 16:9 • VISÃO DOS 7 SETORES & FECHAMENTO COLETIVO</span>
-            <span style="font-size:0.75rem; color:var(--text-muted); margin-left:0.5rem;">Atualização automática a cada 2.5s</span>
+            <span style="font-size:0.75rem; color:var(--text-muted); margin-left:0.5rem;">Atualização automática a cada 2s</span>
           </div>
           <span class="badge-seiso" style="padding:0.25rem 0.5rem; font-size:0.72rem; font-weight:700;">🟢 DIA ATUAL: ${currentDayCode}</span>
         </div>
