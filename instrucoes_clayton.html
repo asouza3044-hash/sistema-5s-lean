@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Instrução de Trabalho 5S - Clayton (Auditor Volante)</title>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #6366f1;
+      --primary-dark: #4f46e5;
+      --accent-cyan: #06b6d4;
+      --bg-dark: #0f172a;
+      --card-bg: #1e293b;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --border-color: #334155;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #f8fafc;
+      color: #0f172a;
+      padding: 2rem;
+      display: flex;
+      justify-content: center;
+    }
+
+    .pdf-container {
+      width: 100%;
+      max-width: 800px;
+      background: #ffffff;
+      padding: 2rem;
+      border-radius: 12px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+      border: 1px solid #e2e8f0;
+    }
+
+    .header-bar-impaktto {
+      background: #0f172a;
+      padding: 1.25rem 1.5rem;
+      border-radius: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.5rem;
+      border-bottom: 4px solid #6366f1;
+    }
+
+    .logo-img {
+      height: 60px;
+      width: auto;
+      object-fit: contain;
+    }
+
+    .header-title-right {
+      text-align: right;
+    }
+
+    .header-title-right h2 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.05rem;
+      color: #ffffff;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .header-title-right h3 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 0.82rem;
+      color: #06b6d4;
+      text-transform: uppercase;
+      margin-top: 0.15rem;
+    }
+
+    .header-title-right p {
+      font-size: 0.75rem;
+      color: #94a3b8;
+    }
+
+    .doc-title-block {
+      text-align: center;
+      margin-bottom: 1.5rem;
+    }
+
+    .doc-title-block h1 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.4rem;
+      color: #0f172a;
+      text-transform: uppercase;
+      margin-bottom: 0.25rem;
+    }
+
+    .doc-title-block p {
+      font-size: 0.85rem;
+      color: #6366f1;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .exaltation-box {
+      background: linear-gradient(135deg, #f0f9ff, #e0f2fe);
+      border: 1px solid #bae6fd;
+      border-left: 5px solid #0284c7;
+      padding: 1.25rem;
+      border-radius: 8px;
+      margin-bottom: 1.5rem;
+      line-height: 1.6;
+      font-size: 0.9rem;
+      color: #0369a1;
+    }
+
+    .exaltation-box strong {
+      color: #0c4a6e;
+    }
+
+    .section-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.05rem;
+      color: #4f46e5;
+      margin-bottom: 0.75rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      border-bottom: 1px solid #e2e8f0;
+      padding-bottom: 0.35rem;
+    }
+
+    .info-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 1.5rem;
+      font-size: 0.88rem;
+    }
+
+    .info-table th, .info-table td {
+      padding: 0.65rem 0.85rem;
+      border: 1px solid #e2e8f0;
+      text-align: left;
+    }
+
+    .info-table th {
+      background: #f8fafc;
+      font-weight: 700;
+      color: #334155;
+      width: 30%;
+    }
+
+    .info-table td {
+      background: #ffffff;
+      color: #0f172a;
+    }
+
+    .tasks-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 0.85rem;
+      margin-bottom: 2rem;
+    }
+
+    .task-card {
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-left: 4px solid #10b981;
+      padding: 0.85rem 1rem;
+      border-radius: 6px;
+    }
+
+    .task-card-title {
+      font-weight: 700;
+      font-size: 0.9rem;
+      color: #047857;
+      margin-bottom: 0.25rem;
+    }
+
+    .task-card-desc {
+      font-size: 0.82rem;
+      color: #334155;
+      line-height: 1.45;
+    }
+
+    .signatures-block {
+      margin-top: 2.5rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid #e2e8f0;
+    }
+
+    .signatures-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2rem;
+      text-align: center;
+    }
+
+    .sig-line {
+      border-top: 1.5px solid #64748b;
+      margin-top: 2.5rem;
+      padding-top: 0.35rem;
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: #0f172a;
+    }
+
+    .sig-role {
+      font-size: 0.75rem;
+      color: #64748b;
+    }
+
+    .no-print-bar {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: #0f172a;
+      padding: 0.75rem 1.25rem;
+      border-radius: 30px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+      display: flex;
+      gap: 0.75rem;
+      z-index: 9999;
+    }
+
+    .btn-print {
+      background: #6366f1;
+      color: #ffffff;
+      border: none;
+      padding: 0.5rem 1.25rem;
+      border-radius: 20px;
+      font-weight: 700;
+      font-size: 0.85rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .btn-print:hover {
+      background: #4f46e5;
+    }
+
+    @media print {
+      body {
+        background: #ffffff;
+        padding: 0;
+      }
+      .pdf-container {
+        box-shadow: none;
+        border: none;
+        max-width: 100%;
+        padding: 0;
+      }
+      .no-print-bar {
+        display: none !important;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- BARRA FLUTUANTE DE IMPRESSÃO EM PDF -->
+  <div class="no-print-bar">
+    <button class="btn-print" onclick="window.print()">
+      🖨️ Baixar / Imprimir PDF Oficial
+    </button>
+  </div>
+
+  <div class="pdf-container">
+    
+    <!-- CABEÇALHO OFICIAL COM A LOGO DA IMPAK TTO -->
+    <div class="header-bar-impaktto">
+      <img src="logo_impaktto.png" alt="Impaktto Plásticos de Engenharia" class="logo-img">
+      <div class="header-title-right">
+        <h2>Impaktto Plásticos de Engenharia</h2>
+        <h3>Programa Lean & Qualidade 5S</h3>
+        <p>Parceria Estratégica SENAI</p>
+      </div>
+    </div>
+
+    <!-- TÍTULO PRINCIPAL -->
+    <div class="doc-title-block">
+      <h1>Termo de Nomeação & Instrução de Trabalho</h1>
+      <p>Função Especial: Auditor Volante / Coringa de Qualidade 5S (Grupo 2)</p>
+    </div>
+
+    <!-- CAIXA DE EXALTAÇÃO DA FUNÇÃO DO CLAYTON -->
+    <div class="exaltation-box">
+      <strong>Prezado Clayton,</strong><br>
+      É com imenso orgulho e confiança que a <strong>IMPAK TTO Plásticos de Engenharia</strong> convida você para a função estratégica de <strong>AUDITOR VOLANTE / CORINGA 5S (GRUPO 2)</strong>.<br><br>
+      A sua atuação é a chave para o sucesso do nosso programa. Por não estar restrito a um único departamento de produção, você representa o olhar neutro, técnico e imparcial da qualidade. Sua função é fundamental para garantir a integridade dos dados, apoiar os líderes de setor e manter nossa fábrica em alto padrão de excelência visual para a conquista das nossas metas!
+    </div>
+
+    <!-- CREDENCIAIS DE ACESSO -->
+    <div class="section-title">
+      🔑 Credenciais de Acesso ao Portal Digital
+    </div>
+    <table class="info-table">
+      <tr>
+        <th>Usuário de Acesso</th>
+        <td><strong style="color: #0284c7;">clayton.auditor</strong> (ou apenas <i>clayton</i>)</td>
+      </tr>
+      <tr>
+        <th>Senha Padrão</th>
+        <td><strong>5s2026</strong></td>
+      </tr>
+      <tr>
+        <th>Nível de Governança</th>
+        <td><strong>Grupo 2</strong> (Auditor Volante / Encarregados de Fábrica)</td>
+      </tr>
+      <tr>
+        <th>Permissões no Portal</th>
+        <td>Visualização dos 7 Setores + Checklist 50 Perguntas + Suplência em Faltas + Calibração</td>
+      </tr>
+    </table>
+
+    <!-- AS 3 ATRIBUIÇÕES DO CLAYTON -->
+    <div class="section-title">
+      ⚙️ Suas 3 Principais Atribuições de Campo
+    </div>
+    <div class="tasks-grid">
+      <div class="task-card">
+        <div class="task-card-title">1. SUPLÊNCIA EM FALTAS DE LÍDERES (GRUPO 1)</div>
+        <div class="task-card-desc">
+          Caso algum Líder de Setor faltar ou estiver ausente no dia, você acessa o portal com seu usuário e realiza a auditoria de 3 minutos no setor dele, garantindo 100% de cobertura diária sem lacunas no painel da fábrica.
+        </div>
+      </div>
+
+      <div class="task-card">
+        <div class="task-card-title">2. CALIBRAÇÃO E FILTRO DA QUALIDADE DE CAMPO</div>
+        <div class="task-card-desc">
+          Durante suas rondas, se notar que um setor recebeu nota "🟢 Bom" mas apresenta desorganização física real, você clica na célula e ajusta para "🟡 Regular" ou "🔴 Ruim" com total imparcialidade. O portal registrará formalmente a calibração realizada por você.
+        </div>
+      </div>
+
+      <div class="task-card">
+        <div class="task-card-title">3. RONDA RÁPIDA DE APOIO AO ENCARREGADO (DIEGO)</div>
+        <div class="task-card-desc">
+          Realizar uma varredura visual de 10 a 15 minutos entre Terça e Quinta-Feira, atuando em parceria direta com o Encarregado da Fábrica (Diego) antes da consolidação semanal.
+        </div>
+      </div>
+    </div>
+
+    <!-- ASSINATURAS DE NOMEAÇÃO -->
+    <div class="signatures-block">
+      <div style="text-align: center; font-size: 0.82rem; font-weight: 700; color: #475569; text-transform: uppercase; margin-bottom: 0.5rem;">
+        Assinaturas Oficiais de Nomeação e Compromisso com a Qualidade
+      </div>
+      <div class="signatures-grid">
+        <div>
+          <div class="sig-line">Clayton</div>
+          <div class="sig-role">Auditor Volante 5S (Grupo 2)</div>
+        </div>
+        <div>
+          <div class="sig-line">Diego</div>
+          <div class="sig-role">Encarregado de Fábrica (Grupo 2)</div>
+        </div>
+        <div>
+          <div class="sig-line">Alexandre Souza</div>
+          <div class="sig-role">Gerente de Projeto / Líder Mestre</div>
+        </div>
+        <div>
+          <div class="sig-line">Kaio</div>
+          <div class="sig-role">Diretor (Impaktto Plásticos)</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</body>
+</html>
