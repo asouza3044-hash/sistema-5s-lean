@@ -99,7 +99,7 @@ def build_pdf():
 
     story = []
 
-    # 1. CABEÇALHO COM A LOGO DA IMPAK TTO EM FORMATO JPEG COMPATÍVEL
+    # 1. CABEÇALHO COM A LOGO DA IMPAK TTO
     if os.path.exists(logo_jpg_scratch):
         img = Image(logo_jpg_scratch, width=2.4*inch, height=0.87*inch)
         
@@ -119,9 +119,6 @@ def build_pdf():
             ('PADDING', (0,0), (-1,-1), 8),
         ]))
         story.append(header_table)
-    else:
-        # Fallback de texto caso a imagem falhe
-        story.append(Paragraph("<b>IMPAK TTO PLÁSTICOS DE ENGENHARIA - PROGRAMA 5S</b>", title_style))
 
     story.append(Spacer(1, 8))
 
@@ -131,11 +128,11 @@ def build_pdf():
     story.append(Paragraph("FUNÇÃO ESPECIAL: AUDITOR VOLANTE / CORINGA DE QUALIDADE 5S (GRUPO 2)", subtitle_style))
     story.append(Spacer(1, 8))
 
-    # 3. TEXTO DE EXALTAÇÃO DA FUNÇÃO DO CLEITON
+    # 3. TEXTO OFICIAL SOLICITADO PELO CONSULTOR XANDINHO
     exaltation_text = """
     <b>Prezado Cleiton,</b><br/><br/>
-    É com imenso orgulho e confiança que a Diretoria da <b>IMPAK TTO Plásticos de Engenharia</b> e a Consultoria Mestre de Qualidade e 5S nomeiam você para a função estratégica de <b>AUDITOR VOLANTE / CORINGA 5S (GRUPO 2)</b>.<br/><br/>
-    A sua atuação é a chave para o sucesso do nosso programa. Por não estar restrito a um único departamento de produção, você representa o <b>olhar neutro, técnico e imparcial da qualidade</b>. Sua função é fundamental para garantir a integridade dos dados, apoiar os líderes de setor e manter nossa fábrica em alto padrão de excelência visual para a conquista das nossas metas!
+    É com imenso orgulho e confiança que a <b>IMPAK TTO Plásticos de Engenharia</b> e a Consultoria Mestre convidam você para a função estratégica de <b>AUDITOR VOLANTE / CORINGA 5S (GRUPO 2)</b>.<br/><br/>
+    A sua atuação é a chave para o sucesso do nosso programa. Por não estar restrito a um único departamento de produção, você representa o olhar neutro, técnico e imparcial da qualidade. Sua função é fundamental para garantir a integridade dos dados, apoiar os líderes de setor e manter nossa fábrica em alto padrão de excelência visual para a conquista das nossas metas!
     """
     
     exalt_table = Table([[Paragraph(exaltation_text, body_style)]], colWidths=[7.0*inch])
@@ -226,7 +223,7 @@ def build_pdf():
     with open(artifacts_pdf, 'wb') as f_dst:
         f_dst.write(pdf_bytes)
 
-    print("PDF RECOMPILADO COM SUCESSO COM A LOGO IMPAK TTO VISÍVEL!")
+    print("PDF RECOMPILADO COM O TEXTO EXATO SOLICITADO PELO XANDINHO!")
 
 if __name__ == "__main__":
     build_pdf()
