@@ -75,12 +75,16 @@ const DAILY_SENSO_FOCUS = {
   'SAB': { senso: 'shitsuke', name: '5. SHITSUKE (Revisão de Fim de Semana)', desc: 'Foco de Sábado: Manutenção geral dos padrões.' }
 };
 
-// Usuários Oficiais Pré-Configurados da Equipe Impaktto + CONTA ESPECIAL MONITOR TV FÁBRICA
+// Usuários Oficiais Pré-Configurados da Equipe Impaktto + AUDITOR CORINGA CLEITON + CONTA MONITOR TV
 const DEFAULT_USERS = {
   admin: { username: 'admin', password: 'mestre5s', name: 'Alexandre Souza', role: 'administrador', level: 'senior', title: 'Grupo 3: Gerente de Projeto / Consultor Mestre' },
   kaio: { username: 'kaio.diretor', password: '5s2026', name: 'Kaio', role: 'administrador', level: 'senior', title: 'Grupo 3: Diretor' },
   diego: { username: 'diego.fabrica', password: '5s2026', name: 'Diego', role: 'auditor_semanal', level: 'semanal', title: 'Grupo 2: Encarregado de Fábrica' },
   filipe: { username: 'filipe.rh', password: '5s2026', name: 'Filipe', role: 'auditor_semanal', level: 'semanal', title: 'Grupo 2: Encarregado RH - 5S' },
+  
+  // CLEITON: AUDITOR VOLANTE / CORINGA 5S (GRUPO 2 - SUPLÊNCIA & CALIBRAÇÃO RÁPIDA)
+  cleiton: { username: 'cleiton.auditor', password: '5s2026', name: 'Cleiton', role: 'auditor_semanal', level: 'semanal', title: 'Grupo 2: Auditor Volante 5S / Suplência & Calibração' },
+
   alexandre_u: { username: 'alexandre.usinagem', password: '5s2026', name: 'Alexandre', role: 'lider_diario', level: 'diario', sector: 'Usinagem', title: 'Grupo 1: Líder de Usinagem' },
   marcos: { username: 'marcos.holter', password: '5s2026', name: 'Marcos', role: 'lider_diario', level: 'diario', sector: 'Holter', title: 'Grupo 1: Líder de Holter' },
   bruno: { username: 'bruno.armarios', password: '5s2026', name: 'Bruno', role: 'lider_diario', level: 'diario', sector: 'Armários', title: 'Grupo 1: Líder de Armários' },
@@ -96,6 +100,7 @@ const DEFAULT_USERS = {
 // Estado Global
 let userDatabase = { ...DEFAULT_USERS, ...(JSON.parse(localStorage.getItem('5s_impaktto_users')) || {}) };
 userDatabase.admin = DEFAULT_USERS.admin;
+userDatabase.cleiton = DEFAULT_USERS.cleiton;
 userDatabase.monitor = DEFAULT_USERS.monitor;
 
 let currentUser = JSON.parse(localStorage.getItem('5s_impaktto_session')) || null;
@@ -131,6 +136,8 @@ window.handleLogin = function(e) {
       currentUser = foundUser;
     } else if (u === 'admin') {
       currentUser = DEFAULT_USERS.admin;
+    } else if (u === 'cleiton' || u === 'cleiton.auditor') {
+      currentUser = DEFAULT_USERS.cleiton;
     } else if (u === 'monitor') {
       currentUser = DEFAULT_USERS.monitor;
     } else {
@@ -418,7 +425,7 @@ function checkAuthSession() {
   const levelLabels = {
     monitor: '📺 Painel de Gestão Visual 16:9 (TV Fábrica & Escritório)',
     senior: '👑 Grupo 3: Auditor Sênior (Adm / Gerência & Diretoria)',
-    semanal: '🔍 Grupo 2: Auditor Semanal (Encarregado)',
+    semanal: '🔍 Grupo 2: Auditor Volante / Encarregado',
     diario: `📋 Grupo 1: Líder (Origem: ${userSector} ➔ Auditoria Cruzada: ${targetAuditSector})`
   };
 
