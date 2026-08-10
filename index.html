@@ -10,10 +10,10 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
   <!-- Chart.js para o Gráfico Radar dos 5 Sensos -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <!-- Local Styles com Cache Busting v8.0 -->
-  <link rel="stylesheet" href="styles.css?v=8.0">
+  <!-- Local Styles com Cache Busting v9.0 -->
+  <link rel="stylesheet" href="styles.css?v=9.0">
   <!-- JavaScript Principal Carregado no Head -->
-  <script src="app.js?v=8.0"></script>
+  <script src="app.js?v=9.0"></script>
 </head>
 <body>
 
@@ -46,7 +46,7 @@
       <form id="login-form" onsubmit="handleLogin(event)">
         <div class="form-group" style="text-align: left;">
           <label>Usuário de Acesso</label>
-          <input type="text" id="login-username" class="form-control" placeholder="Ex: alexandre.usinagem ou admin" autocomplete="username" required>
+          <input type="text" id="login-username" class="form-control" placeholder="Ex: alexandre.usinagem, monitor ou admin" autocomplete="username" required>
         </div>
 
         <div class="form-group" style="text-align: left;">
@@ -126,7 +126,7 @@
       </button>
     </div>
 
-    <!-- TABS NAVIGATION (VISÍVEL APENAS PARA GRUPO 2 E GRUPO 3) -->
+    <!-- TABS NAVIGATION (VISÍVEL PARA GRUPO 2 E GRUPO 3) -->
     <nav class="nav-tabs">
       <button class="nav-btn active" data-tab="tab-dashboard">
         📋 Auditoria 5S de Campo
@@ -150,22 +150,7 @@
          =================================================================== -->
     <section id="tab-dashboard" class="tab-content active">
       
-      <!-- CARD 1: QUADRO DIGITAL "COMO ESTÁ NOSSA ÁREA?" (INDIVIDUAL POR SETOR E GERENCIADO) -->
-      <div id="card-factory-board" class="card" style="border-color: rgba(245, 158, 11, 0.4); background: rgba(245, 158, 11, 0.03);">
-        <div class="card-header">
-          <h2 id="factory-board-title" class="card-title" style="color: var(--status-regular);">📋 Quadro da Fábrica: COMO ESTÁ NOSSA ÁREA?</h2>
-        </div>
-        
-        <!-- SELETOR DE VISUALIZAÇÃO POR SETOR (EXIBIDO PARA GRUPO 2 E GRUPO 3) -->
-        <div id="factory-board-filter-container"></div>
-
-        <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem;">
-          Avaliação diária de 3 Níveis (<strong>🟢 Bom | 🟡 Regular | 🔴 Ruim</strong>). Clique no botão do dia para alternar o status do seu setor:
-        </p>
-        <div id="factory-board-container" style="overflow-x: auto;"></div>
-      </div>
-
-      <!-- CARD 2: PAINEL DE MATURIDADE GLOBAL DA EMPRESA (GRUPO 2 E 3) -->
+      <!-- CARD 1: PAINEL DE MATURIDADE GLOBAL DA EMPRESA (RADAR 5S - EXIBIDO NO MODO TV & GESTÃO) -->
       <div id="card-maturity-dashboard" class="card">
         <div class="card-header">
           <h2 class="card-title">🏆 Nível de Maturidade 5S - IMPAK TTO</h2>
@@ -226,10 +211,25 @@
 
       </div>
 
-      <!-- CARD 3: RASTREABILIDADE AO VIVO (FEED DA REUNIÃO E DA FÁBRICA - GRUPO 2 E 3) -->
+      <!-- CARD 2: QUADRO DIGITAL "COMO ESTÁ NOSSA ÁREA?" (INDIVIDUAL POR SETOR E CONSOLIDADO NA TV) -->
+      <div id="card-factory-board" class="card" style="border-color: rgba(245, 158, 11, 0.4); background: rgba(245, 158, 11, 0.03);">
+        <div class="card-header">
+          <h2 id="factory-board-title" class="card-title" style="color: var(--status-regular);">📋 Quadro da Fábrica: COMO ESTÁ NOSSA ÁREA?</h2>
+        </div>
+        
+        <!-- SELETOR DE VISUALIZAÇÃO POR SETOR -->
+        <div id="factory-board-filter-container"></div>
+
+        <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem;">
+          Avaliação diária de 3 Níveis (<strong>🟢 Bom | 🟡 Regular | 🔴 Ruim</strong>). Status atualizado em tempo real pelos líderes:
+        </p>
+        <div id="factory-board-container" style="overflow-x: auto;"></div>
+      </div>
+
+      <!-- CARD 3: RASTREABILIDADE AO VIVO (FEED DA REUNIÃO E DA FÁBRICA) -->
       <div id="card-activity-feed" class="card" style="border-color: rgba(6, 182, 212, 0.4); background: rgba(6, 182, 212, 0.03);">
         <div class="card-header">
-          <h2 class="card-title" style="color: var(--accent-cyan);">📜 Feed de Lançamentos de Campo (Ao Vivo)</h2>
+          <h2 class="card-title" style="color: var(--accent-cyan);">📜 Feed de Lançamentos de Campo (Ao Vivo em Tempo Real)</h2>
         </div>
         <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.75rem;">
           Lançamentos sendo realizados em tempo real pela equipe no chão de fábrica:
@@ -469,6 +469,7 @@
             <li><strong>Nível 1 (Grupo 1 - Líderes Diários):</strong> Alexandre (Usinagem), Marcos (Holter), Bruno (Armários), Elton (Portas/Cortinas), Giovanna (Acabamento), Fabio (Comercial Usinados), Andre (Comercial Portas/Armários/Cortinas).</li>
             <li><strong>Nível 2 (Grupo 2 - Auditores Semanais):</strong> Diego (Encarregado Fábrica), Filipe (Encarregado RH - 5S).</li>
             <li><strong>Nível 3 (Grupo 3 - Auditores Sênior):</strong> Kaio (Diretor), Alexandre Souza (Gerente de Projeto / Consultor Mestre).</li>
+            <li><strong>Perfil Especial TV / Monitor:</strong> <code>monitor</code> / <code>5s2026</code> (Painel de Gestão Visual em Telão).</li>
           </ul>
         </div>
       </div>

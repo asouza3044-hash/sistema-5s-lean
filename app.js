@@ -75,7 +75,7 @@ const DAILY_SENSO_FOCUS = {
   'SAB': { senso: 'shitsuke', name: '5. SHITSUKE (Revisão de Fim de Semana)', desc: 'Foco de Sábado: Manutenção geral dos padrões.' }
 };
 
-// Usuários Oficiais Pré-Configurados da Equipe Impaktto
+// Usuários Oficiais Pré-Configurados da Equipe Impaktto + CONTA ESPECIAL MONITOR TV FÁBRICA
 const DEFAULT_USERS = {
   admin: { username: 'admin', password: 'mestre5s', name: 'Alexandre Souza', role: 'administrador', level: 'senior', title: 'Grupo 3: Gerente de Projeto / Consultor Mestre' },
   kaio: { username: 'kaio.diretor', password: '5s2026', name: 'Kaio', role: 'administrador', level: 'senior', title: 'Grupo 3: Diretor' },
@@ -87,12 +87,16 @@ const DEFAULT_USERS = {
   elton: { username: 'elton.portas', password: '5s2026', name: 'Elton', role: 'lider_diario', level: 'diario', sector: 'Portas / Cortinas', title: 'Grupo 1: Líder de Portas / Cortinas' },
   giovanna: { username: 'giovanna.acabamento', password: '5s2026', name: 'Giovanna', role: 'lider_diario', level: 'diario', sector: 'Acabamento', title: 'Grupo 1: Líder de Acabamento' },
   fabio: { username: 'fabio.comercial', password: '5s2026', name: 'Fabio', role: 'lider_diario', level: 'diario', sector: 'Comercial Usinados', title: 'Grupo 1: Líder Comercial Usinados' },
-  andre: { username: 'andre.comercial', password: '5s2026', name: 'Andre', role: 'lider_diario', level: 'diario', sector: 'Comercial Portas, Armários e Cortinas', title: 'Grupo 1: Líder Comercial Portas/Armários/Cortinas' }
+  andre: { username: 'andre.comercial', password: '5s2026', name: 'Andre', role: 'lider_diario', level: 'diario', sector: 'Comercial Portas, Armários e Cortinas', title: 'Grupo 1: Líder Comercial Portas/Armários/Cortinas' },
+  
+  // CONTA ESPECIAL PARA TELÕES DA FÁBRICA & ESCRITÓRIO (GESTAO VISUAL 5S)
+  monitor: { username: 'monitor', password: '5s2026', name: 'Painel TV Fábrica & Escritório', role: 'monitor', level: 'monitor', title: '📺 Painel de Gestão Visual (TV)' }
 };
 
 // Estado Global
 let userDatabase = { ...DEFAULT_USERS, ...(JSON.parse(localStorage.getItem('5s_impaktto_users')) || {}) };
 userDatabase.admin = DEFAULT_USERS.admin;
+userDatabase.monitor = DEFAULT_USERS.monitor;
 
 let currentUser = JSON.parse(localStorage.getItem('5s_impaktto_session')) || null;
 
@@ -105,6 +109,7 @@ let clientActivityLogs = [];
 let clientFactoryBoard = {};
 let activeFactorySectorFilter = 'ALL';
 let radarChartInstance = null;
+let autoRefreshTimer = null;
 
 // FUNÇÃO GLOBAL DE LOGIN DIRETO IMPAK TTO
 window.handleLogin = function(e) {
@@ -126,6 +131,8 @@ window.handleLogin = function(e) {
       currentUser = foundUser;
     } else if (u === 'admin') {
       currentUser = DEFAULT_USERS.admin;
+    } else if (u === 'monitor') {
+      currentUser = DEFAULT_USERS.monitor;
     } else {
       if (loginErr) {
         loginErr.style.display = 'block';
@@ -153,6 +160,7 @@ window.handleLogin = function(e) {
 };
 
 window.clearSystemSession = function() {
+  if (autoRefreshTimer) clearInterval(autoRefreshTimer);
   localStorage.clear();
   location.reload();
 };
@@ -291,7 +299,7 @@ function handleSelfRegister(e) {
   logActivity(`Novo integrante registrado (${name} - Setor Origem: ${userSector} - Grupo 1)`);
 }
 
-// 4. CONTROLE ESTRITO DE SESSÃO E VISIBILIDADE POR GRUPO (1, 2 E 3)
+// 4. CONTROLE ESTRITO DE SESSÃO E VISIBILIDADE POR GRUPO (1, 2, 3 E MODO MONITOR TV)
 function checkAuthSession() {
   const loginOverlay = document.getElementById('login-overlay');
 
@@ -311,9 +319,10 @@ function checkAuthSession() {
   const level = currentUser.level || 'diario';
   const role = currentUser.role || 'lider_diario';
 
+  const isMonitor = (role === 'monitor' || level === 'monitor'); // CONTA TV MONITOR
   const isSenior = (role === 'administrador' || level === 'senior'); // GRUPO 3
   const isSemanal = (role === 'auditor_semanal' || level === 'semanal'); // GRUPO 2
-  const isDiario = (!isSenior && !isSemanal); // GRUPO 1
+  const isDiario = (!isSenior && !isSemanal && !isMonitor); // GRUPO 1
 
   const cardFactoryBoard = document.getElementById('card-factory-board');
   const cardMaturity = document.getElementById('card-maturity-dashboard');
@@ -324,7 +333,32 @@ function checkAuthSession() {
   const navBtnTools = document.querySelector('.nav-btn[data-tab="tab-tools"]');
   const navBtnManual = document.querySelector('.nav-btn[data-tab="tab-manual"]');
 
-  if (isDiario) {
+  if (isMonitor) {
+    // ---------------------------------------------------------------------
+    // CONTA MONITOR (TV FÁBRICA & ESCRITÓRIO): GESTÃO VISUAL EM TEMPO REAL
+    // ---------------------------------------------------------------------
+    activeFactorySectorFilter = 'ALL'; // Visão Geral Consolidada Padrão na TV
+
+    if (cardMaturity) cardMaturity.style.display = 'block';
+    if (cardFactoryBoard) cardFactoryBoard.style.display = 'block';
+    if (cardActivityFeed) cardActivityFeed.style.display = 'block';
+    if (cardAuditChecklist) cardAuditChecklist.style.display = 'none'; // Sem formulário de perguntas na TV
+
+    if (navTabsContainer) navTabsContainer.style.display = 'none';
+    if (navBtnTools) navBtnTools.style.display = 'none';
+    if (navBtnManual) navBtnManual.style.display = 'none';
+
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    document.getElementById('tab-dashboard')?.classList.add('active');
+
+    // Ativar auto-refresh dos dados a cada 30 segundos na TV
+    if (!autoRefreshTimer) {
+      autoRefreshTimer = setInterval(() => {
+        loadImpakttoData();
+      }, 30000);
+    }
+
+  } else if (isDiario) {
     // ---------------------------------------------------------------------
     // GRUPO 1 (LÍDERES DIÁRIOS): SOMENTE O QUADRO DO SETOR DESTINO NO RODÍZIO
     // ---------------------------------------------------------------------
@@ -384,6 +418,7 @@ function checkAuthSession() {
   const targetAuditSector = SECTOR_ROTATION_MAP[userSector] || 'Holter';
 
   const levelLabels = {
+    monitor: '📺 Painel de Gestão Visual (TV Fábrica & Escritório)',
     senior: '👑 Grupo 3: Auditor Sênior (Adm / Gerência & Diretoria)',
     semanal: '🔍 Grupo 2: Auditor Semanal (Encarregado)',
     diario: `📋 Grupo 1: Líder (Origem: ${userSector} ➔ Auditoria Cruzada: ${targetAuditSector})`
@@ -403,6 +438,7 @@ function checkAuthSession() {
 }
 
 window.handleLogout = function() {
+  if (autoRefreshTimer) clearInterval(autoRefreshTimer);
   currentUser = null;
   localStorage.removeItem('5s_impaktto_session');
   location.reload();
@@ -568,7 +604,7 @@ window.selectScore3Level = function(sensoName, qNum, qKey, level) {
   logActivity(`Avaliou o item ${sensoName.toUpperCase()} #${qNum} como ${labelMap[level]}`);
 };
 
-// 5. RENDEREZAÇÃO DO QUADRO COM RODÍZIO COMPETENTE 5X5 (1 SENSO POR DIA DE TRABALHO)
+// 5. RENDEREZAÇÃO DO QUADRO COM RODÍZIO COMPETENTE 5X5 E MODO TV MONITOR
 function renderFactoryBoard() {
   const container = document.getElementById('factory-board-container');
   const titleEl = document.getElementById('factory-board-title');
@@ -577,6 +613,7 @@ function renderFactoryBoard() {
 
   const userSector = currentUser ? (currentUser.sector || 'Usinagem') : 'Usinagem';
   const isDiario = (currentUser && currentUser.level === 'diario');
+  const isMonitor = (currentUser && currentUser.level === 'monitor');
 
   // Aplicar regra da Auditoria Cruzada
   const targetAuditSector = SECTOR_ROTATION_MAP[userSector] || 'Holter';
@@ -590,7 +627,9 @@ function renderFactoryBoard() {
 
   // Atualizar Título Dinâmico do Card
   if (titleEl) {
-    if (isDiario) {
+    if (isMonitor) {
+      titleEl.innerHTML = `📺 Quadro Geral Consolidado em Tempo Real (GESTAO VISUAL IMPAK TTO)`;
+    } else if (isDiario) {
       titleEl.innerHTML = `📋 Quadro da Fábrica: COMO ESTÁ NOSSA ÁREA?`;
     } else if (selectedSector === 'ALL') {
       titleEl.innerHTML = `📋 Quadro Geral Consolidado (COMO ESTÁ A IMPAK TTO?)`;
@@ -599,9 +638,20 @@ function renderFactoryBoard() {
     }
   }
 
-  // Banner do Rodízio Competente (Sinalização do Setor Destino + Foco do Senso do Dia)
+  // Banner do Rodízio Competente ou Seletor
   if (filterSelectContainer) {
-    if (isDiario) {
+    if (isMonitor) {
+      filterSelectContainer.style.display = 'block';
+      filterSelectContainer.innerHTML = `
+        <div style="background: rgba(6, 182, 212, 0.15); border: 1px solid var(--accent-cyan); padding: 0.75rem 1.1rem; border-radius: var(--radius-md); margin-bottom: 1.25rem; display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <span style="font-size:0.85rem; font-weight:800; color:var(--accent-cyan);">📺 MODO TV / KIOSK DE FÁBRICA & ESCRITÓRIO:</span>
+            <span style="font-size:0.82rem; color:var(--text-muted); margin-left:0.5rem;">Atualização automática ao vivo a cada 30s.</span>
+          </div>
+          <span class="badge-seiton" style="padding:0.3rem 0.65rem; font-size:0.75rem;">🔴 AO VIVO NO TELÃO</span>
+        </div>
+      `;
+    } else if (isDiario) {
       filterSelectContainer.style.display = 'block';
       filterSelectContainer.innerHTML = `
         <div style="background: rgba(99, 102, 241, 0.12); border: 1px solid var(--border-highlight); padding: 0.9rem 1.1rem; border-radius: var(--radius-md); margin-bottom: 1.25rem;">
@@ -670,7 +720,7 @@ function renderFactoryBoard() {
           </div>
         </td>
         ${days.map(day => {
-          if (selectedSector === 'ALL') {
+          if (selectedSector === 'ALL' || isMonitor) {
             let hasRuim = false;
             let hasRegular = false;
             let countRuim = 0;
