@@ -161,32 +161,32 @@
           <div>
             <div class="grid-metrics" style="grid-template-columns: 1fr 1fr; margin-bottom: 1rem;">
               <div class="metric-card seiri">
-                <div class="metric-label">1. Seiri (Utilização)</div>
+                <div class="metric-label">1. Utilização (Seiri)</div>
                 <div class="metric-value" id="score-seiri">100%</div>
                 <div class="progress-bar-container"><div class="progress-bar-fill" id="bar-seiri"></div></div>
               </div>
 
               <div class="metric-card seiton">
-                <div class="metric-label">2. Seiton (Organização)</div>
+                <div class="metric-label">2. Organização (Seiton)</div>
                 <div class="metric-value" id="score-seiton">100%</div>
                 <div class="progress-bar-container"><div class="progress-bar-fill" id="bar-seiton"></div></div>
               </div>
 
               <div class="metric-card seiso">
-                <div class="metric-label">3. Seiso (Limpeza)</div>
+                <div class="metric-label">3. Limpeza (Seiso)</div>
                 <div class="metric-value" id="score-seiso">100%</div>
                 <div class="progress-bar-container"><div class="progress-bar-fill" id="bar-seiso"></div></div>
               </div>
 
               <div class="metric-card seiketsu">
-                <div class="metric-label">4. Seiketsu (Padronização)</div>
+                <div class="metric-label">4. Padronização (Seiketsu)</div>
                 <div class="metric-value" id="score-seiketsu">100%</div>
                 <div class="progress-bar-container"><div class="progress-bar-fill" id="bar-seiketsu"></div></div>
               </div>
             </div>
 
             <div class="metric-card shitsuke" style="margin-bottom: 1rem;">
-              <div class="metric-label">5. Shitsuke (Disciplina)</div>
+              <div class="metric-label">5. Disciplina (Shitsuke)</div>
               <div class="metric-value" id="score-shitsuke">100%</div>
               <div class="progress-bar-container"><div class="progress-bar-fill" id="bar-shitsuke"></div></div>
             </div>
@@ -206,6 +206,17 @@
 
       </div>
 
+      <!-- CARD: QUADRO DIGITAL "COMO ESTÁ NOSSA ÁREA?" (FÁBRICA IMPAKTTS/SOHIPREN) -->
+      <div class="card" style="border-color: rgba(245, 158, 11, 0.4); background: rgba(245, 158, 11, 0.03);">
+        <div class="card-header">
+          <h2 class="card-title" style="color: var(--status-regular);">📋 Quadro da Fábrica: COMO ESTÁ NOSSA ÁREA?</h2>
+        </div>
+        <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem;">
+          Avaliação rápida diária de 3 Níveis (<strong>🟢 Bom | 🟡 Regular | 🔴 Ruim</strong>). Clique no botão do dia para alternar o status:
+        </p>
+        <div id="factory-board-container" style="overflow-x: auto;"></div>
+      </div>
+
       <!-- CARD DE RASTREABILIDADE AO VIVO (FEED DA REUNIÃO E DA FÁBRICA) -->
       <div class="card" style="border-color: rgba(6, 182, 212, 0.4); background: rgba(6, 182, 212, 0.03);">
         <div class="card-header">
@@ -221,14 +232,14 @@
       <!-- FORMULÁRIO DA AUDITORIA 5S DE CAMPO -->
       <div class="card">
         <div class="card-header">
-          <h2 class="card-title">📋 Checklist Oficial de Auditoria 5S (50 Itens)</h2>
+          <h2 class="card-title">📋 Checklist Oficial de Auditoria 5S de Campo</h2>
           <button class="btn btn-danger" onclick="resetAudit()">🔄 Redefinir Respostas</button>
         </div>
         <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.5rem;">
-          Selecione a pontuação de <strong>1 (Insuficiente)</strong> a <strong>4 (Ótimo)</strong> para cada um dos itens abaixo enquanto inspeciona o chão de fábrica.
+          Selecione a avaliação simplificada de 3 níveis para cada item: <strong>🟢 Bom (100%)</strong>, <strong>🟡 Regular (50%)</strong> ou <strong>🔴 Ruim (0%)</strong>.
         </p>
 
-        <!-- Container das 50 Perguntas -->
+        <!-- Container das Perguntas de 3 Níveis -->
         <div id="audit-questions-container"></div>
       </div>
 
@@ -350,11 +361,11 @@
           <div class="form-group">
             <label>Senso Relacionado</label>
             <select id="kanban-senso" class="form-control">
-              <option value="seiri">Seiri (Utilização)</option>
-              <option value="seiton" selected>Seiton (Organização)</option>
-              <option value="seiso">Seiso (Limpeza)</option>
-              <option value="seiketsu">Seiketsu (Padronização)</option>
-              <option value="shitsuke">Shitsuke (Disciplina)</option>
+              <option value="seiri">Utilização (Seiri)</option>
+              <option value="seiton" selected>Organização (Seiton)</option>
+              <option value="seiso">Limpeza (Seiso)</option>
+              <option value="seiketsu">Padronização (Seiketsu)</option>
+              <option value="shitsuke">Disciplina (Shitsuke)</option>
             </select>
           </div>
           <div class="form-group">
@@ -372,21 +383,21 @@
 
         <div class="kanban-board">
           <div class="kanban-col">
-            <div class="kanban-col-header" style="border-color: var(--danger);">
+            <div class="kanban-col-header" style="border-color: var(--status-ruim);">
               <span>📝 A Fazer</span>
             </div>
             <div id="kanban-col-todo"></div>
           </div>
 
           <div class="kanban-col">
-            <div class="kanban-col-header" style="border-color: var(--warning);">
+            <div class="kanban-col-header" style="border-color: var(--status-regular);">
               <span>⚙️ Em Andamento</span>
             </div>
             <div id="kanban-col-doing"></div>
           </div>
 
           <div class="kanban-col">
-            <div class="kanban-col-header" style="border-color: var(--success);">
+            <div class="kanban-col-header" style="border-color: var(--status-bom);">
               <span>✅ Concluído</span>
             </div>
             <div id="kanban-col-done"></div>
@@ -428,7 +439,7 @@
         <div class="ishikawa-container">
           <div style="text-align: right; margin-bottom: 1rem;">
             <span style="font-size: 0.85rem; color: var(--text-muted);">Problema sob análise:</span>
-            <h3 id="ishikawa-effect-title" style="color: var(--danger); font-family: var(--font-display);">Sem problema definido</h3>
+            <h3 id="ishikawa-effect-title" style="color: var(--status-ruim); font-family: var(--font-display);">Sem problema definido</h3>
           </div>
           <div class="ishikawa-grid">
             <div class="ishikawa-m-box">
@@ -480,7 +491,7 @@
           <ul style="list-style: square inside; margin-left: 1rem;">
             <li><strong>Sensibilização & Treinamentos:</strong> Metodologia de engajamento da equipe.</li>
             <li><strong>O "Dia D" de Descarte:</strong> Separação de desnecessários e aplicação de cartões vermelhos.</li>
-            <li><strong>Controle de Auditorias:</strong> Escala de pontuação de 1 a 4 e avaliação contínua.</li>
+            <li><strong>Controle de Auditorias:</strong> Escala de pontuação (Bom, Regular, Ruim) e avaliação contínua.</li>
             <li><strong>Ferramentas Lean Integradas:</strong> Ishikawa, 5 Porquês, GUT e Kanban 5W2H.</li>
           </ul>
         </div>

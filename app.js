@@ -1,5 +1,5 @@
 /* ==========================================================================
-   PORTAL DE CONSULTORIA 5S & QUALIDADE (ESPECIAL REUNIÃO IMPAKTTO & SENAI)
+   PORTAL DE CONSULTORIA 5S & QUALIDADE (PADRÃO FÁBRICA: BOM, REGULAR, RUIM)
    ========================================================================== */
 
 // Base de Dados Oficial de Perguntas dos 5 Sensos (50 Itens Oficiais)
@@ -92,6 +92,7 @@ let clientGutMatrix = [];
 let clientKanbanTasks = [];
 let clientIshikawaData = {};
 let clientActivityLogs = [];
+let clientFactoryBoard = {};
 let radarChartInstance = null;
 
 // Inicialização
@@ -109,7 +110,6 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('form-ishikawa')?.addEventListener('submit', handleUpdateIshikawa);
 });
 
-// Checar Parâmetros de URL (?empresa=impaktto)
 function checkURLParams() {
   const urlParams = new URLSearchParams(window.location.search);
   const companyParam = urlParams.get('empresa');
@@ -120,7 +120,6 @@ function checkURLParams() {
   }
 }
 
-// Povoar Seleção de Empresas
 function populateCompanyDropdowns() {
   const regSelect = document.getElementById('reg-company-id');
   if (regSelect) {
@@ -130,7 +129,6 @@ function populateCompanyDropdowns() {
   }
 }
 
-// Alternar entre Telas de Autenticação
 window.toggleAuthMode = function(mode) {
   const loginForm = document.getElementById('login-form');
   const registerForm = document.getElementById('register-form');
@@ -150,7 +148,6 @@ window.toggleAuthMode = function(mode) {
   }
 };
 
-// Ao alterar a seleção de Empresa no Cadastro
 window.handleRegCompanyChange = function(val) {
   const newCompanyInputContainer = document.getElementById('reg-new-company-container');
   if (val === 'nova_empresa') {
@@ -160,7 +157,6 @@ window.handleRegCompanyChange = function(val) {
   }
 };
 
-// Auto-Cadastro Rápido na Sala de Reunião
 function handleSelfRegister(e) {
   e.preventDefault();
   const name = document.getElementById('reg-name').value.trim();
@@ -197,7 +193,6 @@ function handleSelfRegister(e) {
   logActivity(`Novo participante entrou na auditoria de campo (${name})`);
 }
 
-// Controle Estrito de Permissões de Interface por Perfil
 function checkAuthSession() {
   const loginOverlay = document.getElementById('login-overlay');
 
@@ -240,12 +235,11 @@ function checkAuthSession() {
   
   const activeCompanyObj = companyDatabase[selectedClientId] || { name: 'Empresa Impaktto' };
   document.getElementById('active-client-name').innerText = `🏢 Empresa: ${activeCompanyObj.name}`;
-  document.getElementById('logged-user-name').innerText = `👤 ${currentUser.name} ${isAdmin ? '(Consultor Mestre)' : '(Auditor de Campo)'}`;
+  document.getElementById('logged-user-name').innerText = `👤 ${currentUser.name} ${isAdmin ? '(Consultor Mestre)' : '(Inspetor de Fábrica)'}`;
 
   loadClientData(selectedClientId);
 }
 
-// Login
 function handleLogin(e) {
   e.preventDefault();
   const u = document.getElementById('login-username').value.trim().toLowerCase();
@@ -263,7 +257,6 @@ function handleLogin(e) {
   }
 }
 
-// Logout
 window.handleLogout = function() {
   currentUser = null;
   selectedClientId = null;
@@ -272,7 +265,6 @@ window.handleLogout = function() {
   location.reload();
 };
 
-// Dropdown de Empresas para Administrador
 function populateAdminClientDropdown() {
   const select = document.getElementById('admin-client-select');
   if (!select) return;
@@ -282,14 +274,12 @@ function populateAdminClientDropdown() {
     .join('');
 }
 
-// Alternar Cliente pelo Administrador
 window.changeActiveClientAdmin = function(newClientId) {
   selectedClientId = newClientId;
   localStorage.setItem('5s_active_client_id', JSON.stringify(selectedClientId));
   checkAuthSession();
 };
 
-// Cadastrar Usuário pelo Administrador
 function handleCreateNewUser(e) {
   e.preventDefault();
   const companyName = document.getElementById('new-company-name').value.trim();
@@ -319,7 +309,6 @@ function handleCreateNewUser(e) {
   populateAdminClientDropdown();
 }
 
-// Carregar Dados do Cliente Ativo
 function loadClientData(clientId) {
   clientAuditScores = JSON.parse(localStorage.getItem(`5s_audit_scores_${clientId}`)) || {};
   clientGutMatrix = JSON.parse(localStorage.getItem(`5s_gut_matrix_${clientId}`)) || [];
@@ -337,16 +326,17 @@ function loadClientData(clientId) {
     medicao: ['Rondas semanais da Comissão de Qualidade']
   };
   clientActivityLogs = JSON.parse(localStorage.getItem(`5s_activity_logs_${clientId}`)) || [];
+  clientFactoryBoard = JSON.parse(localStorage.getItem(`5s_factory_board_${clientId}`)) || {};
 
   renderAuditForms();
   calculateAuditResults();
+  renderFactoryBoard();
   renderGUTTable();
   renderKanban();
   renderIshikawa();
   renderActivityLogs();
 }
 
-// Rastreabilidade de Ações
 function logActivity(actionText) {
   const timestamp = new Date().toLocaleString('pt-BR');
   const userLabel = currentUser ? currentUser.name : 'Usuário';
@@ -382,7 +372,6 @@ function renderActivityLogs() {
   `).join('');
 }
 
-// Navegação entre Abas
 function initTabs() {
   const navBtns = document.querySelectorAll('.nav-btn');
   const tabContents = document.querySelectorAll('.tab-content');
@@ -398,7 +387,7 @@ function initTabs() {
   });
 }
 
-// Renderizar Formulários de Auditoria 5S de Campo
+// Renderizar Formulários de Auditoria 5S de Campo com 3 Opções (Bom, Regular, Ruim)
 function renderAuditForms() {
   const container = document.getElementById('audit-questions-container');
   if (!container) return;
@@ -423,22 +412,32 @@ function renderAuditForms() {
 
     questions.forEach((qText, idx) => {
       const qKey = `${senso}_${idx}`;
-      const currentScore = clientAuditScores[qKey] || 4;
+      const currentVal = clientAuditScores[qKey] || 'bom'; // Padrão 'bom'
 
       html += `
         <div class="audit-item">
           <div class="audit-item-text">
             <strong>${idx + 1}.</strong> ${qText}
           </div>
-          <div class="score-options" data-qkey="${qKey}">
-            ${[1, 2, 3, 4].map(s => `
-              <button type="button" 
-                      class="score-btn ${currentScore == s ? 'selected' : ''}" 
-                      data-score="${s}"
-                      onclick="selectScore('${senso}', ${idx + 1}, '${qKey}', ${s})">
-                ${s}
-              </button>
-            `).join('')}
+          <div class="score-options-3level" data-qkey="${qKey}">
+            <button type="button" 
+                    class="score-btn-factory ${currentVal === 'bom' ? 'selected' : ''}" 
+                    data-level="bom"
+                    onclick="selectScore3Level('${senso}', ${idx + 1}, '${qKey}', 'bom')">
+              🟢 Bom
+            </button>
+            <button type="button" 
+                    class="score-btn-factory ${currentVal === 'regular' ? 'selected' : ''}" 
+                    data-level="regular"
+                    onclick="selectScore3Level('${senso}', ${idx + 1}, '${qKey}', 'regular')">
+              🟡 Regular
+            </button>
+            <button type="button" 
+                    class="score-btn-factory ${currentVal === 'ruim' ? 'selected' : ''}" 
+                    data-level="ruim"
+                    onclick="selectScore3Level('${senso}', ${idx + 1}, '${qKey}', 'ruim')">
+              🔴 Ruim
+            </button>
           </div>
         </div>
       `;
@@ -450,15 +449,15 @@ function renderAuditForms() {
   container.innerHTML = html;
 }
 
-// Selecionar Nota na Auditoria de Campo
-window.selectScore = function(sensoName, qNum, qKey, score) {
-  clientAuditScores[qKey] = score;
+// Selecionar Nível de Fábrica (Bom, Regular, Ruim)
+window.selectScore3Level = function(sensoName, qNum, qKey, level) {
+  clientAuditScores[qKey] = level;
   localStorage.setItem(`5s_audit_scores_${selectedClientId}`, JSON.stringify(clientAuditScores));
 
-  const optionsDiv = document.querySelector(`.score-options[data-qkey="${qKey}"]`);
+  const optionsDiv = document.querySelector(`.score-options-3level[data-qkey="${qKey}"]`);
   if (optionsDiv) {
-    optionsDiv.querySelectorAll('.score-btn').forEach(btn => {
-      if (parseInt(btn.getAttribute('data-score')) === score) {
+    optionsDiv.querySelectorAll('.score-btn-factory').forEach(btn => {
+      if (btn.getAttribute('data-level') === level) {
         btn.classList.add('selected');
       } else {
         btn.classList.remove('selected');
@@ -467,24 +466,91 @@ window.selectScore = function(sensoName, qNum, qKey, score) {
   }
 
   calculateAuditResults();
-  logActivity(`Pontuou o item ${sensoName.toUpperCase()} #${qNum} com Nota ${score}`);
+
+  const labelMap = { bom: '🟢 BOM', regular: '🟡 REGULAR', ruim: '🔴 RUIM' };
+  logActivity(`Avaliou o item ${sensoName.toUpperCase()} #${qNum} como ${labelMap[level]}`);
 };
 
-// Calcular Resultados & Renderizar Gráfico Radar 5S
+// Renderizar Quadro Virtual "COMO ESTÁ NOSSA ÁREA?" (Foto 3 da Fábrica)
+function renderFactoryBoard() {
+  const container = document.getElementById('factory-board-container');
+  if (!container) return;
+
+  const days = ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
+  const sensos = [
+    { key: 'seiri', name: 'Utilização', class: 'badge-seiri' },
+    { key: 'seiton', name: 'Organização', class: 'badge-seiton' },
+    { key: 'seiso', name: 'Limpeza', class: 'badge-seiso' },
+    { key: 'seiketsu', name: 'Padronização', class: 'badge-seiketsu' },
+    { key: 'shitsuke', name: 'Disciplina', class: 'badge-shitsuke' }
+  ];
+
+  let html = `
+    <table class="factory-board-table">
+      <thead>
+        <tr>
+          <th style="text-align:left;">CONCEITO 5S</th>
+          ${days.map(d => `<th>${d}</th>`).join('')}
+        </tr>
+      </thead>
+      <tbody>
+  `;
+
+  sensos.forEach(s => {
+    html += `
+      <tr>
+        <td style="text-align:left;"><span class="senso-badge-title ${s.class}" style="margin:0;">${s.name}</span></td>
+        ${days.map(day => {
+          const boardKey = `${s.key}_${day}`;
+          const currentStatus = clientFactoryBoard[boardKey] || 'bom';
+          const iconMap = { bom: '🟢 Bom', regular: '🟡 Regular', ruim: '🔴 Ruim' };
+          
+          return `
+            <td>
+              <button class="btn btn-secondary" style="padding:0.25rem 0.5rem; font-size:0.75rem;" onclick="cycleFactoryBoard('${boardKey}', '${s.name}', '${day}')">
+                ${iconMap[currentStatus]}
+              </button>
+            </td>
+          `;
+        }).join('')}
+      </tr>
+    `;
+  });
+
+  html += `</tbody></table>`;
+  container.innerHTML = html;
+}
+
+window.cycleFactoryBoard = function(boardKey, sensoName, day) {
+  const current = clientFactoryBoard[boardKey] || 'bom';
+  const nextMap = { bom: 'regular', regular: 'ruim', ruim: 'bom' };
+  const next = nextMap[current];
+
+  clientFactoryBoard[boardKey] = next;
+  localStorage.setItem(`5s_factory_board_${selectedClientId}`, JSON.stringify(clientFactoryBoard));
+
+  renderFactoryBoard();
+  const labelMap = { bom: '🟢 BOM', regular: '🟡 REGULAR', ruim: '🔴 RUIM' };
+  logActivity(`Marcou ${sensoName} na ${day} como ${labelMap[next]} no Quadro da Área`);
+};
+
+// Calcular Resultados (Bom = 3 pts / 100%, Regular = 2 pts / 66%, Ruim = 1 pt / 33%)
 function calculateAuditResults() {
   const totals = { seiri: 0, seiton: 0, seiso: 0, seiketsu: 0, shitsuke: 0 };
-  const maxPerSenso = 40;
+  const maxPerSenso = 30; // 10 perguntas * 3 pontos (Bom)
+
+  const scorePoints = { bom: 3, regular: 2, ruim: 1 };
 
   for (const senso of Object.keys(AUDIT_QUESTIONS)) {
     for (let i = 0; i < 10; i++) {
       const qKey = `${senso}_${i}`;
-      const score = clientAuditScores[qKey] !== undefined ? clientAuditScores[qKey] : 4;
-      totals[senso] += score;
+      const level = clientAuditScores[qKey] || 'bom';
+      totals[senso] += (scorePoints[level] || 3);
     }
   }
 
   let totalScore = 0;
-  let totalMax = 200;
+  let totalMax = 150; // 5 sensos * 30 pontos
   const percentages = [];
 
   for (const senso of Object.keys(totals)) {
@@ -521,16 +587,14 @@ function calculateAuditResults() {
     }
   }
 
-  // Renderizar ou Atualizar Gráfico Radar de Maturidade 5S
   renderRadarChart(percentages);
 }
 
-// Renderizador do Gráfico Radar de Maturidade 5S (Chart.js)
 function renderRadarChart(scoresData) {
   const canvas = document.getElementById('radarChart5S');
   if (!canvas || typeof Chart === 'undefined') return;
 
-  const labels = ['1. Seiri (Utilização)', '2. Seiton (Organização)', '3. Seiso (Limpeza)', '4. Seiketsu (Padronização)', '5. Shitsuke (Disciplina)'];
+  const labels = ['1. Utilização (Seiri)', '2. Organização (Seiton)', '3. Limpeza (Seiso)', '4. Padronização (Seiketsu)', '5. Disciplina (Shitsuke)'];
 
   if (radarChartInstance) {
     radarChartInstance.data.datasets[0].data = scoresData;
@@ -565,15 +629,12 @@ function renderRadarChart(scoresData) {
             suggestedMax: 100
           }
         },
-        plugins: {
-          legend: { display: false }
-        }
+        plugins: { legend: { display: false } }
       }
     });
   }
 }
 
-// Resetar Auditoria
 window.resetAudit = function() {
   if (confirm(`Deseja redefinir a auditoria de "${companyDatabase[selectedClientId]?.name}"?`)) {
     clientAuditScores = {};
@@ -713,7 +774,7 @@ window.moveKanban = function(id, dir) {
 };
 
 window.deleteKanban = function(id) {
-  const task = task => task.id === id;
+  const task = clientKanbanTasks.find(t => t.id === id);
   if (task) logActivity(`Excluiu a tarefa "${task.title}" do Kanban`);
 
   clientKanbanTasks = clientKanbanTasks.filter(t => t.id !== id);
