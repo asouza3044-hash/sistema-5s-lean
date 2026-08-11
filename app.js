@@ -64,76 +64,80 @@ window.switchAuthTab = function(mode) {
 
 window.toggleAuthMode = window.switchAuthTab;
 
-// Setores Oficiais da Impaktto Plásticos de Engenharia
+// OS 5 SETORES OFICIAIS DA FÁBRICA NA MATRIZ DE RODÍZIO (COMERCIAL REMOVIDO DO RODÍZIO DE FÁBRICA)
 const IMPAKTTO_SECTORS = [
   "Usinagem",
   "Holter",
   "Armários",
   "Portas / Cortinas",
-  "Acabamento",
-  "Comercial Usinados",
-  "Comercial Portas, Armários e Cortinas"
+  "Acabamento"
 ];
 
-// MATRIZ DE RODÍZIO DE AUDITORIA CRUZADA (MATRIZ BASE 5X5 DOS LÍDERES)
-const SECTOR_ROTATION_MAP = {
-  "Usinagem": "Holter",
-  "Holter": "Armários",
-  "Armários": "Portas / Cortinas",
-  "Portas / Cortinas": "Acabamento",
-  "Acabamento": "Comercial Usinados",
-  "Comercial Usinados": "Comercial Portas, Armários e Cortinas",
-  "Comercial Portas, Armários e Cortinas": "Usinagem"
-};
+// LISTA DOS 5 SENSOS DO PROGRAMA 5S
+const SENSOS_LIST = [
+  { key: 'seiri', name: '1. UTILIZAÇÃO (SEIRI)', desc: 'Separar o útil do inútil e descartar desnecessários das bancadas.' },
+  { key: 'seiton', name: '2. ORGANIZAÇÃO (SEITON)', desc: 'Um lugar para cada coisa e identificação visual de ferramentas e materiais.' },
+  { key: 'seiso', name: '3. LIMPEZA (SEISO)', desc: 'Inspeção, higiene e conservação diária das máquinas e bancadas.' },
+  { key: 'seiketsu', name: '4. PADRONIZAÇÃO (SEIKETSU)', desc: 'Manutenção de padrões visuais, saúde e uso correto de EPIs.' },
+  { key: 'shitsuke', name: '5. DISCIPLINA (SHITSUKE)', desc: 'Autodisciplina e cumprimento rigoroso das regras da fábrica.' }
+];
 
-// ALGORITMO DE BALANCEMENTO UNIFORME DE AUDITORIA CRUZADA ENTRE OS COLABORADORES DO SETOR
-function getBalancedTargetSector(user) {
-  if (!user) return 'Holter';
-  const userSector = user.sector || 'Usinagem';
-
-  const eligibleSectors = IMPAKTTO_SECTORS.filter(s => s !== userSector);
-
-  if (user.level === 'diario' || user.role === 'lider_diario') {
-    return SECTOR_ROTATION_MAP[userSector] || eligibleSectors[0];
+// MATRIZ DE ALOCAÇÃO DETERMINÍSTICA E BALANCEADA DO RODÍZIO 5X5
+// Garante:
+// 1. Proibição absoluta de avaliar o próprio setor.
+// 2. Cobertura diária integral dos 5 Sensos nos 5 Setores da Fábrica.
+// 3. Distribuição equitativa entre os colaboradores dos Níveis 1, 2 e 3.
+function getRotationAssignment(user, dayCodeInput) {
+  if (!user) {
+    return { targetSector: 'Holter', targetSenso: SENSOS_LIST[0] };
   }
 
+  const daysOrder = ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
+  const dayNames = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
+  const todayIdxRaw = new Date().getDay();
+  const currentDayCode = dayCodeInput || (dayNames[todayIdxRaw] === 'DOM' ? 'SEG' : dayNames[todayIdxRaw]);
+  const dayOffset = Math.max(0, daysOrder.indexOf(currentDayCode));
+
+  const userSector = user.sector || 'Usinagem';
+  let sectorIdx = IMPAKTTO_SECTORS.indexOf(userSector);
+  if (sectorIdx === -1) sectorIdx = 0; // fallback para Comercial ou outros
+
+  // Cálculo do Setor Alvo: NUNCA avalia o próprio setor ((sectorIdx + 1 + dayOffset) % 5)
+  const targetSectorIdx = (sectorIdx + 1 + (dayOffset % 4)) % IMPAKTTO_SECTORS.length;
+  const targetSector = IMPAKTTO_SECTORS[targetSectorIdx];
+
+  // Cálculo do Senso Alvo individual por usuário dentro do setor
   const sectorUsers = Object.values(userDatabase)
-    .filter(u => (u.sector || 'Usinagem') === userSector && u.role !== 'administrador' && u.role !== 'auditor_semanal' && u.username !== 'monitor')
+    .filter(u => (u.sector || 'Usinagem') === userSector && u.username !== 'monitor')
     .sort((a, b) => (a.username || '').localeCompare(b.username || ''));
 
-  const userIndex = sectorUsers.findIndex(u => u.username === user.username);
-  const safeIdx = userIndex >= 0 ? userIndex : 0;
+  const userIdxInSector = Math.max(0, sectorUsers.findIndex(u => u.username === user.username));
+  const targetSensoIdx = (userIdxInSector + dayOffset) % SENSOS_LIST.length;
+  const targetSenso = SENSOS_LIST[targetSensoIdx];
 
-  return eligibleSectors[safeIdx % eligibleSectors.length];
+  return { targetSector, targetSenso, dayCode: currentDayCode };
 }
 
-// ESTRUTURA DOS 5 SENSOS DO QUADRO DIÁRIO
-const SENSOS_LIST = [
-  { key: 'seiri', name: '1. UTILIZAÇÃO (SEIRI)', desc: 'Separar o útil do inútil e descartar desnecessários.' },
-  { key: 'seiton', name: '2. ORGANIZAÇÃO (SEITON)', desc: 'Um lugar para cada coisa e identificação visual.' },
-  { key: 'seiso', name: '3. LIMPEZA (SEISO)', desc: 'Inspeção, higiene e conservação das máquinas/bancadas.' },
-  { key: 'seiketsu', name: '4. PADRONIZAÇÃO (SEIKETSU)', desc: 'Manutenção de padrões visuais, saúde e uso de EPIs.' },
-  { key: 'shitsuke', name: '5. DISCIPLINA (SHITSUKE)', desc: 'Autodisciplina e cumprimento de regras da fábrica.' }
-];
+function getBalancedTargetSector(user) {
+  return getRotationAssignment(user).targetSector;
+}
 
 // Usuários Oficiais Pré-Configurados da Equipe Impaktto + AUDITOR CORINGA CLAYTON + CONTA MONITOR TV
 const DEFAULT_USERS = {
-  admin: { username: 'admin', password: 'mestre5s', name: 'Alexandre Souza', role: 'administrador', level: 'senior', title: 'Grupo 3: Gerente de Projeto / Líder Mestre' },
-  kaio: { username: 'kaio.diretor', password: '5s2026', name: 'Kaio', role: 'administrador', level: 'senior', title: 'Grupo 3: Diretor' },
-  diego: { username: 'diego.fabrica', password: '5s2026', name: 'Diego', role: 'auditor_semanal', level: 'semanal', title: 'Grupo 2: Encarregado de Fábrica' },
-  filipe: { username: 'filipe.rh', password: '5s2026', name: 'Filipe', role: 'auditor_semanal', level: 'semanal', title: 'Grupo 2: Encarregado RH - 5S' },
+  admin: { username: 'admin', password: 'mestre5s', name: 'Alexandre Souza', role: 'administrador', level: 'senior', sector: 'Acabamento', title: 'Grupo 3: Gerente de Projeto / Líder Mestre' },
+  kaio: { username: 'kaio.diretor', password: '5s2026', name: 'Kaio', role: 'administrador', level: 'senior', sector: 'Usinagem', title: 'Grupo 3: Diretor' },
+  diego: { username: 'diego.fabrica', password: '5s2026', name: 'Diego', role: 'auditor_semanal', level: 'semanal', sector: 'Holter', title: 'Grupo 2: Encarregado de Fábrica' },
+  filipe: { username: 'filipe.rh', password: '5s2026', name: 'Filipe', role: 'auditor_semanal', level: 'semanal', sector: 'Armários', title: 'Grupo 2: Encarregado RH - 5S' },
   
-  // CLAYTON: AUDITOR VOLANTE / CORINGA 5S (GRUPO 2 - SUPLÊNCIA & CALIBRAÇÃO RÁPIDA)
-  clayton: { username: 'clayton.auditor', password: '5s2026', name: 'Clayton', role: 'auditor_semanal', level: 'semanal', title: 'Grupo 2: Auditor Volante 5S / Suplência & Calibração' },
+  // CLAYTON: AUDITOR VOLANTE / CORINGA 5S
+  clayton: { username: 'clayton.auditor', password: '5s2026', name: 'Clayton', role: 'auditor_semanal', level: 'semanal', sector: 'Portas / Cortinas', title: 'Grupo 2: Auditor Volante 5S / Suplência & Calibração' },
 
-  // OS 7 LÍDERES DIÁRIOS OFICIAIS DE SETOR (GRUPO 1 - LÍDERES)
-  alexandre_u: { username: 'alexandre.usinagem', password: '5s2026', name: 'Alexandre', role: 'lider_diario', level: 'diario', sector: 'Usinagem', title: 'Grupo 1: Líder de Usinagem' },
+  // OS LÍDERES DIÁRIOS DE SETOR DE FÁBRICA
+  alexandre_u: { username: 'alexandre.usinagem', password: '5s2026', name: 'Alexandre Usinagem', role: 'lider_diario', level: 'diario', sector: 'Usinagem', title: 'Grupo 1: Líder de Usinagem' },
   marcos: { username: 'marcos.holter', password: '5s2026', name: 'Marcos', role: 'lider_diario', level: 'diario', sector: 'Holter', title: 'Grupo 1: Líder de Holter' },
   bruno: { username: 'bruno.armarios', password: '5s2026', name: 'Bruno', role: 'lider_diario', level: 'diario', sector: 'Armários', title: 'Grupo 1: Líder de Armários' },
   elton: { username: 'elton.portas', password: '5s2026', name: 'Elton', role: 'lider_diario', level: 'diario', sector: 'Portas / Cortinas', title: 'Grupo 1: Líder de Portas / Cortinas' },
   giovanna: { username: 'giovanna.acabamento', password: '5s2026', name: 'Giovanna', role: 'lider_diario', level: 'diario', sector: 'Acabamento', title: 'Grupo 1: Líder de Acabamento' },
-  fabio: { username: 'fabio.comercial', password: '5s2026', name: 'Fabio', role: 'lider_diario', level: 'diario', sector: 'Comercial Usinados', title: 'Grupo 1: Líder Comercial Usinados' },
-  andre: { username: 'andre.comercial', password: '5s2026', name: 'Andre', role: 'lider_diario', level: 'diario', sector: 'Comercial Portas, Armários e Cortinas', title: 'Grupo 1: Líder Comercial Portas/Armários/Cortinas' },
   
   // CONTA ESPECIAL PARA TELÕES DA FÁBRICA & ESCRITÓRIO (GESTAO VISUAL 5S 16:9)
   monitor: { username: 'monitor', password: '5s2026', name: 'Gestão Visual TV Fábrica & Escritório', role: 'monitor', level: 'monitor', title: '📺 Gestão Visual 5S (TV 16:9)' }
@@ -158,7 +162,7 @@ let activeFactorySectorFilter = 'ALL';
 let radarChartInstance = null;
 let autoRefreshTimer = null;
 let currentVoteTarget = null;
-let selectedSensoScores = { seiri: 'bom', seiton: 'bom', seiso: 'bom', seiketsu: 'bom', shitsuke: 'bom' };
+let selectedVoteOption = 'bom';
 
 // HELPER PARA CÁLCULO E CONVERSÃO DE MÉDIA DE VOTOS POR CÉLULA DO QUADRO
 function getBoardCellSummary(boardKey) {
@@ -350,32 +354,28 @@ window.forceCloudSyncNow = async function() {
   alert('🎉 Sincronização Mestre de Nuvem Concluída! Todos os cadastros e votos de celulares estão atualizados.');
 };
 
-// MODAL COMPLETO DOS 5 SENSOS DO DIA PARA O RODÍZIO (AUDITA SEIRI, SEITON, SEISO, SEIKETSU E SHITSUKE DO DIA ATUAL)
-window.openDaily5SensosModal = function(sectorName, dayCode) {
+// MODAL DE REGISTRO DE VOTO DA AUDITORIA CRUZADA DO RODÍZIO
+window.openVoteChoiceModal = function(sectorName, boardKey, sensoName, day) {
   if (!currentUser) return;
 
   const dayNames = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
   const todayIdxRaw = new Date().getDay();
-  const currentDayCode = dayCode || (dayNames[todayIdxRaw] === 'DOM' ? 'SEG' : dayNames[todayIdxRaw]);
+  const currentDayCode = day || (dayNames[todayIdxRaw] === 'DOM' ? 'SEG' : dayNames[todayIdxRaw]);
 
-  const isDiarioOrColab = (currentUser.level === 'diario' || currentUser.level === 'colaborador' || currentUser.role === 'colaborador' || currentUser.role === 'lider_diario');
-  const targetAuditSector = getBalancedTargetSector(currentUser);
+  const assignment = getRotationAssignment(currentUser, currentDayCode);
 
-  if (isDiarioOrColab) {
-    sectorName = targetAuditSector;
-  }
+  if (!sectorName) sectorName = assignment.targetSector;
+  if (!sensoName) sensoName = assignment.targetSenso.name;
+  if (!boardKey) boardKey = `${sectorName}_${assignment.targetSenso.key}_${currentDayCode}`;
+
+  currentVoteTarget = { sectorName, boardKey, sensoName, day: currentDayCode };
 
   const userSector = currentUser.sector || 'Fábrica';
-  currentVoteTarget = { sectorName, day: currentDayCode };
+  const summary = getBoardCellSummary(boardKey);
+  const existingVotes = summary.votes || [];
 
-  // Inicializar escolhas anteriores ou padrão 'bom'
-  selectedSensoScores = {};
-  SENSOS_LIST.forEach(s => {
-    const bKey = `${sectorName}_${s.key}_${currentDayCode}`;
-    const summary = getBoardCellSummary(bKey);
-    const myVote = (summary.votes || []).find(v => (v.username === currentUser.username || v.name === currentUser.name));
-    selectedSensoScores[s.key] = myVote ? myVote.score : 'bom';
-  });
+  const myPreviousVote = existingVotes.find(v => (v.username === currentUser.username || v.name === currentUser.name));
+  selectedVoteOption = myPreviousVote ? myPreviousVote.score : 'bom';
 
   const todayDateStr = new Date().toISOString().split('T')[0];
   const userVoteKey = `5s_user_voted_${currentUser.username}_${todayDateStr}`;
@@ -389,190 +389,114 @@ window.openDaily5SensosModal = function(sectorName, dayCode) {
   modal.className = 'vote-modal-overlay';
   document.body.appendChild(modal);
 
+  let historyHtml = '';
+  if (existingVotes.length > 0) {
+    const votesList = existingVotes.map(v => {
+      const icon = v.score === 'bom' ? '🟢 Bom' : (v.score === 'regular' ? '🟡 Regular' : '🔴 Ruim');
+      return `<li style="font-size:0.8rem; padding:0.35rem 0; border-bottom:1px solid rgba(255,255,255,0.06); color:#d1d5db;">
+        👤 <strong>${v.name}:</strong> ${icon} ${v.comment ? `<i>("${v.comment}")</i>` : ''} <span style="font-size:0.7rem; color:var(--text-muted);">🕒 ${v.timestamp || ''}</span>
+      </li>`;
+    }).join('');
+
+    historyHtml = `
+      <div style="background:rgba(255,255,255,0.04); border:1px solid var(--border-color); padding:0.75rem 0.9rem; border-radius:10px; margin-bottom:1rem;">
+        <span style="font-size:0.78rem; font-weight:800; color:var(--accent-cyan); text-transform:uppercase;">📊 VOTOS REGISTRADOS NESTA CÉLULA (MÉDIA: ${summary.avgPoints} pts):</span>
+        <ul style="list-style:none; padding:0; margin:0.4rem 0 0 0;">
+          ${votesList}
+        </ul>
+      </div>
+    `;
+  }
+
   const alreadyVotedNotice = hasVotedToday ? `
     <div style="background:rgba(16,185,129,0.18); border:1px solid #10b981; padding:0.65rem 0.85rem; border-radius:10px; margin-bottom:1rem; color:#34d399; font-size:0.82rem; font-weight:700; display:flex; align-items:center; gap:0.5rem;">
       <span style="font-size:1.2rem;">✨</span>
-      <div>Sua avaliação dos 5 Sensos de hoje para o Setor <strong>${sectorName}</strong> já foi registrada! Você pode atualizar suas notas abaixo se desejar.</div>
+      <div>Sua avaliação no Rodízio de hoje para o Setor <strong>${sectorName}</strong> já foi registrada! Você pode atualizar sua nota abaixo se desejar.</div>
     </div>
   ` : '';
 
-  const sensosCardsHtml = SENSOS_LIST.map(s => {
-    const currentScore = selectedSensoScores[s.key] || 'bom';
-    return `
-      <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); padding:0.85rem 1rem; border-radius:12px; margin-bottom:0.8rem;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.4rem;">
-          <strong style="font-size:0.95rem; color:#ffffff; font-family:Outfit, sans-serif;">${s.name}</strong>
-          <span style="font-size:0.75rem; color:#9ca3af;">💡 ${s.desc}</span>
-        </div>
-        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:0.5rem; margin-top:0.4rem;">
-          
-          <button type="button" id="btn-${s.key}-bom" onclick="setSensoScoreModal('${s.key}', 'bom')" style="padding:0.5rem 0.4rem; border-radius:8px; border:2px solid ${currentScore === 'bom' ? '#10b981' : 'rgba(255,255,255,0.1)'}; background:${currentScore === 'bom' ? 'rgba(16,185,129,0.3)' : 'rgba(255,255,255,0.04)'}; color:${currentScore === 'bom' ? '#fff' : '#9ca3af'}; font-weight:700; font-size:0.8rem; cursor:pointer;">
-            🟢 Bom
-          </button>
-
-          <button type="button" id="btn-${s.key}-regular" onclick="setSensoScoreModal('${s.key}', 'regular')" style="padding:0.5rem 0.4rem; border-radius:8px; border:2px solid ${currentScore === 'regular' ? '#f59e0b' : 'rgba(255,255,255,0.1)'}; background:${currentScore === 'regular' ? 'rgba(245,158,11,0.3)' : 'rgba(255,255,255,0.04)'}; color:${currentScore === 'regular' ? '#fff' : '#9ca3af'}; font-weight:700; font-size:0.8rem; cursor:pointer;">
-            🟡 Regular
-          </button>
-
-          <button type="button" id="btn-${s.key}-ruim" onclick="setSensoScoreModal('${s.key}', 'ruim')" style="padding:0.5rem 0.4rem; border-radius:8px; border:2px solid ${currentScore === 'ruim' ? '#ef4444' : 'rgba(255,255,255,0.1)'}; background:${currentScore === 'ruim' ? 'rgba(239,68,68,0.3)' : 'rgba(255,255,255,0.04)'}; color:${currentScore === 'ruim' ? '#fff' : '#9ca3af'}; font-weight:700; font-size:0.8rem; cursor:pointer;">
-            🔴 Ruim
-          </button>
-
-        </div>
-      </div>
-    `;
-  }).join('');
-
   modal.innerHTML = `
-    <div class="vote-modal-card" style="max-width:540px;">
+    <div class="vote-modal-card">
       
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.85rem; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:0.65rem;">
         <div>
-          <h3 style="margin:0; font-size:1.2rem; color:#ffffff; font-family:Outfit, sans-serif;">📋 Avaliação Completa dos 5 Sensos</h3>
-          <span style="font-size:0.82rem; color:var(--accent-cyan); font-weight:800;">📍 Dia Atual: ${currentDayCode}</span>
+          <h3 style="margin:0; font-size:1.25rem; color:#ffffff; font-family:Outfit, sans-serif;">🗳️ Registrar Nota no Rodízio 5S</h3>
+          <span style="font-size:0.82rem; color:var(--accent-cyan); font-weight:800;">📍 Dia: ${currentDayCode}</span>
         </div>
         <button type="button" onclick="closeVoteChoiceModal(event)" style="background:rgba(255,255,255,0.1); border:none; color:#ffffff; font-size:1.5rem; width:38px; height:38px; border-radius:50%; cursor:pointer; display:flex; align-items:center; justify-content:center;">✕</button>
       </div>
 
-      <!-- DESTAQUE DO SETOR DESTINO -->
-      <div style="background:linear-gradient(135deg, rgba(16,185,129,0.25), rgba(6,182,212,0.25)); border:2px solid #10b981; padding:0.75rem 1rem; border-radius:12px; margin-bottom:1rem; box-shadow:0 0 20px rgba(16,185,129,0.3);">
+      <!-- DESTAQUE MÁXIMO DA MATRIZ DO RODÍZIO -->
+      <div style="background:linear-gradient(135deg, rgba(16,185,129,0.25), rgba(6,182,212,0.25)); border:2px solid #10b981; padding:0.85rem 1rem; border-radius:12px; margin-bottom:1.1rem; box-shadow:0 0 20px rgba(16,185,129,0.3);">
         <div style="font-size:0.75rem; font-weight:800; color:#34d399; text-transform:uppercase; letter-spacing:0.06em;">
-          🎯 SEU SETOR ALVO NO RODÍZIO HOJE (${currentDayCode}):
+          🎯 SEU ALVO NO RODÍZIO HOJE (${currentDayCode}):
         </div>
-        <div style="font-size:1.25rem; font-weight:800; color:#ffffff; margin-top:0.15rem; text-shadow:0 0 10px rgba(52,211,153,0.5);">
+        <div style="font-size:1.25rem; font-weight:800; color:#ffffff; margin-top:0.2rem; text-shadow:0 0 10px rgba(52,211,153,0.5);">
           📍 SETOR ${sectorName.toUpperCase()}
         </div>
-        <div style="font-size:0.8rem; color:#e2e8f0; margin-top:0.2rem;">
+        <div style="font-size:0.9rem; font-weight:800; color:var(--accent-cyan); margin-top:0.3rem;">
+          💡 SENSO DESIGNADO: ${sensoName}
+        </div>
+        <div style="font-size:0.8rem; color:#e2e8f0; margin-top:0.25rem;">
           👤 <strong>Avaliador:</strong> ${currentUser.name} (Origem: <strong>${userSector}</strong> ➔ Destino: <strong>${sectorName}</strong>)
         </div>
       </div>
 
       ${alreadyVotedNotice}
 
-      <div style="max-height:48vh; overflow-y:auto; padding-right:0.3rem; margin-bottom:1rem;">
-        ${sensosCardsHtml}
+      ${historyHtml}
+
+      <span style="font-size:0.85rem; font-weight:800; color:#e2e8f0; text-transform:uppercase; display:block; margin-bottom:0.65rem;">
+        👉 TOCAR NA SUA NOTA ABAIXO PARA SELECIONAR:
+      </span>
+
+      <!-- AS 3 OPÇÕES DE VOTO CLARAS E CLICÁVEIS -->
+      <div style="display:flex; flex-direction:column; gap:0.7rem; margin-bottom:1.2rem;">
+        
+        <!-- BOTAO 1: BOM -->
+        <button type="button" id="vote-opt-bom" onclick="selectVoteOptionInModal('bom')" style="display:flex; align-items:center; justify-content:space-between; padding:0.9rem 1.1rem; min-height:56px; border-radius:12px; border:2px solid ${selectedVoteOption === 'bom' ? '#10b981' : 'rgba(255,255,255,0.12)'}; background:${selectedVoteOption === 'bom' ? 'rgba(16,185,129,0.3)' : 'rgba(255,255,255,0.04)'}; color:${selectedVoteOption === 'bom' ? '#ffffff' : '#9ca3af'}; cursor:pointer; text-align:left; transition:all 0.2s; touch-action:manipulation;">
+          <div>
+            <div style="font-size:1.05rem; font-weight:800;">🟢 Bom (3.0 Pontos)</div>
+            <div style="font-size:0.78rem; font-weight:400; color:#a7f3d0; margin-top:0.15rem;">Setor limpo, organizado e dentro dos padrões 5S</div>
+          </div>
+          <span id="chk-bom" style="font-size:1.4rem; display:${selectedVoteOption === 'bom' ? 'inline' : 'none'};">✅</span>
+        </button>
+
+        <!-- BOTAO 2: REGULAR -->
+        <button type="button" id="vote-opt-regular" onclick="selectVoteOptionInModal('regular')" style="display:flex; align-items:center; justify-content:space-between; padding:0.9rem 1.1rem; min-height:56px; border-radius:12px; border:2px solid ${selectedVoteOption === 'regular' ? '#f59e0b' : 'rgba(255,255,255,0.12)'}; background:${selectedVoteOption === 'regular' ? 'rgba(245,158,11,0.3)' : 'rgba(255,255,255,0.04)'}; color:${selectedVoteOption === 'regular' ? '#ffffff' : '#9ca3af'}; cursor:pointer; text-align:left; transition:all 0.2s; touch-action:manipulation;">
+          <div>
+            <div style="font-size:1.05rem; font-weight:800;">🟡 Regular (2.0 Pontos)</div>
+            <div style="font-size:0.78rem; font-weight:400; color:#fde68a; margin-top:0.15rem;">Encontradas pequenas oportunidades de melhoria</div>
+          </div>
+          <span id="chk-regular" style="font-size:1.4rem; display:${selectedVoteOption === 'regular' ? 'inline' : 'none'};">✅</span>
+        </button>
+
+        <!-- BOTAO 3: RUIM -->
+        <button type="button" id="vote-opt-ruim" onclick="selectVoteOptionInModal('ruim')" style="display:flex; align-items:center; justify-content:space-between; padding:0.9rem 1.1rem; min-height:56px; border-radius:12px; border:2px solid ${selectedVoteOption === 'ruim' ? '#ef4444' : 'rgba(255,255,255,0.12)'}; background:${selectedVoteOption === 'ruim' ? 'rgba(239,68,68,0.3)' : 'rgba(255,255,255,0.04)'}; color:${selectedVoteOption === 'ruim' ? '#ffffff' : '#9ca3af'}; cursor:pointer; text-align:left; transition:all 0.2s; touch-action:manipulation;">
+          <div>
+            <div style="font-size:1.05rem; font-weight:800;">🔴 Ruim (1.0 Ponto)</div>
+            <div style="font-size:0.78rem; font-weight:400; color:#fca5a5; margin-top:0.15rem;">Não conformidade ou desordem identificada</div>
+          </div>
+          <span id="chk-ruim" style="font-size:1.4rem; display:${selectedVoteOption === 'ruim' ? 'inline' : 'none'};">✅</span>
+        </button>
       </div>
 
-      <div style="margin-bottom:1.1rem;">
+      <div style="margin-bottom:1.2rem;">
         <label style="font-size:0.8rem; font-weight:700; color:#9ca3af; display:block; margin-bottom:0.35rem;">
           📝 Observação / Apontamento de Campo (Opcional):
         </label>
-        <input type="text" id="vote-comment-input" class="form-control" placeholder="Ex: Ajustada bancada de ferramentas e lixeira..." style="width:100%; font-size:0.88rem; padding:0.55rem 0.8rem; border-radius:8px;">
+        <input type="text" id="vote-comment-input" class="form-control" value="${myPreviousVote && myPreviousVote.comment ? myPreviousVote.comment : ''}" placeholder="Ex: Ferramentas fora do lugar na bancada..." style="width:100%; font-size:0.9rem; padding:0.6rem 0.85rem; border-radius:8px;">
       </div>
 
       <div style="display:flex; gap:0.6rem; justify-content:flex-end;">
-        <button type="button" class="btn btn-secondary" onclick="closeVoteChoiceModal(event)" style="padding:0.65rem 1.1rem; font-size:0.88rem;">✕ Cancelar</button>
-        <button type="button" class="btn btn-primary" onclick="confirmDaily5SensosModal(event)" style="padding:0.65rem 1.4rem; font-size:0.92rem; font-weight:800; background:linear-gradient(135deg, #10b981, #06b6d4);">✅ Confirmar Avaliação Diária</button>
+        <button type="button" class="btn btn-secondary" onclick="closeVoteChoiceModal(event)" style="padding:0.7rem 1.1rem; font-size:0.88rem; min-height:44px;">✕ Cancelar</button>
+        <button type="button" class="btn btn-primary" onclick="confirmVoteChoiceModal(event)" style="padding:0.7rem 1.5rem; font-size:0.95rem; font-weight:800; min-height:44px; background:linear-gradient(135deg, #10b981, #06b6d4);">✅ Confirmar Nota</button>
       </div>
 
     </div>
   `;
 
   modal.style.display = 'flex';
-};
-
-window.setSensoScoreModal = function(sensoKey, score) {
-  selectedSensoScores[sensoKey] = score;
-
-  const styles = {
-    bom: { border: '#10b981', bg: 'rgba(16,185,129,0.3)' },
-    regular: { border: '#f59e0b', bg: 'rgba(245,158,11,0.3)' },
-    ruim: { border: '#ef4444', bg: 'rgba(239,68,68,0.3)' }
-  };
-
-  ['bom', 'regular', 'ruim'].forEach(sc => {
-    const btn = document.getElementById(`btn-${sensoKey}-${sc}`);
-    if (btn) {
-      if (sc === score) {
-        btn.style.borderColor = styles[sc].border;
-        btn.style.background = styles[sc].bg;
-        btn.style.color = '#ffffff';
-      } else {
-        btn.style.borderColor = 'rgba(255,255,255,0.1)';
-        btn.style.background = 'rgba(255,255,255,0.04)';
-        btn.style.color = '#9ca3af';
-      }
-    }
-  });
-};
-
-window.confirmDaily5SensosModal = function(e) {
-  if (e && typeof e.preventDefault === 'function') {
-    e.preventDefault();
-    e.stopPropagation();
-  }
-
-  if (!currentVoteTarget || !currentUser) {
-    closeVoteChoiceModal();
-    return;
-  }
-
-  const { sectorName, day } = currentVoteTarget;
-  const commentInput = document.getElementById('vote-comment-input');
-  const commentText = commentInput ? commentInput.value.trim() : '';
-
-  const scorePts = { bom: 3, regular: 2, ruim: 1 };
-  const labelMap = { bom: '🟢 BOM', regular: '🟡 REGULAR', ruim: '🔴 RUIM' };
-
-  SENSOS_LIST.forEach(s => {
-    const boardKey = `${sectorName}_${s.key}_${day}`;
-    const scoreChoice = selectedSensoScores[s.key] || 'bom';
-    const summary = getBoardCellSummary(boardKey);
-
-    let existingVotes = summary.votes || [];
-    existingVotes = existingVotes.filter(v => (v.username || v.name) !== currentUser.username && (v.username || v.name) !== currentUser.name);
-
-    const timestamp = new Date().toLocaleString('pt-BR');
-    existingVotes.push({
-      username: currentUser.username,
-      name: currentUser.name,
-      role: currentUser.role || 'colaborador',
-      score: scoreChoice,
-      points: scorePts[scoreChoice],
-      comment: commentText,
-      timestamp: timestamp
-    });
-
-    const totalPts = existingVotes.reduce((acc, v) => acc + v.points, 0);
-    const avgPts = totalPts / existingVotes.length;
-
-    let avgStatus = 'bom';
-    if (avgPts >= 2.5) avgStatus = 'bom';
-    else if (avgPts >= 1.7) avgStatus = 'regular';
-    else avgStatus = 'ruim';
-
-    clientFactoryBoard[boardKey] = {
-      status: avgStatus,
-      avgPoints: Math.round(avgPts * 10) / 10,
-      votes: existingVotes
-    };
-  });
-
-  localStorage.setItem('5s_factory_board_impaktto', JSON.stringify(clientFactoryBoard));
-
-  const isSeniorOrSemanal = (currentUser && (currentUser.level === 'senior' || currentUser.level === 'semanal' || currentUser.role === 'administrador' || currentUser.role === 'auditor_semanal'));
-  const todayDateStr = new Date().toISOString().split('T')[0];
-  const userVoteKey = `5s_user_voted_${currentUser.username}_${todayDateStr}`;
-
-  if (!isSeniorOrSemanal) {
-    localStorage.setItem(userVoteKey, 'true');
-  }
-
-  closeVoteChoiceModal();
-  renderFactoryBoard();
-
-  const auditorName = currentUser.name;
-  const originSector = currentUser.sector || 'Fábrica';
-  const commentSuffix = commentText ? ` 💬 "${commentText}"` : '';
-
-  logActivity(`Marcou os 5 Sensos na ${day} no Setor ${sectorName} (Rodízio por ${auditorName} - Origem: ${originSector} ➔ Destino: ${sectorName})${commentSuffix}`);
-
-  pushDataToServer();
-};
-
-// MANTER COMPATIBILIDADE DE CLIQUE DIRETO NAS CÉLULAS DA TABELA
-window.openVoteChoiceModal = function(sectorName, boardKey, sensoName, day) {
-  openDaily5SensosModal(sectorName, day);
 };
 
 window.closeVoteChoiceModal = function(e) {
@@ -588,10 +512,109 @@ window.closeVoteChoiceModal = function(e) {
   currentVoteTarget = null;
 };
 
-window.confirmVoteChoiceModal = window.confirmDaily5SensosModal;
-window.selectVoteOptionInModal = function(opt) {};
+window.confirmVoteChoiceModal = function(e) {
+  if (e && typeof e.preventDefault === 'function') {
+    e.preventDefault();
+    e.stopPropagation();
+  }
+
+  if (!currentVoteTarget || !currentUser) {
+    closeVoteChoiceModal();
+    return;
+  }
+
+  const { sectorName, boardKey, sensoName, day } = currentVoteTarget;
+  const commentInput = document.getElementById('vote-comment-input');
+  const commentText = commentInput ? commentInput.value.trim() : '';
+
+  const scoreChoice = selectedVoteOption || 'bom';
+  const scorePts = { bom: 3, regular: 2, ruim: 1 };
+
+  const currentSummary = getBoardCellSummary(boardKey);
+  let existingVotes = currentSummary.votes || [];
+
+  existingVotes = existingVotes.filter(v => (v.username || v.name) !== currentUser.username && (v.username || v.name) !== currentUser.name);
+
+  const timestamp = new Date().toLocaleString('pt-BR');
+  existingVotes.push({
+    username: currentUser.username,
+    name: currentUser.name,
+    role: currentUser.role || 'colaborador',
+    score: scoreChoice,
+    points: scorePts[scoreChoice],
+    comment: commentText,
+    timestamp: timestamp
+  });
+
+  const totalPts = existingVotes.reduce((acc, v) => acc + v.points, 0);
+  const avgPts = totalPts / existingVotes.length;
+
+  let avgStatus = 'bom';
+  if (avgPts >= 2.5) avgStatus = 'bom';
+  else if (avgPts >= 1.7) avgStatus = 'regular';
+  else avgStatus = 'ruim';
+
+  clientFactoryBoard[boardKey] = {
+    status: avgStatus,
+    avgPoints: Math.round(avgPts * 10) / 10,
+    votes: existingVotes
+  };
+
+  localStorage.setItem('5s_factory_board_impaktto', JSON.stringify(clientFactoryBoard));
+
+  const isSeniorOrSemanal = (currentUser && (currentUser.level === 'senior' || currentUser.level === 'semanal' || currentUser.role === 'administrador' || currentUser.role === 'auditor_semanal'));
+  const todayDateStr = new Date().toISOString().split('T')[0];
+  const userVoteKey = `5s_user_voted_${currentUser.username}_${todayDateStr}`;
+
+  if (!isSeniorOrSemanal) {
+    localStorage.setItem(userVoteKey, 'true');
+  }
+
+  closeVoteChoiceModal();
+  renderFactoryBoard();
+
+  const labelMap = { bom: '🟢 BOM', regular: '🟡 REGULAR', ruim: '🔴 RUIM' };
+  const auditorName = currentUser.name;
+  const originSector = currentUser.sector || 'Fábrica';
+  const commentSuffix = commentText ? ` 💬 "${commentText}"` : '';
+
+  logActivity(`Marcou ${sensoName} na ${day} como ${labelMap[scoreChoice]} no Setor ${sectorName} (Rodízio por ${auditorName} - Origem: ${originSector} ➔ Destino: ${sectorName})${commentSuffix}`);
+
+  pushDataToServer();
+};
+
+window.selectVoteOptionInModal = function(opt) {
+  selectedVoteOption = opt;
+
+  const stylesMap = {
+    bom: { border: '#10b981', bg: 'rgba(16,185,129,0.3)' },
+    regular: { border: '#f59e0b', bg: 'rgba(245,158,11,0.3)' },
+    ruim: { border: '#ef4444', bg: 'rgba(239,68,68,0.3)' }
+  };
+
+  ['bom', 'regular', 'ruim'].forEach(o => {
+    const btn = document.getElementById(`vote-opt-${o}`);
+    const chk = document.getElementById(`chk-${o}`);
+    if (o === opt) {
+      if (btn) {
+        btn.style.borderColor = stylesMap[o].border;
+        btn.style.background = stylesMap[o].bg;
+        btn.style.color = '#ffffff';
+      }
+      if (chk) chk.style.display = 'inline';
+    } else {
+      if (btn) {
+        btn.style.borderColor = 'rgba(255,255,255,0.12)';
+        btn.style.background = 'rgba(255,255,255,0.04)';
+        btn.style.color = '#9ca3af';
+      }
+      if (chk) chk.style.display = 'none';
+    }
+  });
+};
+
 window.cycleFactoryBoard = function(sectorName, boardKey, sensoName, day) {
-  openDaily5SensosModal(sectorName, day);
+  openVoteChoiceModal(sectorName, boardKey, sensoName, day);
 };
 
 // FUNÇÃO PARA O ADM CADASTRAR COLABORADORES DIRETO PELO PAINEL
@@ -701,7 +724,7 @@ window.handleLogin = function(e) {
   return true;
 };
 
-// AUTO-CADASTRO DE NOVOS INTEGRANTES (ENTRAM COMO GRUPO 1: COLABORADOR POR PADRÃO)
+// AUTO-CADASTRO DE NOVOS INTEGRANTES
 async function handleSelfRegister(e) {
   if (e) e.preventDefault();
   
@@ -1034,17 +1057,17 @@ function checkAuthSession() {
   }
   
   const userSector = currentUser.sector || 'Usinagem';
-  const targetAuditSector = getBalancedTargetSector(currentUser);
+  const assignment = getRotationAssignment(currentUser);
 
   const levelLabels = {
     monitor: '📺 Painel de Gestão Visual 16:9 (TV Fábrica & Escritório)',
     senior: '👑 Grupo 3: Auditor Sênior (Adm / Gerência & Diretoria)',
     semanal: '🔍 Grupo 2: Auditor Volante / Encarregado',
-    diario: `📋 Grupo 1: Líder de ${userSector} (Rodízio ➔ ${targetAuditSector})`,
-    colaborador: `📋 Grupo 1: Colaborador de ${userSector} (Rodízio Balanceado ➔ ${targetAuditSector})`
+    diario: `📋 Grupo 1: Líder de ${userSector} (Rodízio ➔ ${assignment.targetSector})`,
+    colaborador: `📋 Grupo 1: Colaborador de ${userSector} (Rodízio ➔ ${assignment.targetSector})`
   };
 
-  const levelBadgeText = levelLabels[level] || `📋 Grupo 1: Colaborador de ${userSector} (Rodízio Balanceado ➔ ${targetAuditSector})`;
+  const levelBadgeText = levelLabels[level] || `📋 Grupo 1: Colaborador de ${userSector} (Rodízio ➔ ${assignment.targetSector})`;
   const loggedUserNameEl = document.getElementById('logged-user-name');
   if (loggedUserNameEl) {
     loggedUserNameEl.innerText = `👤 ${currentUser.name} (${levelBadgeText})`;
@@ -1144,7 +1167,7 @@ function renderUserManagementTable() {
           <th style="padding:0.6rem;">Nome do Integrante</th>
           <th style="padding:0.6rem;">Usuário</th>
           <th style="padding:0.6rem;">Setor Origem</th>
-          <th style="padding:0.6rem;">Destino no Rodízio</th>
+          <th style="padding:0.6rem;">Alvo no Rodízio</th>
           <th style="padding:0.6rem;">Classificação & Governança</th>
           <th style="padding:0.6rem; text-align:center;">Ações de Teste / Gestão</th>
         </tr>
@@ -1157,7 +1180,7 @@ function renderUserManagementTable() {
     const uLevel = u.level || (u.role === 'colaborador' ? 'colaborador' : 'diario');
     const uVoteKey = `5s_user_voted_${u.username}_${todayDateStr}`;
     const votedToday = (localStorage.getItem(uVoteKey) === 'true');
-    const uTarget = getBalancedTargetSector(u);
+    const uAssignment = getRotationAssignment(u);
 
     html += `
       <tr style="border-bottom:1px solid rgba(255,255,255,0.04);">
@@ -1172,11 +1195,11 @@ function renderUserManagementTable() {
           </select>
         </td>
         <td style="padding:0.6rem; color:var(--accent-cyan); font-weight:700;">
-          🎯 ${uTarget}
+          🎯 ${uAssignment.targetSector} (${uAssignment.targetSenso.name})
         </td>
         <td style="padding:0.6rem;">
           <select class="form-control" style="font-size:0.78rem; padding:0.25rem 0.5rem; width:auto;" onchange="updateUserLevel('${u.username}', this.value)" ${isSelfAdmin ? 'disabled' : ''}>
-            <option value="colaborador" ${uLevel === 'colaborador' ? 'selected' : ''}>🟢 Grupo 1: Colaborador (Rodízio Balanceado)</option>
+            <option value="colaborador" ${uLevel === 'colaborador' ? 'selected' : ''}>🟢 Grupo 1: Colaborador (Rodízio Matriz 5x5)</option>
             <option value="diario" ${uLevel === 'diario' ? 'selected' : ''}>⭐ Grupo 1: Líder Diário de Setor (Rodízio)</option>
             <option value="semanal" ${uLevel === 'semanal' ? 'selected' : ''}>🟡 Grupo 2: Auditor Volante / Encarregado (Calibração)</option>
             <option value="senior" ${uLevel === 'senior' ? 'selected' : ''}>👑 Grupo 3: Gerência & Diretoria (Gestão Mestre)</option>
@@ -1221,17 +1244,17 @@ window.updateUserLevel = function(username, newLevel) {
   };
 
   const sector = userDatabase[username].sector || 'Setor';
-  const targetSector = getBalancedTargetSector(userDatabase[username]);
+  const assignment = getRotationAssignment(userDatabase[username]);
   const titleMap = {
-    colaborador: `Grupo 1: Colaborador (${sector} ➔ ${targetSector})`,
-    diario: `Grupo 1: Líder de ${sector} ➔ ${targetSector}`,
+    colaborador: `Grupo 1: Colaborador (${sector} ➔ ${assignment.targetSector})`,
+    diario: `Grupo 1: Líder de ${sector} ➔ ${assignment.targetSector}`,
     semanal: `Grupo 2: Auditor Volante / Encarregado`,
     senior: `Grupo 3: Gerência & Diretoria`
   };
 
   userDatabase[username].level = newLevel;
   userDatabase[username].role = roleMap[newLevel] || 'colaborador';
-  userDatabase[username].title = titleMap[newLevel] || `Grupo 1: Colaborador (${sector} ➔ ${targetSector})`;
+  userDatabase[username].title = titleMap[newLevel] || `Grupo 1: Colaborador (${sector} ➔ ${assignment.targetSector})`;
 
   localStorage.setItem('5s_impaktto_users', JSON.stringify(userDatabase));
 
@@ -1253,11 +1276,11 @@ window.updateUserSector = function(username, newSector) {
   if (!userDatabase[username]) return;
 
   userDatabase[username].sector = newSector;
-  const targetSector = getBalancedTargetSector(userDatabase[username]);
+  const assignment = getRotationAssignment(userDatabase[username]);
   if (userDatabase[username].level === 'colaborador') {
-    userDatabase[username].title = `Grupo 1: Colaborador (${newSector} ➔ ${targetSector})`;
+    userDatabase[username].title = `Grupo 1: Colaborador (${newSector} ➔ ${assignment.targetSector})`;
   } else if (userDatabase[username].level === 'diario') {
-    userDatabase[username].title = `Grupo 1: Líder de ${newSector} ➔ ${targetSector}`;
+    userDatabase[username].title = `Grupo 1: Líder de ${newSector} ➔ ${assignment.targetSector}`;
   }
 
   localStorage.setItem('5s_impaktto_users', JSON.stringify(userDatabase));
@@ -1419,7 +1442,7 @@ window.selectScore3Level = function(sensoName, qNum, qKey, level) {
   pushDataToServer();
 };
 
-// 5. RENDERIZAÇÃO DO QUADRO DA FÁBRICA COM BANNER DE AVALIAÇÃO DOS 5 SENSOS DO DIA
+// 5. RENDERIZAÇÃO DO QUADRO DA FÁBRICA COM MATRIZ DE RODÍZIO BALANCEADA DOS 5 SETORES
 function renderFactoryBoard() {
   const container = document.getElementById('factory-board-container');
   const titleEl = document.getElementById('factory-board-title');
@@ -1430,9 +1453,6 @@ function renderFactoryBoard() {
   const isDiarioOrColab = (currentUser && (currentUser.level === 'diario' || currentUser.level === 'colaborador' || currentUser.role === 'colaborador' || currentUser.role === 'lider_diario'));
   const isMonitor = (currentUser && currentUser.level === 'monitor');
 
-  const targetAuditSector = getBalancedTargetSector(currentUser);
-  let selectedSector = isDiarioOrColab ? targetAuditSector : (activeFactorySectorFilter || 'ALL');
-
   const dayNames = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
   const daysOrder = ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
   
@@ -1440,17 +1460,22 @@ function renderFactoryBoard() {
   const currentDayCode = dayNames[todayIdxRaw] === 'DOM' ? 'SEG' : dayNames[todayIdxRaw];
   const todayIndexInWeek = daysOrder.indexOf(currentDayCode);
 
+  const assignment = getRotationAssignment(currentUser, currentDayCode);
+  let selectedSector = isDiarioOrColab ? assignment.targetSector : (activeFactorySectorFilter || 'ALL');
+
+  const todayBoardKey = `${assignment.targetSector}_${assignment.targetSenso.key}_${currentDayCode}`;
+
   const todayDateStr = new Date().toISOString().split('T')[0];
   const userVoteKey = currentUser ? `5s_user_voted_${currentUser.username}_${todayDateStr}` : null;
   const hasVotedToday = userVoteKey ? (localStorage.getItem(userVoteKey) === 'true') : false;
 
   if (titleEl) {
     if (isMonitor) {
-      titleEl.innerHTML = `📺 Matriz dos Setores Individuais & Fechamento Coletivo da Semana`;
+      titleEl.innerHTML = `📺 Matriz de Rodízio Cruzado da Fábrica (5 Setores x 5 Sensos)`;
     } else if (isDiarioOrColab) {
-      titleEl.innerHTML = `📋 Quadro da Fábrica: Avaliando <span style="color:#34d399; font-weight:800; text-shadow:0 0 10px rgba(52,211,153,0.5);">📍 ${targetAuditSector}</span>`;
+      titleEl.innerHTML = `📋 Quadro da Fábrica: Avaliando <span style="color:#34d399; font-weight:800; text-shadow:0 0 10px rgba(52,211,153,0.5);">📍 ${assignment.targetSector}</span>`;
     } else if (selectedSector === 'ALL') {
-      titleEl.innerHTML = `📋 Quadro Geral Consolidado (COMO ESTÁ A IMPAK TTO?)`;
+      titleEl.innerHTML = `📋 Quadro Geral Consolidado da Fábrica (5 Setores x 5 Sensos)`;
     } else {
       titleEl.innerHTML = `📋 Quadro do Setor: <span style="color:var(--primary); font-weight:800;">${selectedSector}</span>`;
     }
@@ -1462,41 +1487,41 @@ function renderFactoryBoard() {
       filterSelectContainer.innerHTML = `
         <div style="background: rgba(6, 182, 212, 0.12); border: 1px solid var(--accent-cyan); padding: 0.5rem 0.85rem; border-radius: var(--radius-md); margin-bottom: 0.75rem; display: flex; justify-content: space-between; align-items: center;">
           <div>
-            <span style="font-size:0.8rem; font-weight:800; color:var(--accent-cyan);">📺 GESTÃO VISUAL 16:9 • VISÃO DOS 7 SETORES & FECHAMENTO COLETIVO</span>
+            <span style="font-size:0.8rem; font-weight:800; color:var(--accent-cyan);">📺 GESTÃO VISUAL 16:9 • VISÃO DOS 5 SETORES DE FÁBRICA & FECHAMENTO COLETIVO</span>
             <span style="font-size:0.75rem; color:var(--text-muted); margin-left:0.5rem;">Atualização automática a cada 2s</span>
           </div>
           <span class="badge-seiso" style="padding:0.25rem 0.5rem; font-size:0.72rem; font-weight:700;">🟢 DIA ATUAL: ${currentDayCode}</span>
         </div>
       `;
-    } else if (isDiarioOrColab) {
+    } else {
       filterSelectContainer.style.display = 'block';
 
       const voteStatusBadge = hasVotedToday ? `
         <span style="background: rgba(16, 185, 129, 0.25); border: 2px solid #10b981; color: #34d399; padding: 0.4rem 0.85rem; border-radius: 20px; font-size: 0.8rem; font-weight: 800; display: inline-flex; align-items: center; gap: 0.3rem; box-shadow:0 0 10px rgba(16,185,129,0.3);">
-          ✅ 5 Sensos Avaliados Hoje (${currentDayCode})
+          ✅ Avaliação Registrada Hoje (${currentDayCode})
         </span>
       ` : `
         <span class="badge-seiton" style="padding:0.4rem 0.85rem; font-size:0.8rem; font-weight:800; border:1px solid var(--status-regular);">
-          🗓️ HOJE É ${currentDayCode} • Aguardando Sua Avaliação dos 5S
+          🗓️ HOJE É ${currentDayCode} • Voto Pendente
         </span>
       `;
 
       filterSelectContainer.innerHTML = `
-        <!-- BANNER COM BOTÃO DE AVALIAÇÃO DOS 5 SENSOS DO DIA -->
+        <!-- BANNER DE ORIENTAÇÃO PRECISA DO RODÍZIO DA FÁBRICA -->
         <div class="rotation-target-box" style="margin-bottom: 1.25rem;">
           
           <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:0.6rem; margin-bottom:0.75rem;">
             <div>
               <span style="font-size:0.75rem; font-weight:800; color:var(--accent-cyan); text-transform:uppercase; letter-spacing:0.07em; background:rgba(6,182,212,0.18); padding:0.25rem 0.6rem; border-radius:6px; border:1px solid rgba(6,182,212,0.3);">
-                🛡️ GOVERNANÇA 5S • AUDITORIA DIÁRIA DOS 5 SENSOS
+                🛡️ GOVERNANÇA 5S • AUDITORIA CRUZADA IMPARCIAL (FÁBRICA)
               </span>
 
               <h2 style="font-family:Outfit, sans-serif; font-size:1.35rem; font-weight:800; color:#ffffff; margin-top:0.45rem; margin-bottom:0.15rem; line-height:1.2;">
-                📍 SEU SETOR DESIGNADO NO RODÍZIO: <span style="color:#34d399; text-shadow:0 0 14px rgba(52,211,153,0.6); font-size:1.4rem;">${targetAuditSector}</span>
+                📍 SEU SETOR ALVO HOJE: <span style="color:#34d399; text-shadow:0 0 14px rgba(52,211,153,0.6); font-size:1.4rem;">${assignment.targetSector}</span>
               </h2>
 
               <div style="font-size:0.85rem; color:#d1d5db; font-weight:500;">
-                🏢 Sua Origem: <strong>${userSector}</strong> ➔ Destino Automático: <strong style="color:#34d399;">${targetAuditSector}</strong> <i>(Regra: Avaliar a área externa designada)</i>
+                🏢 Origem: <strong>${userSector}</strong> ➔ Destino: <strong style="color:#34d399;">${assignment.targetSector}</strong> <i>(Regra: Proibido avaliar a própria área)</i>
               </div>
             </div>
             
@@ -1505,29 +1530,18 @@ function renderFactoryBoard() {
           
           <div style="background: rgba(0,0,0,0.35); padding: 0.75rem 1rem; border-radius: 10px; border-left: 4px solid #10b981; font-size: 0.88rem; color: #f3f4f6; margin-bottom:0.95rem;">
             <div style="font-weight:800; color:#34d399; font-size:0.9rem; margin-bottom:0.15rem;">
-              🎯 REQUISITO DIÁRIO: AVALIAÇÃO INTEGRAL DOS 5 SENSOS DE HOJE (${currentDayCode})
+              💡 SEU SENSO DESIGNADO HOJE (${currentDayCode}): ${assignment.targetSenso.name}
             </div>
             <div style="font-size:0.82rem; color:#9ca3af;">
-              Avalie os 5 Sensos (Utilização, Organização, Limpeza, Padronização e Disciplina) para que a equipe do setor <strong>${targetAuditSector}</strong> possa melhorar amanhã!
+              "${assignment.targetSenso.desc}"
             </div>
           </div>
 
-          <!-- BOTÃO GIGANTE DE AVALIAÇÃO COMPLETA DOS 5 SENSOS DE HOJE -->
-          <button type="button" class="btn btn-primary" style="width:100%; padding:0.95rem 1.1rem; font-size:1.05rem; font-weight:800; border-radius:12px; background:linear-gradient(135deg, #10b981, #06b6d4); box-shadow:0 0 25px rgba(16, 185, 129, 0.45); display:flex; align-items:center; justify-content:center; gap:0.6rem; cursor:pointer;" onclick="openDaily5SensosModal('${selectedSector}', '${currentDayCode}')">
-            🗳️ TOCAR AQUI PARA AVALIAR OS 5 SENSOS DO SETOR ${targetAuditSector.toUpperCase()} HOJE (${currentDayCode})
+          <!-- BOTÃO GIGANTE DE VOTAÇÃO NO SENSO DESIGNADO -->
+          <button type="button" class="btn btn-primary" style="width:100%; padding:0.95rem 1.1rem; font-size:1.05rem; font-weight:800; border-radius:12px; background:linear-gradient(135deg, #10b981, #06b6d4); box-shadow:0 0 25px rgba(16, 185, 129, 0.45); display:flex; align-items:center; justify-content:center; gap:0.6rem; cursor:pointer;" onclick="openVoteChoiceModal('${assignment.targetSector}', '${todayBoardKey}', '${assignment.targetSenso.name}', '${currentDayCode}')">
+            🗳️ TOCAR AQUI PARA AVALIAR O SENSO ${assignment.targetSenso.name.toUpperCase()} NO SETOR ${assignment.targetSector.toUpperCase()}
           </button>
 
-        </div>
-      `;
-    } else {
-      filterSelectContainer.style.display = 'block';
-      filterSelectContainer.innerHTML = `
-        <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:1rem; flex-wrap:wrap;">
-          <span style="font-size:0.82rem; font-weight:700; color:var(--accent-cyan);">🔍 Visualização da Gestão / Auditores:</span>
-          <select class="form-control" style="width:auto; padding:0.4rem 0.8rem; font-size:0.85rem;" onchange="changeFactorySectorFilter(this.value)">
-            <option value="ALL" ${selectedSector === 'ALL' ? 'selected' : ''}>🌐 Visão Geral Consolidada (Consolidação dos 7 Setores)</option>
-            ${IMPAKTTO_SECTORS.map(s => `<option value="${s}" ${selectedSector === s ? 'selected' : ''}>📍 Setor: ${s}</option>`).join('')}
-          </select>
         </div>
       `;
     }
@@ -1536,63 +1550,38 @@ function renderFactoryBoard() {
   const days = ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
 
   if (isMonitor || selectedSector === 'ALL') {
-    const sensos = [
-      { key: 'seiri', dayCode: 'SEG', name: '1. SEIRI (Seg)' },
-      { key: 'seiton', dayCode: 'TER', name: '2. SEITON (Ter)' },
-      { key: 'seiso', dayCode: 'QUA', name: '3. SEISO (Qua)' },
-      { key: 'seiketsu', dayCode: 'QUI', name: '4. SEIKETSU (Qui)' },
-      { key: 'shitsuke', dayCode: 'SEX', name: '5. SHITSUKE (Sex)' }
-    ];
-
     let html = `
       <table class="factory-board-table">
         <thead>
           <tr>
-            <th style="text-align:left; width: 180px;">DEPARTAMENTO / SETOR</th>
-            ${sensos.map(s => {
-              const dayIdx = daysOrder.indexOf(s.dayCode);
-              const isFuture = (dayIdx > todayIndexInWeek);
-              return `<th style="${s.dayCode === currentDayCode ? 'background:rgba(99,102,241,0.3); color:#fff;' : (isFuture ? 'opacity:0.6;' : '')}">${s.name} ${s.dayCode === currentDayCode ? '⭐ (Hoje)' : (isFuture ? '⏳' : '')}</th>`;
-            }).join('')}
+            <th style="text-align:left; width: 180px;">DEPARTAMENTO FÁBRICA</th>
+            ${SENSOS_LIST.map(s => `<th style="font-size:0.75rem;">${s.name}</th>`).join('')}
           </tr>
         </thead>
         <tbody>
     `;
 
     IMPAKTTO_SECTORS.forEach(sec => {
-      const isUserTarget = (sec === targetAuditSector);
+      const isUserTarget = (sec === assignment.targetSector);
 
       html += `
         <tr style="${isUserTarget ? 'background: rgba(16,185,129,0.12); border:1px solid #10b981;' : ''}">
           <td style="text-align:left; font-weight:700; font-size:0.8rem; color:#e2e8f0; padding: 0.45rem 0.6rem;">
-            📍 ${sec} ${isUserTarget ? '<span style="color:#34d399; font-size:0.7rem; display:block; font-weight:800;">🎯 SEU ALVO NO RODÍZIO</span>' : ''}
+            📍 ${sec} ${isUserTarget ? '<span style="color:#34d399; font-size:0.7rem; display:block; font-weight:800;">🎯 SEU ALVO HOJE</span>' : ''}
           </td>
-          ${sensos.map(s => {
-            const dayIdx = daysOrder.indexOf(s.dayCode);
-            const isFuture = (dayIdx > todayIndexInWeek);
+          ${SENSOS_LIST.map(s => {
+            const boardKey = `${sec}_${s.key}_${currentDayCode}`;
+            const summary = getBoardCellSummary(boardKey);
+            const iconMap = { bom: '🟢 Bom', regular: '🟡 Regular', ruim: '🔴 Ruim' };
+            const countBadge = summary.voteCount > 1 ? `<span style="background:rgba(0,0,0,0.4); padding:0.1rem 0.35rem; border-radius:10px; font-size:0.65rem; margin-left:0.25rem;">📊 ${summary.avgPoints} (${summary.voteCount})</span>` : '';
 
-            if (isFuture) {
-              return `
-                <td style="vertical-align:middle; padding:0.3rem 0.2rem; opacity:0.4;">
-                  <span style="display:inline-block; padding:0.25rem 0.4rem; font-size:0.72rem; font-weight:500; color:var(--text-muted); border:1px dashed var(--border-color); border-radius:6px;">
-                    ⚪ Aguardando
-                  </span>
-                </td>
-              `;
-            } else {
-              const boardKey = `${sec}_${s.key}_${s.dayCode}`;
-              const summary = getBoardCellSummary(boardKey);
-              const iconMap = { bom: '🟢 Bom', regular: '🟡 Regular', ruim: '🔴 Ruim' };
-              const countBadge = summary.voteCount > 1 ? `<span style="background:rgba(0,0,0,0.4); padding:0.1rem 0.35rem; border-radius:10px; font-size:0.65rem; margin-left:0.25rem;">📊 ${summary.avgPoints} (${summary.voteCount})</span>` : '';
-
-              return `
-                <td style="vertical-align:middle; padding:0.3rem 0.2rem;">
-                  <button class="score-btn-factory selected" data-level="${summary.status}" style="display:inline-block; padding:0.35rem 0.5rem; font-size:0.75rem; font-weight:700; cursor:pointer; border:none;" onclick="openDaily5SensosModal('${sec}', '${s.dayCode}')" title="Clique para abrir avaliação dos 5 Sensos do dia. Média Atual: ${summary.avgPoints} (${summary.voteCount} votos)">
-                    ${iconMap[summary.status]} ${countBadge}
-                  </button>
-                </td>
-              `;
-            }
+            return `
+              <td style="vertical-align:middle; padding:0.3rem 0.2rem;">
+                <button class="score-btn-factory selected" data-level="${summary.status}" style="display:inline-block; padding:0.35rem 0.5rem; font-size:0.75rem; font-weight:700; cursor:pointer; border:none;" onclick="openVoteChoiceModal('${sec}', '${boardKey}', '${s.name}', '${currentDayCode}')" title="Clique para abrir avaliação. Média Atual: ${summary.avgPoints} (${summary.voteCount} votos)">
+                  ${iconMap[summary.status]} ${countBadge}
+                </button>
+              </td>
+            `;
           }).join('')}
         </tr>
       `;
@@ -1601,27 +1590,14 @@ function renderFactoryBoard() {
     html += `
       <tr style="background: rgba(99, 102, 241, 0.18); border-top: 2px solid var(--primary);">
         <td style="text-align:left; font-weight:800; font-size:0.85rem; color:var(--accent-cyan); padding: 0.6rem 0.6rem;">
-          🌐 FECHAMENTO COLETIVO IMPAK TTO
+          🌐 FECHAMENTO DA FÁBRICA
         </td>
-        ${sensos.map(s => {
-          const dayIdx = daysOrder.indexOf(s.dayCode);
-          const isFuture = (dayIdx > todayIndexInWeek);
-
-          if (isFuture) {
-            return `
-              <td style="vertical-align:middle; padding:0.4rem 0.2rem; opacity:0.5;">
-                <span style="display:inline-block; padding:0.3rem 0.45rem; font-size:0.72rem; font-weight:600; color:var(--text-muted);">
-                  ⚪ Em Aberto
-                </span>
-              </td>
-            `;
-          }
-
+        ${SENSOS_LIST.map(s => {
           let totalPtsSum = 0;
           let sectorCount = 0;
 
           IMPAKTTO_SECTORS.forEach(sec => {
-            const bKey = `${sec}_${s.key}_${s.dayCode}`;
+            const bKey = `${sec}_${s.key}_${currentDayCode}`;
             const summary = getBoardCellSummary(bKey);
             totalPtsSum += summary.avgPoints;
             sectorCount++;
@@ -1654,14 +1630,6 @@ function renderFactoryBoard() {
     container.innerHTML = html;
 
   } else {
-    const sensos = [
-      { key: 'seiri', dayCode: 'SEG', name: 'UTILIZAÇÃO (SEIRI)', class: 'badge-seiri', desc: 'Separar o útil do inútil • Descarte de desnecessários' },
-      { key: 'seiton', dayCode: 'TER', name: 'ORGANIZAÇÃO (SEITON)', class: 'badge-seiton', desc: 'Um lugar para cada coisa • Identificação visual' },
-      { key: 'seiso', dayCode: 'QUA', name: 'LIMPEZA (SEISO)', class: 'badge-seiso', desc: 'Manter o setor limpo • Inspecionar e conservar' },
-      { key: 'seiketsu', dayCode: 'QUI', name: 'PADRONIZAÇÃO (SEIKETSU)', class: 'badge-seiketsu', desc: 'Manter padrões • Saúde, higiene e EPIs' },
-      { key: 'shitsuke', dayCode: 'SEX', name: 'DISCIPLINA (SHITSUKE)', class: 'badge-shitsuke', desc: 'Seguir regras • Fechamento da Semana' }
-    ];
-
     let html = `
       <table class="factory-board-table">
         <thead>
@@ -1677,11 +1645,13 @@ function renderFactoryBoard() {
         <tbody>
     `;
 
-    sensos.forEach(s => {
+    SENSOS_LIST.forEach(s => {
+      const isTargetSenso = (s.name === assignment.targetSenso.name);
+
       html += `
-        <tr>
+        <tr style="${isTargetSenso ? 'background: rgba(16,185,129,0.08);' : ''}">
           <td style="text-align:left; vertical-align:middle; padding: 0.85rem;">
-            <span class="senso-badge-title ${s.class}" style="margin:0 0 0.25rem 0;">${s.name}</span>
+            <span class="senso-badge-title badge-${s.key}" style="margin:0 0 0.25rem 0;">${s.name}</span>
             <div style="font-size:0.75rem; color:#9ca3af; line-height:1.25; font-weight: 500;">
               💡 ${s.desc}
             </div>
@@ -1693,7 +1663,7 @@ function renderFactoryBoard() {
             if (isFuture) {
               return `
                 <td style="vertical-align:middle; opacity:0.35;">
-                  <button class="btn btn-secondary" style="padding:0.3rem 0.6rem; font-size:0.75rem; cursor:not-allowed;" disabled title="Lançamento liberado no dia correspondente">
+                  <button class="btn btn-secondary" style="padding:0.3rem 0.6rem; font-size:0.75rem; cursor:not-allowed;" disabled>
                     ⚪ Aguardando
                   </button>
                 </td>
@@ -1706,7 +1676,7 @@ function renderFactoryBoard() {
 
               return `
                 <td style="vertical-align:middle; ${day === currentDayCode ? 'background:rgba(99,102,241,0.1);' : ''}">
-                  <button class="btn btn-secondary" style="padding:0.4rem 0.75rem; font-size:0.85rem; font-weight:800; cursor:pointer; min-height:42px; width:100%; border-radius:8px;" onclick="openDaily5SensosModal('${selectedSector}', '${day}')" title="Clique para abrir avaliação dos 5 Sensos do dia. Média: ${summary.avgPoints} (${summary.voteCount} votos)">
+                  <button class="btn btn-secondary" style="padding:0.4rem 0.75rem; font-size:0.85rem; font-weight:800; cursor:pointer; min-height:42px; width:100%; border-radius:8px;" onclick="openVoteChoiceModal('${selectedSector}', '${boardKey}', '${s.name}', '${day}')" title="Clique para abrir caixa de escolha de voto. Média: ${summary.avgPoints} (${summary.voteCount} votos)">
                     ${iconMap[summary.status]} ${countBadge}
                   </button>
                 </td>
