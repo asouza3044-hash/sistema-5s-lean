@@ -351,19 +351,19 @@ window.forceCloudSyncNow = async function() {
   alert('🎉 Sincronização Mestre de Nuvem Concluída! Todos os cadastros e votos de celulares estão atualizados.');
 };
 
-// MODAL INTERATIVO DE ESCOLHA EXPLÍCITA DE VOTO (COM FECHAMENTO REMOVIDO 100% DO DOM AO CONFIRMAR)
+// MODAL INTERATIVO DE ESCOLHA EXPLÍCITA DE VOTO (COM DESTAQUE EMERALD/NEON DO SETOR DESTINO)
 window.openVoteChoiceModal = function(sectorName, boardKey, sensoName, day) {
   if (!currentUser) return;
 
   currentVoteTarget = { sectorName, boardKey, sensoName, day };
 
+  const userSector = currentUser.sector || 'Fábrica';
   const summary = getBoardCellSummary(boardKey);
   const existingVotes = summary.votes || [];
 
   const myPreviousVote = existingVotes.find(v => (v.username === currentUser.username || v.name === currentUser.name));
   selectedVoteOption = myPreviousVote ? myPreviousVote.score : 'bom';
 
-  // Eliminar qualquer modal remanescente
   const oldModal = document.getElementById('modal-vote-choice');
   if (oldModal) oldModal.remove();
 
@@ -396,16 +396,22 @@ window.openVoteChoiceModal = function(sectorName, boardKey, sensoName, day) {
       
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:0.75rem;">
         <div>
-          <h3 style="margin:0; font-size:1.2rem; color:#ffffff; font-family:Outfit, sans-serif;">🗳️ Registrar Avaliação (Rodízio 5S)</h3>
-          <span style="font-size:0.82rem; color:var(--accent-cyan); font-weight:800;">📍 Setor Destino: ${sectorName} • ${sensoName} (${day})</span>
+          <h3 style="margin:0; font-size:1.2rem; color:#ffffff; font-family:Outfit, sans-serif;">🗳️ Registrar Avaliação 5S</h3>
+          <span style="font-size:0.82rem; color:var(--accent-cyan); font-weight:800;">📍 ${sensoName} (${day})</span>
         </div>
         <button type="button" onclick="closeVoteChoiceModal(event)" style="background:rgba(255,255,255,0.1); border:none; color:#ffffff; font-size:1.5rem; width:38px; height:38px; border-radius:50%; cursor:pointer; display:flex; align-items:center; justify-content:center;">✕</button>
       </div>
 
-      <div style="background:rgba(99,102,241,0.15); border:1px solid var(--primary); padding:0.65rem 0.85rem; border-radius:10px; margin-bottom:1.1rem; font-size:0.85rem;">
-        👤 <strong>Avaliador:</strong> ${currentUser.name} <span style="color:var(--text-muted);">(Origem: ${currentUser.sector || 'Fábrica'})</span>
-        <div style="font-size:0.75rem; color:var(--accent-cyan); margin-top:0.25rem; font-weight:600;">
-          🛡️ <strong>Rodízio Balanceado:</strong> Avaliando <strong>${sectorName}</strong> (distribuição uniforme em toda a fábrica).
+      <!-- DESTAQUE MÁXIMO DO SETOR DESTINO DO COLABORADOR -->
+      <div style="background:linear-gradient(135deg, rgba(16,185,129,0.25), rgba(6,182,212,0.25)); border:2px solid #10b981; padding:0.85rem 1rem; border-radius:12px; margin-bottom:1.1rem; box-shadow:0 0 20px rgba(16,185,129,0.3);">
+        <div style="font-size:0.75rem; font-weight:800; color:#34d399; text-transform:uppercase; letter-spacing:0.06em;">
+          🎯 SEU SETOR ALVO OBRIGATÓRIO NO RODÍZIO:
+        </div>
+        <div style="font-size:1.25rem; font-weight:800; color:#ffffff; margin-top:0.2rem; text-shadow:0 0 10px rgba(52,211,153,0.5);">
+          📍 ${sectorName}
+        </div>
+        <div style="font-size:0.8rem; color:#e2e8f0; margin-top:0.25rem;">
+          👤 <strong>Avaliador:</strong> ${currentUser.name} (Origem: <strong>${userSector}</strong> ➔ Destino: <strong>${sectorName}</strong>)
         </div>
       </div>
 
@@ -415,7 +421,7 @@ window.openVoteChoiceModal = function(sectorName, boardKey, sensoName, day) {
         👉 TOCAR NA SUA NOTA ABAIXO PARA SELECIONAR:
       </span>
 
-      <!-- AS 3 OPÇÕES DE VOTO CLARAS E CLICÁVEIS PARA QUALQUER NAVEGADOR -->
+      <!-- AS 3 OPÇÕES DE VOTO CLARAS E CLICÁVEIS -->
       <div style="display:flex; flex-direction:column; gap:0.7rem; margin-bottom:1.2rem;">
         
         <!-- BOTAO 1: BOM -->
@@ -455,7 +461,7 @@ window.openVoteChoiceModal = function(sectorName, boardKey, sensoName, day) {
 
       <div style="display:flex; gap:0.6rem; justify-content:flex-end;">
         <button type="button" class="btn btn-secondary" onclick="closeVoteChoiceModal(event)" style="padding:0.7rem 1.1rem; font-size:0.88rem; min-height:44px;">✕ Cancelar</button>
-        <button type="button" class="btn btn-primary" onclick="confirmVoteChoiceModal(event)" style="padding:0.7rem 1.5rem; font-size:0.95rem; font-weight:800; min-height:44px; background:linear-gradient(135deg, #6366f1, #06b6d4);">✅ Confirmar Voto</button>
+        <button type="button" class="btn btn-primary" onclick="confirmVoteChoiceModal(event)" style="padding:0.7rem 1.5rem; font-size:0.95rem; font-weight:800; min-height:44px; background:linear-gradient(135deg, #10b981, #06b6d4);">✅ Confirmar Voto</button>
       </div>
 
     </div>
@@ -473,7 +479,7 @@ window.closeVoteChoiceModal = function(e) {
   const modal = document.getElementById('modal-vote-choice');
   if (modal) {
     modal.style.display = 'none';
-    modal.remove(); // REMOVE DO DOM INTEGRALMENTE
+    modal.remove();
   }
   currentVoteTarget = null;
 };
@@ -500,7 +506,6 @@ window.confirmVoteChoiceModal = function(e) {
   const currentSummary = getBoardCellSummary(boardKey);
   let existingVotes = currentSummary.votes || [];
 
-  // Filtrar voto anterior do mesmo usuário
   existingVotes = existingVotes.filter(v => (v.username || v.name) !== currentUser.username && (v.username || v.name) !== currentUser.name);
 
   const timestamp = new Date().toLocaleString('pt-BR');
@@ -538,10 +543,7 @@ window.confirmVoteChoiceModal = function(e) {
     localStorage.setItem(userVoteKey, 'true');
   }
 
-  // 1. FECHAR E REMOVER O MODAL IMEDIATAMENTE!
   closeVoteChoiceModal();
-
-  // 2. RENDERIZAR O QUADRO ATUALIZADO
   renderFactoryBoard();
 
   const labelMap = { bom: '🟢 BOM', regular: '🟡 REGULAR', ruim: '🔴 RUIM' };
@@ -1419,7 +1421,7 @@ window.selectScore3Level = function(sensoName, qNum, qKey, level) {
   pushDataToServer();
 };
 
-// 5. RENDERIZAÇÃO DO QUADRO COM VISÃO OTIMIZADA PARA DISPOSITIVOS MÓVEIS (CARDS GRANDES E BOTÃO DESTACADO)
+// 5. RENDERIZAÇÃO DO QUADRO COM VISÃO OTIMIZADA E DESTAQUE ULTRA-VISÍVEL DO SETOR DESTINO NO RODÍZIO
 function renderFactoryBoard() {
   const container = document.getElementById('factory-board-container');
   const titleEl = document.getElementById('factory-board-title');
@@ -1451,7 +1453,7 @@ function renderFactoryBoard() {
     if (isMonitor) {
       titleEl.innerHTML = `📺 Matriz dos Setores Individuais & Fechamento Coletivo da Semana`;
     } else if (isDiarioOrColab) {
-      titleEl.innerHTML = `📋 Quadro da Fábrica: Avaliando <span style="color:var(--status-bom); font-weight:800;">📍 ${targetAuditSector}</span>`;
+      titleEl.innerHTML = `📋 Quadro da Fábrica: Avaliando <span style="color:#34d399; font-weight:800; text-shadow:0 0 10px rgba(52,211,153,0.5);">📍 ${targetAuditSector}</span>`;
     } else if (selectedSector === 'ALL') {
       titleEl.innerHTML = `📋 Quadro Geral Consolidado (COMO ESTÁ A IMPAK TTO?)`;
     } else {
@@ -1473,41 +1475,42 @@ function renderFactoryBoard() {
       `;
     } else if (isDiarioOrColab) {
       filterSelectContainer.style.display = 'block';
-      
-      const bannerSubtext = `
-        <span style="font-size:0.75rem; font-weight:800; color:var(--accent-cyan); text-transform:uppercase; letter-spacing:0.05em;">⚖️ RODÍZIO BALANCEADO DE AUDITORIA CRUZADA IMPARCIAL</span>
-        <div style="font-size:0.95rem; font-weight:700; color:var(--text-main); margin-top:0.15rem;">
-          Seu Setor Origem: <span style="color:var(--text-muted);">${userSector}</span> ➔ 
-          <span style="color:var(--status-bom); font-weight:800;">📍 SEU DESTINO NO RODÍZIO: ${targetAuditSector}</span>
-        </div>
-      `;
 
       const voteStatusBadge = hasVotedToday ? `
-        <span style="background: rgba(16, 185, 129, 0.2); border: 1px solid #10b981; color: #34d399; padding: 0.35rem 0.75rem; border-radius: 20px; font-size: 0.75rem; font-weight: 800; display: inline-flex; align-items: center; gap: 0.3rem;">
+        <span style="background: rgba(16, 185, 129, 0.25); border: 2px solid #10b981; color: #34d399; padding: 0.4rem 0.85rem; border-radius: 20px; font-size: 0.8rem; font-weight: 800; display: inline-flex; align-items: center; gap: 0.3rem; box-shadow:0 0 10px rgba(16,185,129,0.3);">
           ✅ Voto Registrado Hoje (${currentDayCode})
         </span>
       ` : `
-        <span class="badge-seiton" style="padding:0.35rem 0.75rem; font-size:0.75rem; font-weight:700;">
-          🗓️ HOJE É ${currentDayCode} • Aguardando Sua Nota
+        <span class="badge-seiton" style="padding:0.4rem 0.85rem; font-size:0.8rem; font-weight:800; border:1px solid var(--status-regular);">
+          🗓️ HOJE É ${currentDayCode} • Voto Pendente
         </span>
       `;
 
       filterSelectContainer.innerHTML = `
-        <div style="background: rgba(99, 102, 241, 0.12); border: 1px solid var(--border-highlight); padding: 0.9rem 1.1rem; border-radius: var(--radius-md); margin-bottom: 1.25rem;">
-          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem; margin-bottom:0.5rem;">
+        <!-- CAIXA EM NEON COM DESTAQUE MÁXIMO DO SETOR DESTINO -->
+        <div class="rotation-target-box" style="margin-bottom: 1.25rem;">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem; margin-bottom:0.6rem;">
             <div>
-              ${bannerSubtext}
+              <span style="font-size:0.75rem; font-weight:800; color:var(--accent-cyan); text-transform:uppercase; letter-spacing:0.06em; background:rgba(6,182,212,0.2); padding:0.2rem 0.55rem; border-radius:6px;">
+                ⚖️ REGRA SOBERANA • AUDITORIA CRUZADA IMPARCIAL
+              </span>
+              <div style="font-size:1.15rem; font-weight:800; color:#ffffff; margin-top:0.35rem;">
+                📍 SEU SETOR ALVO OBRIGATÓRIO NO RODÍZIO: <span style="color:#34d399; font-size:1.3rem; text-shadow:0 0 12px rgba(52,211,153,0.6); font-family:Outfit, sans-serif;">${targetAuditSector}</span>
+              </div>
+              <div style="font-size:0.82rem; color:#d1d5db; margin-top:0.15rem;">
+                🏢 Seu Setor Origem: <strong>${userSector}</strong> ➔ Destino Automático: <strong style="color:#34d399;">${targetAuditSector}</strong> (Proibido avaliar a própria área).
+              </div>
             </div>
             ${voteStatusBadge}
           </div>
           
-          <div style="background: rgba(0,0,0,0.25); padding: 0.5rem 0.75rem; border-radius: 8px; border-left: 3px solid var(--primary); font-size: 0.82rem; color: #e2e8f0; margin-bottom:0.75rem;">
+          <div style="background: rgba(0,0,0,0.35); padding: 0.65rem 0.85rem; border-radius: 8px; border-left: 4px solid var(--status-bom); font-size: 0.85rem; color: #e2e8f0; margin-bottom:0.85rem;">
             💡 <strong>${todayFocus.name}:</strong> ${todayFocus.desc}
           </div>
 
-          <!-- BOTÃO GIGANTE PROPRIO PARA CELULAR DENTRO DO BANNER -->
-          <button type="button" class="btn btn-primary" style="width:100%; padding:0.85rem 1rem; font-size:1rem; font-weight:800; border-radius:12px; background:linear-gradient(135deg, #6366f1, #06b6d4); box-shadow:0 4px 15px rgba(99, 102, 241, 0.4); display:flex; align-items:center; justify-content:center; gap:0.5rem; cursor:pointer;" onclick="openVoteChoiceModal('${selectedSector}', '${todayBoardKey}', '${todayFocus.name}', '${currentDayCode}')">
-            🗳️ TOCAR AQUI PARA AVALIAR HOJE (${currentDayCode}: ${todayFocus.senso.toUpperCase()})
+          <!-- BOTÃO GIGANTE DE 1-TOUCH HIGHLIGHTED -->
+          <button type="button" class="btn btn-primary" style="width:100%; padding:0.95rem 1.1rem; font-size:1.05rem; font-weight:800; border-radius:12px; background:linear-gradient(135deg, #10b981, #06b6d4); box-shadow:0 0 25px rgba(16, 185, 129, 0.45); display:flex; align-items:center; justify-content:center; gap:0.6rem; cursor:pointer;" onclick="openVoteChoiceModal('${selectedSector}', '${todayBoardKey}', '${todayFocus.name}', '${currentDayCode}')">
+            🗳️ TOCAR AQUI PARA AVALIAR O SETOR ${targetAuditSector.toUpperCase()} AGORA
           </button>
         </div>
       `;
@@ -1552,10 +1555,12 @@ function renderFactoryBoard() {
     `;
 
     IMPAKTTO_SECTORS.forEach(sec => {
+      const isUserTarget = (sec === targetAuditSector);
+
       html += `
-        <tr>
+        <tr style="${isUserTarget ? 'background: rgba(16,185,129,0.12); border:1px solid #10b981;' : ''}">
           <td style="text-align:left; font-weight:700; font-size:0.8rem; color:#e2e8f0; padding: 0.45rem 0.6rem;">
-            📍 ${sec}
+            📍 ${sec} ${isUserTarget ? '<span style="color:#34d399; font-size:0.7rem; display:block; font-weight:800;">🎯 SEU ALVO NO RODÍZIO</span>' : ''}
           </td>
           ${sensos.map(s => {
             const dayIdx = daysOrder.indexOf(s.dayCode);
