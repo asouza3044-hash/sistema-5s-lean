@@ -298,13 +298,12 @@ async function pullDataFromServer() {
           }
         }
 
-        if (needsReRender) {
-          localStorage.setItem('5s_factory_board_impaktto', JSON.stringify(clientFactoryBoard));
-          renderFactoryBoard();
-          renderActivityLogs();
-          calculateAuditResults();
-          renderUserManagementTable();
-        }
+        // SEMPRE SALVAR E RE-RENDERIZAR PARA GARANTIR RADAR CHART E MATRIZ ATUALIZADOS
+        localStorage.setItem('5s_factory_board_impaktto', JSON.stringify(clientFactoryBoard));
+        renderFactoryBoard();
+        renderActivityLogs();
+        calculateAuditResults();
+        renderUserManagementTable();
       }
     }
   } catch (e) {
@@ -318,7 +317,8 @@ window.forceCloudSyncNow = async function() {
   renderUserManagementTable();
   renderActivityLogs();
   renderFactoryBoard();
-  alert('🎉 Sincronização Mestre de Nuvem Concluída! Todos os cadastros e votos de celulares estão atualizados.');
+  calculateAuditResults();
+  alert('🎉 Sincronização Mestre de Nuvem Concluída! Todos os cadastros, votos e gráficos estão atualizados.');
 };
 
 // RENDERIZAÇÃO UNIVERSAL DA TELA ÚNICA DIRETA DE VOTAÇÃO (PADRÃO MESTRE DE ABERTURA PARA TODOS OS NÍVEIS 1, 2 E 3)
@@ -1658,7 +1658,7 @@ window.changeFactorySectorFilter = function(val) {
   renderFactoryBoard();
 };
 
-// 7. CÁLCULO DE RESULTADOS E CONTROLE ESTRITO DA SINALIZAÇÃO DE PREMIAÇÃO
+// 7. CÁLCULO DE RESULTADOS E CONTROLE ESTRITO DA SINALIZAÇÃO DE PREMIAÇÃO (CÁLCULO UNIFICADO COM VOTOS EM TEMPO REAL)
 function calculateAuditResults() {
   const totals = { seiri: 0, seiton: 0, seiso: 0, seiketsu: 0, shitsuke: 0 };
   const maxPerSenso = 30;
@@ -1672,23 +1672,42 @@ function calculateAuditResults() {
     }
   }
 
-  let totalScore = 0;
-  let totalMax = 150;
+  const dayNames = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
+  const todayIdxRaw = new Date().getDay();
+  const currentDayCode = dayNames[todayIdxRaw] === 'DOM' ? 'SEG' : dayNames[todayIdxRaw];
+
   const percentages = [];
 
-  for (const senso of Object.keys(totals)) {
-    const pct = Math.round((totals[senso] / maxPerSenso) * 100);
-    percentages.push(pct);
-    totalScore += totals[senso];
+  for (const sensoKey of Object.keys(totals)) {
+    const auditPct = Math.round((totals[sensoKey] / maxPerSenso) * 100);
 
-    const elScore = document.getElementById(`score-${senso}`);
-    const elBar = document.getElementById(`bar-${senso}`);
+    let boardSum = 0;
+    let boardCount = 0;
+    IMPAKTTO_SECTORS.forEach(sec => {
+      const bKey = `${sec}_${sensoKey}_${currentDayCode}`;
+      const summary = getBoardCellSummary(bKey);
+      if (summary && summary.voteCount > 0) {
+        boardSum += (summary.avgPoints / 3.0) * 100;
+        boardCount++;
+      }
+    });
 
-    if (elScore) elScore.innerText = `${pct}%`;
-    if (elBar) elBar.style.width = `${pct}%`;
+    let finalPct = auditPct;
+    if (boardCount > 0) {
+      const boardAvgPct = Math.round(boardSum / boardCount);
+      finalPct = Math.round((boardAvgPct + auditPct) / 2);
+    }
+
+    percentages.push(finalPct);
+
+    const elScore = document.getElementById(`score-${sensoKey}`);
+    const elBar = document.getElementById(`bar-${sensoKey}`);
+
+    if (elScore) elScore.innerText = `${finalPct}%`;
+    if (elBar) elBar.style.width = `${finalPct}%`;
   }
 
-  const globalPct = Math.round((totalScore / totalMax) * 100);
+  const globalPct = Math.round(percentages.reduce((a, b) => a + b, 0) / percentages.length);
   const elGlobal = document.getElementById('global-maturity-score');
   const elStatus = document.getElementById('global-maturity-status');
 
@@ -1748,7 +1767,7 @@ function calculateAuditResults() {
     }
   }
 
-  renderRadarChart(scoresData);
+  renderRadarChart(percentages);
 }
 
 function renderRadarChart(scoresData) {
