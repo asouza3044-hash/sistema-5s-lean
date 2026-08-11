@@ -4,7 +4,7 @@
    ========================================================================== */
 
 // BANCO DE DADOS CENTRALIZADO EM NUVEM MASTER (RESTRITO IMPAK TTO - 100% REALTIME)
-const CLOUD_MASTER_API = 'https://jsonblob.com/api/jsonBlob/019fed7c-893e-7ee2-b856-c689f02eb1cf';
+const CLOUD_MASTER_API = 'https://jsonblob.com/api/jsonBlob/019ff2fe-dc89-756e-bec9-d891b4f8ee03';
 
 // CANAL DE TRANSMISSÃO EM TEMPO REAL CROSS-TAB
 const syncChannel = (typeof BroadcastChannel !== 'undefined') ? new BroadcastChannel('5s_impaktto_sync_channel') : null;

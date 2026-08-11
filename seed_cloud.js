@@ -1,4 +1,4 @@
-const CLOUD_MASTER_API = 'https://jsonblob.com/api/jsonBlob/019fed7c-893e-7ee2-b856-c689f02eb1cf';
+const CLOUD_MASTER_API = 'https://jsonblob.com/api/jsonBlob/019ff2fe-dc89-756e-bec9-d891b4f8ee03';
 
 async function inspectAndCleanCloud() {
   try {
