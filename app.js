@@ -345,14 +345,18 @@ window.forceCloudSyncNow = async function() {
   alert('🎉 Sincronização Mestre de Nuvem Concluída! Todos os cadastros e votos de celulares estão atualizados.');
 };
 
-// RENDERIZAÇÃO DA TELA ÚNICA DIRETA DE VOTAÇÃO DO NÍVEL 1 (ULTRA-SIMPLES • ZERO POLUIÇÃO OU LEITURA DE TABELAS)
+// RENDERIZAÇÃO DA TELA ÚNICA DIRETA DE VOTAÇÃO DO NÍVEL 1 (ULTRA-SIMPLES • AUTOEXPLICATIVA • REMOÇÃO DE CABEÇALHOS REDUNDANTES)
 function renderLevel1DirectVotingScreen() {
   const container = document.getElementById('factory-board-container');
   const titleEl = document.getElementById('factory-board-title');
   const filterSelectContainer = document.getElementById('factory-board-filter-container');
   if (!container) return;
 
-  if (titleEl) titleEl.innerHTML = `📋 Sistema de Votação 5S (Chão de Fábrica)`;
+  // REMOVE TOTALMENTE A INFORMAÇÃO REDUNDANTE DO TOPO (SOLICITAÇÃO DO XANDINHO - FOTO 3)
+  if (titleEl) {
+    titleEl.innerHTML = '';
+    titleEl.style.display = 'none';
+  }
   if (filterSelectContainer) filterSelectContainer.style.display = 'none';
 
   const dayNames = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
@@ -413,7 +417,13 @@ function renderLevel1DirectVotingScreen() {
         <div style="font-size:0.92rem; font-weight:800; color:var(--accent-cyan); margin-top:0.35rem;">
           💡 SENSO DESIGNADO: ${assignment.targetSenso.name}
         </div>
-        <div style="font-size:0.82rem; color:#e2e8f0; margin-top:0.25rem;">
+
+        <!-- EXPLICAÇÃO AUTOEXPLICATIVA EM ASPAS EM BAIXO DO SENSO (SOLICITAÇÃO DO XANDINHO - FOTO 2) -->
+        <div style="font-size:0.82rem; color:#e2e8f0; font-style:italic; margin-top:0.25rem; background:rgba(0,0,0,0.25); padding:0.4rem 0.65rem; border-radius:8px; border-left:3px solid var(--accent-cyan);">
+          "${assignment.targetSenso.desc}"
+        </div>
+
+        <div style="font-size:0.82rem; color:#e2e8f0; margin-top:0.45rem;">
           👤 <strong>Avaliador:</strong> ${currentUser.name} (Origem: <strong>${userSector}</strong> ➔ Destino: <strong>${assignment.targetSector}</strong>)
         </div>
       </div>
@@ -1453,6 +1463,7 @@ function renderFactoryBoard() {
   let selectedSector = activeFactorySectorFilter || 'ALL';
 
   if (titleEl) {
+    titleEl.style.display = 'block';
     if (isMonitor) {
       titleEl.innerHTML = `📺 Matriz de Rodízio Cruzado da Fábrica (5 Setores x 5 Sensos)`;
     } else if (selectedSector === 'ALL') {
