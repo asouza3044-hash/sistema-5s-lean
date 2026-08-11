@@ -1016,7 +1016,7 @@ function checkAuthSession() {
     if (isLider || isColaborador) {
       if (cardFactoryBoard) cardFactoryBoard.style.display = 'block';
       if (cardMaturity) cardMaturity.style.display = 'none';
-      if (cardActivityFeed) cardActivityFeed.style.display = 'block';
+      if (cardActivityFeed) cardActivityFeed.style.display = 'none'; // RESTRITO: Grupo 1 nao visualiza o Feed para evitar atritos na fábrica
       if (cardAuditChecklist) cardAuditChecklist.style.display = 'none';
       if (cardUserManagement) cardUserManagement.style.display = 'none';
 
