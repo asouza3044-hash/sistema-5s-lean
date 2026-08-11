@@ -155,11 +155,11 @@ let autoRefreshTimer = null;
 let currentVoteTarget = null;
 let level1SelectedOption = 'bom';
 
-// HELPER PARA CÁLCULO E CONVERSÃO DE MÉDIA DE VOTOS POR CÉLULA DO QUADRO
+// HELPER PARA CÁLCULO E CONVERSÃO DE MÉDIA DE VOTOS POR CÉLULA DO QUADRO (DIFERENCIA CÉLULAS PENDENTES DE CÉLULAS VOTADAS)
 function getBoardCellSummary(boardKey) {
   const cellData = clientFactoryBoard[boardKey];
   if (!cellData) {
-    return { status: 'bom', avgPoints: 3.0, voteCount: 0, votes: [] };
+    return { status: 'pendente', avgPoints: 0, voteCount: 0, votes: [] };
   }
 
   if (typeof cellData === 'string') {
@@ -170,7 +170,7 @@ function getBoardCellSummary(boardKey) {
   if (typeof cellData === 'object') {
     const votes = Array.isArray(cellData.votes) ? cellData.votes : [];
     if (votes.length === 0) {
-      return { status: cellData.status || 'bom', avgPoints: cellData.avgPoints || 3.0, voteCount: 0, votes: [] };
+      return { status: cellData.status || 'pendente', avgPoints: cellData.avgPoints || 0, voteCount: 0, votes: [] };
     }
 
     const totalPts = votes.reduce((acc, v) => acc + (v.points || (v.score === 'bom' ? 3 : (v.score === 'regular' ? 2 : 1))), 0);
@@ -193,7 +193,7 @@ function getBoardCellSummary(boardKey) {
     };
   }
 
-  return { status: 'bom', avgPoints: 3.0, voteCount: 0, votes: [] };
+  return { status: 'pendente', avgPoints: 0, voteCount: 0, votes: [] };
 }
 
 // FUNÇÕES MESTRE DE SINCRONIZAÇÃO EM NUVEM REALTIME (GARANTIA TOTAL DE PROPAGAÇÃO INSTANTÂNEA)
@@ -1443,7 +1443,7 @@ window.selectScore3Level = function(sensoName, qNum, qKey, level) {
   pushDataToServer();
 };
 
-// 5. RENDERIZAÇÃO DO QUADRO DA FÁBRICA COM MATRIZ DE RODÍZIO BALANCEADA DOS 5 SETORES (PARA AUDITORES NÍVEL 2 E 3 E MONITOR TV)
+// 5. RENDERIZAÇÃO DO QUADRO DA FÁBRICA COM DISTINÇÃO CLARA ENTRE CÉLULAS PENDENTES (0 VOTOS) E VOTADAS (1+ VOTOS)
 function renderFactoryBoard() {
   const container = document.getElementById('factory-board-container');
   const titleEl = document.getElementById('factory-board-title');
@@ -1533,12 +1533,23 @@ function renderFactoryBoard() {
           ${SENSOS_LIST.map(s => {
             const boardKey = `${sec}_${s.key}_${currentDayCode}`;
             const summary = getBoardCellSummary(boardKey);
+            
+            if (summary.voteCount === 0) {
+              return `
+                <td style="vertical-align:middle; padding:0.3rem 0.2rem;">
+                  <button class="score-btn-factory" style="display:inline-block; padding:0.35rem 0.5rem; font-size:0.72rem; font-weight:600; cursor:pointer; background:rgba(255,255,255,0.05); color:#9ca3af; border:1px dashed rgba(255,255,255,0.2); border-radius:6px;" onclick="openVoteChoiceModal('${sec}', '${boardKey}', '${s.name}', '${currentDayCode}')" title="Pendente de avaliação no rodízio de hoje">
+                    ⚪ Pendente
+                  </button>
+                </td>
+              `;
+            }
+
             const iconMap = { bom: '🟢 Bom', regular: '🟡 Regular', ruim: '🔴 Ruim' };
-            const countBadge = summary.voteCount > 1 ? `<span style="background:rgba(0,0,0,0.4); padding:0.1rem 0.35rem; border-radius:10px; font-size:0.65rem; margin-left:0.25rem;">📊 ${summary.avgPoints} (${summary.voteCount})</span>` : '';
+            const countBadge = `<span style="background:rgba(0,0,0,0.4); padding:0.1rem 0.35rem; border-radius:10px; font-size:0.65rem; margin-left:0.25rem;">📊 ${summary.avgPoints} (${summary.voteCount}v)</span>`;
 
             return `
               <td style="vertical-align:middle; padding:0.3rem 0.2rem;">
-                <button class="score-btn-factory selected" data-level="${summary.status}" style="display:inline-block; padding:0.35rem 0.5rem; font-size:0.75rem; font-weight:700; cursor:pointer; border:none;" onclick="openVoteChoiceModal('${sec}', '${boardKey}', '${s.name}', '${currentDayCode}')" title="Clique para abrir avaliação. Média Atual: ${summary.avgPoints} (${summary.voteCount} votos)">
+                <button class="score-btn-factory selected" data-level="${summary.status}" style="display:inline-block; padding:0.35rem 0.5rem; font-size:0.75rem; font-weight:700; cursor:pointer; border:none;" onclick="openVoteChoiceModal('${sec}', '${boardKey}', '${s.name}', '${currentDayCode}')" title="${summary.voteCount} voto(s) registrado(s). Média: ${summary.avgPoints}">
                   ${iconMap[summary.status]} ${countBadge}
                 </button>
               </td>
@@ -1555,16 +1566,28 @@ function renderFactoryBoard() {
         </td>
         ${SENSOS_LIST.map(s => {
           let totalPtsSum = 0;
-          let sectorCount = 0;
+          let votedSectors = 0;
 
           IMPAKTTO_SECTORS.forEach(sec => {
             const bKey = `${sec}_${s.key}_${currentDayCode}`;
             const summary = getBoardCellSummary(bKey);
-            totalPtsSum += summary.avgPoints;
-            sectorCount++;
+            if (summary.voteCount > 0) {
+              totalPtsSum += summary.avgPoints;
+              votedSectors++;
+            }
           });
 
-          const overallAvg = Math.round((totalPtsSum / sectorCount) * 10) / 10;
+          if (votedSectors === 0) {
+            return `
+              <td style="vertical-align:middle; padding:0.4rem 0.2rem;">
+                <span class="score-btn-factory" style="display:inline-block; padding:0.35rem 0.55rem; font-size:0.72rem; font-weight:600; background:rgba(255,255,255,0.05); color:#9ca3af; border:1px dashed rgba(255,255,255,0.2);">
+                  ⚪ Aguardando
+                </span>
+              </td>
+            `;
+          }
+
+          const overallAvg = Math.round((totalPtsSum / votedSectors) * 10) / 10;
           let currentStatus = 'bom';
           let labelText = `🟢 Bom (${overallAvg})`;
 
@@ -1579,7 +1602,7 @@ function renderFactoryBoard() {
           return `
             <td style="vertical-align:middle; padding:0.4rem 0.2rem;">
               <span class="score-btn-factory selected" data-level="${currentStatus}" style="display:inline-block; padding:0.35rem 0.55rem; font-size:0.75rem; font-weight:800; box-shadow: 0 0 10px rgba(0,0,0,0.4);">
-                ${labelText}
+                ${labelText} (${votedSectors} sec)
               </span>
             </td>
           `;
@@ -1632,8 +1655,19 @@ function renderFactoryBoard() {
             } else {
               const boardKey = `${selectedSector}_${s.key}_${day}`;
               const summary = getBoardCellSummary(boardKey);
+              
+              if (summary.voteCount === 0) {
+                return `
+                  <td style="vertical-align:middle; ${day === currentDayCode ? 'background:rgba(99,102,241,0.1);' : ''}">
+                    <button class="btn btn-secondary" style="padding:0.4rem 0.75rem; font-size:0.8rem; font-weight:600; cursor:pointer; min-height:42px; width:100%; border-radius:8px; opacity:0.7;" onclick="openVoteChoiceModal('${selectedSector}', '${boardKey}', '${s.name}', '${day}')" title="Pendente de avaliação no rodízio de hoje">
+                      ⚪ Pendente
+                    </button>
+                  </td>
+                `;
+              }
+
               const iconMap = { bom: '🟢 Bom', regular: '🟡 Regular', ruim: '🔴 Ruim' };
-              const countBadge = summary.voteCount > 1 ? `<span style="background:rgba(0,0,0,0.4); padding:0.1rem 0.35rem; border-radius:10px; font-size:0.65rem; margin-left:0.25rem;">📊 ${summary.avgPoints} (${summary.voteCount}v)</span>` : '';
+              const countBadge = `<span style="background:rgba(0,0,0,0.4); padding:0.1rem 0.35rem; border-radius:10px; font-size:0.65rem; margin-left:0.25rem;">📊 ${summary.avgPoints} (${summary.voteCount}v)</span>`;
 
               return `
                 <td style="vertical-align:middle; ${day === currentDayCode ? 'background:rgba(99,102,241,0.1);' : ''}">
