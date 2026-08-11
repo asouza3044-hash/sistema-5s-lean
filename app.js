@@ -345,18 +345,25 @@ window.forceCloudSyncNow = async function() {
   alert('🎉 Sincronização Mestre de Nuvem Concluída! Todos os cadastros e votos de celulares estão atualizados.');
 };
 
-// RENDERIZAÇÃO DA TELA ÚNICA DIRETA DE VOTAÇÃO DO NÍVEL 1 (ULTRA-SIMPLES • AUTOEXPLICATIVA • REMOÇÃO DE CABEÇALHOS REDUNDANTES)
+// RENDERIZAÇÃO DA TELA ÚNICA DIRETA DE VOTAÇÃO DO NÍVEL 1 (MANTÉM TÍTULO LIMPO "SISTEMA DE VOTAÇÃO 5S", REMOVE SUBTÍTULO REDUNDANTE DE 3 NÍVEIS)
 function renderLevel1DirectVotingScreen() {
   const container = document.getElementById('factory-board-container');
   const titleEl = document.getElementById('factory-board-title');
   const filterSelectContainer = document.getElementById('factory-board-filter-container');
+  const subtitleEl = document.getElementById('factory-board-subtitle');
   if (!container) return;
 
-  // REMOVE TOTALMENTE A INFORMAÇÃO REDUNDANTE DO TOPO (SOLICITAÇÃO DO XANDINHO - FOTO 3)
+  // MANTÉM O TÍTULO LIMPO PRINCIPAL DA FOTO 3 ("📋 Sistema de Votação 5S (Chão de Fábrica)")
   if (titleEl) {
-    titleEl.innerHTML = '';
-    titleEl.style.display = 'none';
+    titleEl.style.display = 'block';
+    titleEl.innerHTML = `📋 Sistema de Votação 5S (Chão de Fábrica)`;
   }
+  
+  // OCULTA O SUBTÍTULO REDUNDANTE QUE XANDINHO PEDIU PARA REMOVER ("Avaliação diária de 3 Níveis (Bom | Regular | Ruim)...")
+  if (subtitleEl) {
+    subtitleEl.style.display = 'none';
+  }
+
   if (filterSelectContainer) filterSelectContainer.style.display = 'none';
 
   const dayNames = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
@@ -1442,6 +1449,7 @@ function renderFactoryBoard() {
   const container = document.getElementById('factory-board-container');
   const titleEl = document.getElementById('factory-board-title');
   const filterSelectContainer = document.getElementById('factory-board-filter-container');
+  const subtitleEl = document.getElementById('factory-board-subtitle');
   if (!container) return;
 
   const isLevel1 = (currentUser && (currentUser.level === 'diario' || currentUser.level === 'colaborador' || currentUser.role === 'colaborador' || currentUser.role === 'lider_diario'));
@@ -1449,6 +1457,8 @@ function renderFactoryBoard() {
     renderLevel1DirectVotingScreen();
     return;
   }
+
+  if (subtitleEl) subtitleEl.style.display = 'block';
 
   const isMonitor = (currentUser && currentUser.level === 'monitor');
 
