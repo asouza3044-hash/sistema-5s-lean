@@ -131,6 +131,12 @@ const DEFAULT_USERS = {
   elton: { username: 'elton.portas', password: '5s2026', name: 'Elton', role: 'lider_diario', level: 'diario', sector: 'Portas / Cortinas', title: 'Grupo 1: Líder de Portas / Cortinas' },
   giovanna: { username: 'giovanna.acabamento', password: '5s2026', name: 'Giovanna', role: 'lider_diario', level: 'diario', sector: 'Acabamento', title: 'Grupo 1: Líder de Acabamento' },
   
+  xando: { username: 'xando', password: '5s2026', name: 'Xando Souza', role: 'administrador', level: 'senior', sector: 'Acabamento', title: 'Grupo 3: Administrador Mestre 5S' },
+  ararinha: { username: 'ararinha', password: '5s2026', name: 'Ararinha Azul', role: 'lider_diario', level: 'diario', sector: 'Usinagem', title: 'Grupo 1: Líder de Usinagem' },
+  maria: { username: 'maria.sohipren', password: '5s2026', name: 'Maria Silva', role: 'auditor_semanal', level: 'semanal', sector: 'Holter', title: 'Grupo 2: Auditora Volante 5S' },
+  sohipren_user: { username: 'sohipren', password: '5s2026', name: 'Operador Sohipren', role: 'lider_diario', level: 'diario', sector: 'Armários', title: 'Grupo 1: Líder de Armários' },
+  logistica_user: { username: 'logistica', password: '5s2026', name: 'Gerente Logística', role: 'auditor_semanal', level: 'semanal', sector: 'Portas / Cortinas', title: 'Grupo 2: Auditor Logística' },
+
   monitor: { username: 'monitor', password: '5s2026', name: 'Gestão Visual TV Fábrica & Escritório', role: 'monitor', level: 'monitor', title: '📺 Gestão Visual 5S (TV 16:9)' }
 };
 
