@@ -196,8 +196,21 @@ function getBoardCellSummary(boardKey) {
   return { status: 'bom', avgPoints: 3.0, voteCount: 0, votes: [] };
 }
 
-// FUNÇÕES MESTRE DE SINCRONIZAÇÃO EM NUVEM REALTIME
+// FUNÇÕES MESTRE DE SINCRONIZAÇÃO EM NUVEM REALTIME (GARANTIA TOTAL DE PROPAGAÇÃO INSTANTÂNEA)
 async function pushDataToServer() {
+  localStorage.setItem('5s_factory_board_impaktto', JSON.stringify(clientFactoryBoard));
+  localStorage.setItem('5s_activity_logs_impaktto', JSON.stringify(clientActivityLogs));
+  localStorage.setItem('5s_impaktto_users', JSON.stringify(userDatabase));
+
+  // COMUNICAÇÃO IMEDIATA VIA BROADCAST CHANNEL DENTRO DO NAVEGADOR
+  if (syncChannel) {
+    try { syncChannel.postMessage({ type: 'SYNC_ALL_DATA', timestamp: Date.now() }); } catch (e) {}
+  }
+
+  renderFactoryBoard();
+  renderActivityLogs();
+  calculateAuditResults();
+
   let cloudState = { users: {}, activity_logs: [], factory_board: {}, audit_scores: {} };
 
   try {
@@ -212,50 +225,20 @@ async function pushDataToServer() {
     }
   } catch(e) {}
 
-  userDatabase = { ...DEFAULT_USERS, ...cloudState.users, ...userDatabase };
-  localStorage.setItem('5s_impaktto_users', JSON.stringify(userDatabase));
+  const cloudBoard = cloudState.factory_board || {};
+  for (const [key, val] of Object.entries(clientFactoryBoard)) {
+    cloudBoard[key] = val;
+  }
 
   const logMap = new Map();
   (cloudState.activity_logs || []).forEach(l => { if (l && l.id) logMap.set(l.id, l); });
   clientActivityLogs.forEach(l => { if (l && l.id) logMap.set(l.id, l); });
-  clientActivityLogs = Array.from(logMap.values()).sort((a, b) => b.id - a.id).slice(0, 60);
-  localStorage.setItem('5s_activity_logs_impaktto', JSON.stringify(clientActivityLogs));
-
-  const cloudBoard = cloudState.factory_board || {};
-  for (const [key, val] of Object.entries(cloudBoard)) {
-    if (!clientFactoryBoard[key]) {
-      clientFactoryBoard[key] = val;
-    } else if (typeof val === 'object' && val.votes) {
-      const localCell = getBoardCellSummary(key);
-      const cloudVotes = val.votes || [];
-      const voteMap = new Map();
-
-      (localCell.votes || []).forEach(v => voteMap.set(v.username || v.name, v));
-      cloudVotes.forEach(v => voteMap.set(v.username || v.name, v));
-
-      const mergedVotes = Array.from(voteMap.values());
-      const totalPts = mergedVotes.reduce((acc, v) => acc + (v.points || (v.score === 'bom' ? 3 : (v.score === 'regular' ? 2 : 1))), 0);
-      const avgPts = mergedVotes.length > 0 ? totalPts / mergedVotes.length : 3;
-
-      let avgStatus = 'bom';
-      if (avgPts >= 2.5) avgStatus = 'bom';
-      else if (avgPts >= 1.7) avgStatus = 'regular';
-      else avgStatus = 'ruim';
-
-      clientFactoryBoard[key] = {
-        status: avgStatus,
-        avgPoints: Math.round(avgPts * 10) / 10,
-        votes: mergedVotes
-      };
-    }
-  }
-
-  localStorage.setItem('5s_factory_board_impaktto', JSON.stringify(clientFactoryBoard));
+  const mergedLogs = Array.from(logMap.values()).sort((a, b) => b.id - a.id).slice(0, 60);
 
   const payload = {
-    users: userDatabase,
-    activity_logs: clientActivityLogs,
-    factory_board: clientFactoryBoard,
+    users: { ...DEFAULT_USERS, ...cloudState.users, ...userDatabase },
+    activity_logs: mergedLogs,
+    factory_board: cloudBoard,
     audit_scores: clientAuditScores
   };
 
@@ -271,14 +254,6 @@ async function pushDataToServer() {
   } catch (e) {
     console.error('Erro no Push da Nuvem:', e);
   }
-
-  renderUserManagementTable();
-  renderActivityLogs();
-  renderFactoryBoard();
-
-  if (syncChannel) {
-    try { syncChannel.postMessage({ type: 'SYNC_ALL_DATA', timestamp: Date.now() }); } catch (e) {}
-  }
 }
 
 async function pullDataFromServer() {
@@ -289,14 +264,14 @@ async function pullDataFromServer() {
     if (res.ok) {
       const d = await res.json();
       if (d) {
+        let needsReRender = false;
+
         if (d.users && typeof d.users === 'object') {
           const merged = { ...DEFAULT_USERS, ...userDatabase, ...d.users };
-          const previousCount = Object.keys(userDatabase).length;
-          userDatabase = merged;
-          localStorage.setItem('5s_impaktto_users', JSON.stringify(userDatabase));
-          
-          if (Object.keys(userDatabase).length !== previousCount) {
-            renderUserManagementTable();
+          if (Object.keys(merged).length !== Object.keys(userDatabase).length) {
+            userDatabase = merged;
+            localStorage.setItem('5s_impaktto_users', JSON.stringify(userDatabase));
+            needsReRender = true;
           }
         }
 
@@ -309,25 +284,26 @@ async function pullDataFromServer() {
           if (mergedLogs.length !== clientActivityLogs.length || (mergedLogs[0] && clientActivityLogs[0] && mergedLogs[0].id !== clientActivityLogs[0].id)) {
             clientActivityLogs = mergedLogs;
             localStorage.setItem('5s_activity_logs_impaktto', JSON.stringify(clientActivityLogs));
-            renderActivityLogs();
+            needsReRender = true;
           }
         }
 
         if (d.factory_board && typeof d.factory_board === 'object') {
           const cloudBoard = d.factory_board;
-          let boardChanged = false;
-
           for (const [key, val] of Object.entries(cloudBoard)) {
             if (JSON.stringify(clientFactoryBoard[key]) !== JSON.stringify(val)) {
               clientFactoryBoard[key] = val;
-              boardChanged = true;
+              needsReRender = true;
             }
           }
+        }
 
-          if (boardChanged) {
-            localStorage.setItem('5s_factory_board_impaktto', JSON.stringify(clientFactoryBoard));
-            renderFactoryBoard();
-          }
+        if (needsReRender) {
+          localStorage.setItem('5s_factory_board_impaktto', JSON.stringify(clientFactoryBoard));
+          renderFactoryBoard();
+          renderActivityLogs();
+          calculateAuditResults();
+          renderUserManagementTable();
         }
       }
     }
@@ -936,7 +912,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('form-ishikawa')?.addEventListener('submit', handleUpdateIshikawa);
 });
 
-// 4. CONTROLE ESTRITO DE SESSÃO E VISIBILIDADE POR GRUPO (UNIFICAÇÃO MESTRE DA TELA DE VOTAÇÃO NO NÍVEL 1, 2 E 3)
+// 4. CONTROLE ESTRITO DE SESSÃO E VISIBILIDADE POR GRUPO (MODO MONITOR TV 16:9 REFORÇADO + SINCRONIZAÇÃO EM TEMPO REAL)
 function checkAuthSession() {
   const loginOverlay = document.getElementById('login-overlay');
 
@@ -989,13 +965,14 @@ function checkAuthSession() {
   }
 
   if (isMonitor) {
+    // MODO MONITOR TV (GESTAO VISUAL 16:9 EM TEMPO REAL)
     document.body.classList.add('monitor-mode');
     activeFactorySectorFilter = 'ALL';
 
     if (cardUniversalVoting) cardUniversalVoting.style.display = 'none';
     if (cardMaturity) cardMaturity.style.display = 'block';
     if (cardFactoryBoard) cardFactoryBoard.style.display = 'block';
-    if (cardActivityFeed) cardActivityFeed.style.display = 'none';
+    if (cardActivityFeed) cardActivityFeed.style.display = 'block'; // FEED ATIVO NA TV AO VIVO!
     if (cardAuditChecklist) cardAuditChecklist.style.display = 'none';
     if (cardUserManagement) cardUserManagement.style.display = 'none';
 
@@ -1010,7 +987,7 @@ function checkAuthSession() {
     document.body.classList.remove('monitor-mode');
 
     if (isLider || isColaborador) {
-      // NÍVEL 1: UNTOUCHED & PERFECT! TELA ÚNICA DE VOTAÇÃO DIRETA (ZERO TABELAS)
+      // NÍVEL 1: EXIBE TENSAMENTE A TELA ÚNICA DE VOTAÇÃO DIRETA (ZERO POLUIÇÃO DE TABELAS)
       if (cardUniversalVoting) cardUniversalVoting.style.display = 'none';
       if (cardFactoryBoard) cardFactoryBoard.style.display = 'block';
       if (cardMaturity) cardMaturity.style.display = 'none';
@@ -1028,7 +1005,7 @@ function checkAuthSession() {
       renderLevel1DirectVotingScreen();
 
     } else if (isSemanal) {
-      // NÍVEL 2: ABRIR COM A MESMA TELA DE VOTAÇÃO UNIVERSAL NO TOPO + NAVEGAÇÃO COMPLETA EM ABAS
+      // NÍVEL 2: TELA DE VOTAÇÃO NO TOPO + PAINEL COMPLETO EM ABAS
       if (cardUniversalVoting) cardUniversalVoting.style.display = 'block';
       if (cardFactoryBoard) cardFactoryBoard.style.display = 'block';
       if (cardMaturity) cardMaturity.style.display = 'block';
@@ -1048,7 +1025,7 @@ function checkAuthSession() {
       renderLevel1DirectVotingScreen();
 
     } else {
-      // NÍVEL 3 (ADM / GERÊNCIA / DIRETORIA): MESMA TELA DE VOTAÇÃO NO TOPO + PAINEL COMPLETO DE GESTÃO EM ABAS
+      // NÍVEL 3 (ADM / GERÊNCIA / DIRETORIA): TELA DE VOTAÇÃO NO TOPO + PAINEL MESTRE EM ABAS
       if (cardUniversalVoting) cardUniversalVoting.style.display = 'block';
       if (cardFactoryBoard) cardFactoryBoard.style.display = 'block';
       if (cardMaturity) cardMaturity.style.display = 'block';
@@ -1361,9 +1338,9 @@ function renderActivityLogs() {
   }
 
   container.innerHTML = clientActivityLogs.map(log => `
-    <div style="font-size:0.8rem; padding:0.4rem 0; border-bottom:1px solid rgba(255,255,255,0.05); display:flex; justify-content:space-between; align-items:center;">
+    <div style="font-size:0.82rem; padding:0.45rem 0; border-bottom:1px solid rgba(255,255,255,0.06); display:flex; justify-content:space-between; align-items:center;">
       <span><strong>👤 ${log.userName}:</strong> ${log.action}</span>
-      <span style="color:var(--text-muted); font-size:0.75rem;">🕒 ${log.timestamp}</span>
+      <span style="color:var(--text-muted); font-size:0.75rem; font-weight:600;">🕒 ${log.timestamp}</span>
     </div>
   `).join('');
 }
@@ -1466,7 +1443,7 @@ window.selectScore3Level = function(sensoName, qNum, qKey, level) {
   pushDataToServer();
 };
 
-// 5. RENDERIZAÇÃO DO QUADRO DA FÁBRICA COM MATRIZ DE RODÍZIO BALANCEADA DOS 5 SETORES (PARA AUDITORES NÍVEL 2 E 3)
+// 5. RENDERIZAÇÃO DO QUADRO DA FÁBRICA COM MATRIZ DE RODÍZIO BALANCEADA DOS 5 SETORES (PARA AUDITORES NÍVEL 2 E 3 E MONITOR TV)
 function renderFactoryBoard() {
   const container = document.getElementById('factory-board-container');
   const titleEl = document.getElementById('factory-board-title');
@@ -1497,7 +1474,7 @@ function renderFactoryBoard() {
   if (titleEl) {
     titleEl.style.display = 'block';
     if (isMonitor) {
-      titleEl.innerHTML = `📺 Matriz de Rodízio Cruzado da Fábrica (5 Setores x 5 Sensos)`;
+      titleEl.innerHTML = `📺 Matriz de Rodízio Cruzado da Fábrica (5 Setores x 5 Sensos em Tempo Real)`;
     } else if (selectedSector === 'ALL') {
       titleEl.innerHTML = `📋 Quadro Geral Consolidado da Fábrica (5 Setores x 5 Sensos)`;
     } else {
@@ -1509,12 +1486,12 @@ function renderFactoryBoard() {
     if (isMonitor) {
       filterSelectContainer.style.display = 'block';
       filterSelectContainer.innerHTML = `
-        <div style="background: rgba(6, 182, 212, 0.12); border: 1px solid var(--accent-cyan); padding: 0.5rem 0.85rem; border-radius: var(--radius-md); margin-bottom: 0.75rem; display: flex; justify-content: space-between; align-items: center;">
+        <div style="background: linear-gradient(135deg, rgba(6, 182, 212, 0.2), rgba(16, 185, 129, 0.2)); border: 2px solid var(--accent-cyan); padding: 0.75rem 1rem; border-radius: var(--radius-md); margin-bottom: 0.9rem; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 0 20px rgba(6, 182, 212, 0.3);">
           <div>
-            <span style="font-size:0.8rem; font-weight:800; color:var(--accent-cyan);">📺 GESTÃO VISUAL 16:9 • VISÃO DOS 5 SETORES DE FÁBRICA & FECHAMENTO COLETIVO</span>
-            <span style="font-size:0.75rem; color:var(--text-muted); margin-left:0.5rem;">Atualização automática a cada 2s</span>
+            <span style="font-size:0.88rem; font-weight:800; color:var(--accent-cyan); text-transform:uppercase; letter-spacing:0.05em;">📺 TRANSMISSÃO AO VIVO (GESTAO VISUAL 16:9) • FÁBRICA & ESCRITÓRIO</span>
+            <span style="font-size:0.78rem; color:#e2e8f0; display:block; margin-top:0.15rem;">Sincronização em nuvem ativa a cada 2s • Rodízio 5x5 Imparcial</span>
           </div>
-          <span class="badge-seiso" style="padding:0.25rem 0.5rem; font-size:0.72rem; font-weight:700;">🟢 DIA ATUAL: ${currentDayCode}</span>
+          <span class="badge-seiso" style="padding:0.4rem 0.8rem; font-size:0.82rem; font-weight:800; background:#10b981; color:#fff;">🟢 DIA ATUAL: ${currentDayCode}</span>
         </div>
       `;
     } else {

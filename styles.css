@@ -565,4 +565,44 @@ body.monitor-mode .main-container {
   }
 }
 
+/* --------------------------------------------------------------------------
+   MODO MONITOR TV (GESTÃO VISUAL 16:9 FÁBRICA & ESCRITÓRIO)
+   -------------------------------------------------------------------------- */
+body.monitor-mode {
+  background: #090d16 !important;
+}
+
+body.monitor-mode #card-universal-voting {
+  display: none !important;
+}
+
+body.monitor-mode .card {
+  border-width: 2px !important;
+  box-shadow: 0 0 30px rgba(6, 182, 212, 0.25) !important;
+  margin-bottom: 1.5rem !important;
+}
+
+body.monitor-mode .factory-board-table th {
+  font-size: 0.9rem !important;
+  padding: 1rem 0.6rem !important;
+  background: rgba(6, 182, 212, 0.15) !important;
+  color: #67e8f9 !important;
+}
+
+body.monitor-mode .factory-board-table td {
+  padding: 0.8rem 0.5rem !important;
+  font-size: 0.95rem !important;
+}
+
+body.monitor-mode .score-btn-factory {
+  font-size: 0.9rem !important;
+  padding: 0.55rem 0.85rem !important;
+  border-radius: 8px !important;
+}
+
+body.monitor-mode #activity-log-container {
+  max-height: 280px !important;
+  font-size: 0.95rem !important;
+}
+
 
