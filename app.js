@@ -83,10 +83,6 @@ const SENSOS_LIST = [
 ];
 
 // MATRIZ DE ALOCAÇÃO DETERMINÍSTICA E BALANCEADA DO RODÍZIO 5X5
-// Garante:
-// 1. Proibição absoluta de avaliar o próprio setor.
-// 2. Cobertura diária integral dos 5 Sensos nos 5 Setores da Fábrica.
-// 3. Distribuição equitativa entre os colaboradores dos Níveis 1, 2 e 3.
 function getRotationAssignment(user, dayCodeInput) {
   if (!user) {
     return { targetSector: 'Holter', targetSenso: SENSOS_LIST[0] };
@@ -100,13 +96,11 @@ function getRotationAssignment(user, dayCodeInput) {
 
   const userSector = user.sector || 'Usinagem';
   let sectorIdx = IMPAKTTO_SECTORS.indexOf(userSector);
-  if (sectorIdx === -1) sectorIdx = 0; // fallback para Comercial ou outros
+  if (sectorIdx === -1) sectorIdx = 0;
 
-  // Cálculo do Setor Alvo: NUNCA avalia o próprio setor ((sectorIdx + 1 + dayOffset) % 5)
   const targetSectorIdx = (sectorIdx + 1 + (dayOffset % 4)) % IMPAKTTO_SECTORS.length;
   const targetSector = IMPAKTTO_SECTORS[targetSectorIdx];
 
-  // Cálculo do Senso Alvo individual por usuário dentro do setor
   const sectorUsers = Object.values(userDatabase)
     .filter(u => (u.sector || 'Usinagem') === userSector && u.username !== 'monitor')
     .sort((a, b) => (a.username || '').localeCompare(b.username || ''));
@@ -179,7 +173,7 @@ function getBoardCellSummary(boardKey) {
   if (typeof cellData === 'object') {
     const votes = Array.isArray(cellData.votes) ? cellData.votes : [];
     if (votes.length === 0) {
-      return { status: cellData.status || 'bom', avgPoints: 3.0, voteCount: 0, votes: [] };
+      return { status: cellData.status || 'bom', avgPoints: cellData.avgPoints || 3.0, voteCount: 0, votes: [] };
     }
 
     const totalPts = votes.reduce((acc, v) => acc + (v.points || (v.score === 'bom' ? 3 : (v.score === 'regular' ? 2 : 1))), 0);
@@ -381,6 +375,8 @@ window.openVoteChoiceModal = function(sectorName, boardKey, sensoName, day) {
   const userVoteKey = `5s_user_voted_${currentUser.username}_${todayDateStr}`;
   const hasVotedToday = (localStorage.getItem(userVoteKey) === 'true');
 
+  const isLevel1 = (currentUser.level === 'diario' || currentUser.level === 'colaborador' || currentUser.role === 'colaborador' || currentUser.role === 'lider_diario');
+
   const oldModal = document.getElementById('modal-vote-choice');
   if (oldModal) oldModal.remove();
 
@@ -389,8 +385,30 @@ window.openVoteChoiceModal = function(sectorName, boardKey, sensoName, day) {
   modal.className = 'vote-modal-overlay';
   document.body.appendChild(modal);
 
+  // CASO NÍVEL 1 JÁ TENHA VOTADO HOJE: VOTOU JÁ ERA! TELA BLOQUEADA LIMPA SEM MUDAR VOTO E SEM EXPOR NINGUÉM
+  if (isLevel1 && hasVotedToday) {
+    modal.innerHTML = `
+      <div class="vote-modal-card" style="text-align:center; padding:1.8rem 1.2rem; max-width:440px;">
+        <div style="font-size:3.2rem; margin-bottom:0.4rem; animation: pulse 2s infinite;">✨</div>
+        <h3 style="color:#34d399; font-size:1.35rem; font-family:Outfit, sans-serif; font-weight:800; margin:0 0 0.5rem 0;">VOTO REGISTRADO COM SUCESSO!</h3>
+        <p style="color:#d1d5db; font-size:0.92rem; line-height:1.4; margin-bottom:1.2rem;">
+          Obrigado, <strong>${currentUser.name}</strong>! Sua avaliação do Rodízio 5S de hoje para o Setor <strong>${sectorName}</strong> já foi gravada e computada de forma definitiva.
+        </p>
+        <div style="background:rgba(16,185,129,0.15); border:1px solid #10b981; padding:0.85rem; border-radius:12px; color:#a7f3d0; font-size:0.85rem; font-weight:700; text-align:left; margin-bottom:1.4rem;">
+          🔒 <strong>Regra de Governança:</strong> Seu voto diário está finalizado e mantido em sigilo. Amanhã haverá uma nova alocação no rodízio!
+        </div>
+        <button type="button" class="btn btn-primary" onclick="closeVoteChoiceModal(event)" style="width:100%; padding:0.85rem; font-size:1rem; font-weight:800; border-radius:10px; background:linear-gradient(135deg, #10b981, #06b6d4);">
+          ✅ Entendido / Fechar Tela
+        </button>
+      </div>
+    `;
+    modal.style.display = 'flex';
+    return;
+  }
+
+  // APENAS NÍVEIS 2 E 3 (AUDITORES E GESTÃO) VISUALIZAM O HISTÓRICO DAS NOTAS DAS OUTRAS PESSOAS PARA CALIBRAÇÃO
   let historyHtml = '';
-  if (existingVotes.length > 0) {
+  if (!isLevel1 && existingVotes.length > 0) {
     const votesList = existingVotes.map(v => {
       const icon = v.score === 'bom' ? '🟢 Bom' : (v.score === 'regular' ? '🟡 Regular' : '🔴 Ruim');
       return `<li style="font-size:0.8rem; padding:0.35rem 0; border-bottom:1px solid rgba(255,255,255,0.06); color:#d1d5db;">
@@ -407,13 +425,6 @@ window.openVoteChoiceModal = function(sectorName, boardKey, sensoName, day) {
       </div>
     `;
   }
-
-  const alreadyVotedNotice = hasVotedToday ? `
-    <div style="background:rgba(16,185,129,0.18); border:1px solid #10b981; padding:0.65rem 0.85rem; border-radius:10px; margin-bottom:1rem; color:#34d399; font-size:0.82rem; font-weight:700; display:flex; align-items:center; gap:0.5rem;">
-      <span style="font-size:1.2rem;">✨</span>
-      <div>Sua avaliação no Rodízio de hoje para o Setor <strong>${sectorName}</strong> já foi registrada! Você pode atualizar sua nota abaixo se desejar.</div>
-    </div>
-  ` : '';
 
   modal.innerHTML = `
     <div class="vote-modal-card">
@@ -441,8 +452,6 @@ window.openVoteChoiceModal = function(sectorName, boardKey, sensoName, day) {
           👤 <strong>Avaliador:</strong> ${currentUser.name} (Origem: <strong>${userSector}</strong> ➔ Destino: <strong>${sectorName}</strong>)
         </div>
       </div>
-
-      ${alreadyVotedNotice}
 
       ${historyHtml}
 
@@ -533,6 +542,17 @@ window.confirmVoteChoiceModal = function(e) {
   const currentSummary = getBoardCellSummary(boardKey);
   let existingVotes = currentSummary.votes || [];
 
+  const isLevel1 = (currentUser.level === 'diario' || currentUser.level === 'colaborador' || currentUser.role === 'colaborador' || currentUser.role === 'lider_diario');
+  const todayDateStr = new Date().toISOString().split('T')[0];
+  const userVoteKey = `5s_user_voted_${currentUser.username}_${todayDateStr}`;
+
+  // REGRA DE OURO PARA NÍVEL 1: VOTOU, JÁ ERA! SE JÁ VOTOU HOJE, REJEITA NOVO VOTO
+  if (isLevel1 && localStorage.getItem(userVoteKey) === 'true') {
+    closeVoteChoiceModal();
+    renderFactoryBoard();
+    return;
+  }
+
   existingVotes = existingVotes.filter(v => (v.username || v.name) !== currentUser.username && (v.username || v.name) !== currentUser.name);
 
   const timestamp = new Date().toLocaleString('pt-BR');
@@ -562,11 +582,8 @@ window.confirmVoteChoiceModal = function(e) {
 
   localStorage.setItem('5s_factory_board_impaktto', JSON.stringify(clientFactoryBoard));
 
-  const isSeniorOrSemanal = (currentUser && (currentUser.level === 'senior' || currentUser.level === 'semanal' || currentUser.role === 'administrador' || currentUser.role === 'auditor_semanal'));
-  const todayDateStr = new Date().toISOString().split('T')[0];
-  const userVoteKey = `5s_user_voted_${currentUser.username}_${todayDateStr}`;
-
-  if (!isSeniorOrSemanal) {
+  // SALVA TRAVA DE VOTO DIÁRIO INDELEVEL PARA NÍVEL 1
+  if (isLevel1) {
     localStorage.setItem(userVoteKey, 'true');
   }
 
@@ -899,7 +916,7 @@ const AUDIT_QUESTIONS = {
     "Os colaboradores mantêm o hábito de organizar e limpar sem supervisão?",
     "Os colaboradores cumprem espontaneamente os padrões definidos no setor?",
     "A equipe demonstra comprometimento ativo com o Programa 5S?",
-    "As não conformidades apontadas na auditoria anterior foram sanadas?",
+    "As não conformidades apontadas na anterior foram sanadas?",
     "Os líderes dão o exemplo, praticando e incentivando o 5S diariamente?",
     "Os colaboradores conhecem a Política da Qualidade e objetivos da empresa?",
     "O uso de uniformes e EPIs é mantido sem necessidade de lembretes?",
@@ -1539,7 +1556,7 @@ function renderFactoryBoard() {
 
           <!-- BOTÃO GIGANTE DE VOTAÇÃO NO SENSO DESIGNADO -->
           <button type="button" class="btn btn-primary" style="width:100%; padding:0.95rem 1.1rem; font-size:1.05rem; font-weight:800; border-radius:12px; background:linear-gradient(135deg, #10b981, #06b6d4); box-shadow:0 0 25px rgba(16, 185, 129, 0.45); display:flex; align-items:center; justify-content:center; gap:0.6rem; cursor:pointer;" onclick="openVoteChoiceModal('${assignment.targetSector}', '${todayBoardKey}', '${assignment.targetSenso.name}', '${currentDayCode}')">
-            🗳️ TOCAR AQUI PARA AVALIAR O SENSO ${assignment.targetSenso.name.toUpperCase()} NO SETOR ${assignment.targetSector.toUpperCase()}
+            ${hasVotedToday && isDiarioOrColab ? `✨ VER STATUS DO SEU VOTO DE HOJE` : `🗳️ TOCAR AQUI PARA AVALIAR O SENSO ${assignment.targetSenso.name.toUpperCase()} NO SETOR ${assignment.targetSector.toUpperCase()}`}
           </button>
 
         </div>
