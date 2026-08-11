@@ -258,7 +258,7 @@ async function pushDataToServer() {
   const logMap = new Map();
   (cloudState.activity_logs || []).forEach(l => { if (l && l.id) logMap.set(l.id, l); });
   clientActivityLogs.forEach(l => { if (l && l.id) logMap.set(l.id, l); });
-  const mergedLogs = Array.from(logMap.values()).sort((a, b) => b.id - a.id).slice(0, 60);
+  const mergedLogs = Array.from(logMap.values()).sort((a, b) => b.id - a.id).slice(0, 25);
 
   const payload = {
     users: { ...DEFAULT_USERS, ...cloudState.users, ...userDatabase },
