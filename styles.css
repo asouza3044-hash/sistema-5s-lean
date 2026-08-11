@@ -496,3 +496,49 @@ body.monitor-mode .main-container {
     padding-bottom: 0.5rem;
   }
 }
+
+/* --------------------------------------------------------------------------
+   MODAL DE ESCOLHA DE VOTO 5S (RESPONSIVO PARA DISPOSITIVOS MÓVEIS)
+   -------------------------------------------------------------------------- */
+.vote-modal-overlay {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  background: rgba(0, 0, 0, 0.9) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  z-index: 999999 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 1rem !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+}
+
+.vote-modal-card {
+  background: #111827 !important;
+  border: 1px solid var(--border-highlight) !important;
+  border-radius: var(--radius-lg) !important;
+  max-width: 500px !important;
+  width: 100% !important;
+  padding: 1.5rem !important;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.8), var(--shadow-glow) !important;
+  color: var(--text-main) !important;
+  max-height: 90vh !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+}
+
+@media (max-width: 640px) {
+  .vote-modal-card {
+    padding: 1.1rem !important;
+    border-radius: var(--radius-md) !important;
+    max-height: 95vh !important;
+  }
+}
+
