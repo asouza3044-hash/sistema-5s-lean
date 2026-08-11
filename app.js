@@ -109,12 +109,12 @@ function getBalancedTargetSector(user) {
 
 // ESTRUTURA DO RODÍZIO COMPETENTE 5X5 (1 SENSO POR DIA DA SEMANA DE TRABALHO)
 const DAILY_SENSO_FOCUS = {
-  'SEG': { senso: 'seiri', name: '1. SEIRI (Utilização & Descarte)', desc: 'Foco de Segunda: Separar o útil do inútil e descartar desnecessários.' },
-  'TER': { senso: 'seiton', name: '2. SEITON (Organização)', desc: 'Foco de Terça: Um lugar para cada coisa e identificação visual.' },
-  'QUA': { senso: 'seiso', name: '3. SEISO (Limpeza)', desc: 'Foco de Quarta: Inspeção, higiene e conservação das máquinas/bancadas.' },
-  'QUI': { senso: 'seiketsu', name: '4. SEIKETSU (Padronização & EPIs)', desc: 'Foco de Quinta: Padronização visual, saúde, segurança e uso de EPIs.' },
-  'SEX': { senso: 'shitsuke', name: '5. SHITSUKE (Disciplina & Consolidação)', desc: 'Foco de Sexta: Autodisciplina, cumprimento de regras e fechamento.' },
-  'SAB': { senso: 'shitsuke', name: '5. SHITSUKE (Revisão de Fim de Semana)', desc: 'Foco de Sábado: Manutenção geral dos padrões.' }
+  'SEG': { senso: 'seiri', name: '1. SEIRI (Utilização & Descarte)', desc: 'Separar o útil do inútil e descartar desnecessários das bancadas.' },
+  'TER': { senso: 'seiton', name: '2. SEITON (Organização)', desc: 'Um lugar para cada coisa e identificação visual de ferramentas e materiais.' },
+  'QUA': { senso: 'seiso', name: '3. SEISO (Limpeza)', desc: 'Inspeção, higiene e conservação diária das máquinas, pisos e bancadas.' },
+  'QUI': { senso: 'seiketsu', name: '4. SEIKETSU (Padronização & EPIs)', desc: 'Manutenção da padronização visual, segurança, saúde e uso correto dos EPIs.' },
+  'SEX': { senso: 'shitsuke', name: '5. SHITSUKE (Disciplina & Consolidação)', desc: 'Autodisciplina, cumprimento rigoroso de regras e fechamento semanal.' },
+  'SAB': { senso: 'shitsuke', name: '5. SHITSUKE (Revisão de Fim de Semana)', desc: 'Manutenção e revisão geral dos padrões da fábrica.' }
 };
 
 // Usuários Oficiais Pré-Configurados da Equipe Impaktto + AUDITOR CORINGA CLAYTON + CONTA MONITOR TV
@@ -351,9 +351,25 @@ window.forceCloudSyncNow = async function() {
   alert('🎉 Sincronização Mestre de Nuvem Concluída! Todos os cadastros e votos de celulares estão atualizados.');
 };
 
-// MODAL INTERATIVO DE ESCOLHA EXPLÍCITA DE VOTO (COM DESTAQUE EMERALD/NEON DO SETOR DESTINO)
+// MODAL INTERATIVO DE ESCOLHA EXPLÍCITA DE VOTO (COM INTERFACE PREMIUM GLASSMORPHISM - ZERO ALERTAS CINZAS)
 window.openVoteChoiceModal = function(sectorName, boardKey, sensoName, day) {
   if (!currentUser) return;
+
+  const dayNames = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
+  const todayIdxRaw = new Date().getDay();
+  const currentDayCode = dayNames[todayIdxRaw] === 'DOM' ? 'SEG' : dayNames[todayIdxRaw];
+  const todayFocus = DAILY_SENSO_FOCUS[currentDayCode] || DAILY_SENSO_FOCUS['SEG'];
+
+  const isDiarioOrColab = (currentUser.level === 'diario' || currentUser.level === 'colaborador' || currentUser.role === 'colaborador' || currentUser.role === 'lider_diario');
+  const targetAuditSector = getBalancedTargetSector(currentUser);
+
+  // REDIRECIONAMENTO ESTRITO PARA GRUPO 1: Votar sempre no Senso do Dia Atual e no Setor Destino
+  if (isDiarioOrColab) {
+    sectorName = targetAuditSector;
+    day = currentDayCode;
+    sensoName = todayFocus.name;
+    boardKey = `${sectorName}_${todayFocus.senso}_${currentDayCode}`;
+  }
 
   currentVoteTarget = { sectorName, boardKey, sensoName, day };
 
@@ -363,6 +379,10 @@ window.openVoteChoiceModal = function(sectorName, boardKey, sensoName, day) {
 
   const myPreviousVote = existingVotes.find(v => (v.username === currentUser.username || v.name === currentUser.name));
   selectedVoteOption = myPreviousVote ? myPreviousVote.score : 'bom';
+
+  const todayDateStr = new Date().toISOString().split('T')[0];
+  const userVoteKey = `5s_user_voted_${currentUser.username}_${todayDateStr}`;
+  const hasVotedToday = (localStorage.getItem(userVoteKey) === 'true');
 
   const oldModal = document.getElementById('modal-vote-choice');
   if (oldModal) oldModal.remove();
@@ -376,13 +396,13 @@ window.openVoteChoiceModal = function(sectorName, boardKey, sensoName, day) {
   if (existingVotes.length > 0) {
     const votesList = existingVotes.map(v => {
       const icon = v.score === 'bom' ? '🟢 Bom' : (v.score === 'regular' ? '🟡 Regular' : '🔴 Ruim');
-      return `<li style="font-size:0.8rem; padding:0.3rem 0; border-bottom:1px solid rgba(255,255,255,0.05); color:#d1d5db;">
+      return `<li style="font-size:0.8rem; padding:0.35rem 0; border-bottom:1px solid rgba(255,255,255,0.06); color:#d1d5db;">
         👤 <strong>${v.name}:</strong> ${icon} ${v.comment ? `<i>("${v.comment}")</i>` : ''} <span style="font-size:0.7rem; color:var(--text-muted);">🕒 ${v.timestamp || ''}</span>
       </li>`;
     }).join('');
 
     historyHtml = `
-      <div style="background:rgba(255,255,255,0.04); border:1px solid var(--border-color); padding:0.65rem 0.85rem; border-radius:10px; margin-bottom:1rem;">
+      <div style="background:rgba(255,255,255,0.04); border:1px solid var(--border-color); padding:0.75rem 0.9rem; border-radius:10px; margin-bottom:1rem;">
         <span style="font-size:0.78rem; font-weight:800; color:var(--accent-cyan); text-transform:uppercase;">📊 VOTOS COMPUTADOS NESTA CÉLULA (MÉDIA: ${summary.avgPoints} pts):</span>
         <ul style="list-style:none; padding:0; margin:0.4rem 0 0 0;">
           ${votesList}
@@ -391,12 +411,19 @@ window.openVoteChoiceModal = function(sectorName, boardKey, sensoName, day) {
     `;
   }
 
+  const alreadyVotedNotice = hasVotedToday ? `
+    <div style="background:rgba(16,185,129,0.18); border:1px solid #10b981; padding:0.65rem 0.85rem; border-radius:10px; margin-bottom:1rem; color:#34d399; font-size:0.82rem; font-weight:700; display:flex; align-items:center; gap:0.5rem;">
+      <span style="font-size:1.2rem;">✨</span>
+      <div>Sua nota de hoje para o Setor <strong>${sectorName}</strong> já está registrada! Você pode visualizar abaixo ou atualizar sua opção se desejar.</div>
+    </div>
+  ` : '';
+
   modal.innerHTML = `
     <div class="vote-modal-card">
       
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:0.75rem;">
         <div>
-          <h3 style="margin:0; font-size:1.2rem; color:#ffffff; font-family:Outfit, sans-serif;">🗳️ Registrar Avaliação 5S</h3>
+          <h3 style="margin:0; font-size:1.25rem; color:#ffffff; font-family:Outfit, sans-serif;">🗳️ Registrar Avaliação 5S</h3>
           <span style="font-size:0.82rem; color:var(--accent-cyan); font-weight:800;">📍 ${sensoName} (${day})</span>
         </div>
         <button type="button" onclick="closeVoteChoiceModal(event)" style="background:rgba(255,255,255,0.1); border:none; color:#ffffff; font-size:1.5rem; width:38px; height:38px; border-radius:50%; cursor:pointer; display:flex; align-items:center; justify-content:center;">✕</button>
@@ -408,12 +435,14 @@ window.openVoteChoiceModal = function(sectorName, boardKey, sensoName, day) {
           🎯 SEU SETOR ALVO OBRIGATÓRIO NO RODÍZIO:
         </div>
         <div style="font-size:1.25rem; font-weight:800; color:#ffffff; margin-top:0.2rem; text-shadow:0 0 10px rgba(52,211,153,0.5);">
-          📍 ${sectorName}
+          📍 SETOR ${sectorName.toUpperCase()}
         </div>
         <div style="font-size:0.8rem; color:#e2e8f0; margin-top:0.25rem;">
           👤 <strong>Avaliador:</strong> ${currentUser.name} (Origem: <strong>${userSector}</strong> ➔ Destino: <strong>${sectorName}</strong>)
         </div>
       </div>
+
+      ${alreadyVotedNotice}
 
       ${historyHtml}
 
@@ -1421,7 +1450,7 @@ window.selectScore3Level = function(sensoName, qNum, qKey, level) {
   pushDataToServer();
 };
 
-// 5. RENDERIZAÇÃO DO QUADRO COM VISÃO OTIMIZADA E DESTAQUE ULTRA-VISÍVEL DO SETOR DESTINO NO RODÍZIO
+// 5. RENDERIZAÇÃO DO QUADRO COM BANNER ULTRA ELEGANTE E TRAVA DO SENSO DO DIA
 function renderFactoryBoard() {
   const container = document.getElementById('factory-board-container');
   const titleEl = document.getElementById('factory-board-title');
@@ -1487,31 +1516,41 @@ function renderFactoryBoard() {
       `;
 
       filterSelectContainer.innerHTML = `
-        <!-- CAIXA EM NEON COM DESTAQUE MÁXIMO DO SETOR DESTINO -->
+        <!-- BANNER ELEGANTE EM GLASSMORPHISM & NEON BRILHANTE -->
         <div class="rotation-target-box" style="margin-bottom: 1.25rem;">
-          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem; margin-bottom:0.6rem;">
+          
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:0.6rem; margin-bottom:0.75rem;">
             <div>
-              <span style="font-size:0.75rem; font-weight:800; color:var(--accent-cyan); text-transform:uppercase; letter-spacing:0.06em; background:rgba(6,182,212,0.2); padding:0.2rem 0.55rem; border-radius:6px;">
-                ⚖️ REGRA SOBERANA • AUDITORIA CRUZADA IMPARCIAL
+              <span style="font-size:0.75rem; font-weight:800; color:var(--accent-cyan); text-transform:uppercase; letter-spacing:0.07em; background:rgba(6,182,212,0.18); padding:0.25rem 0.6rem; border-radius:6px; border:1px solid rgba(6,182,212,0.3);">
+                🛡️ SISTEMA DE GOVERNANÇA 5S • AUDITORIA CRUZADA IMPARCIAL
               </span>
-              <div style="font-size:1.15rem; font-weight:800; color:#ffffff; margin-top:0.35rem;">
-                📍 SEU SETOR ALVO OBRIGATÓRIO NO RODÍZIO: <span style="color:#34d399; font-size:1.3rem; text-shadow:0 0 12px rgba(52,211,153,0.6); font-family:Outfit, sans-serif;">${targetAuditSector}</span>
-              </div>
-              <div style="font-size:0.82rem; color:#d1d5db; margin-top:0.15rem;">
-                🏢 Seu Setor Origem: <strong>${userSector}</strong> ➔ Destino Automático: <strong style="color:#34d399;">${targetAuditSector}</strong> (Proibido avaliar a própria área).
+
+              <h2 style="font-family:Outfit, sans-serif; font-size:1.35rem; font-weight:800; color:#ffffff; margin-top:0.45rem; margin-bottom:0.15rem; line-height:1.2;">
+                📍 SEU SETOR DESIGNADO NO RODÍZIO: <span style="color:#34d399; text-shadow:0 0 14px rgba(52,211,153,0.6); font-size:1.4rem;">${targetAuditSector}</span>
+              </h2>
+
+              <div style="font-size:0.85rem; color:#d1d5db; font-weight:500;">
+                🏢 Sua Origem: <strong>${userSector}</strong> ➔ Destino Automático: <strong style="color:#34d399;">${targetAuditSector}</strong> <i>(Regra: Proibido auditar a própria área)</i>
               </div>
             </div>
+            
             ${voteStatusBadge}
           </div>
           
-          <div style="background: rgba(0,0,0,0.35); padding: 0.65rem 0.85rem; border-radius: 8px; border-left: 4px solid var(--status-bom); font-size: 0.85rem; color: #e2e8f0; margin-bottom:0.85rem;">
-            💡 <strong>${todayFocus.name}:</strong> ${todayFocus.desc}
+          <div style="background: rgba(0,0,0,0.35); padding: 0.75rem 1rem; border-radius: 10px; border-left: 4px solid #10b981; font-size: 0.88rem; color: #f3f4f6; margin-bottom:0.95rem;">
+            <div style="font-weight:800; color:#34d399; font-size:0.9rem; margin-bottom:0.15rem;">
+              💡 FOCO DE HOJE (${currentDayCode}): ${todayFocus.name}
+            </div>
+            <div style="font-size:0.82rem; color:#9ca3af; font-style:italic;">
+              "${todayFocus.desc}"
+            </div>
           </div>
 
-          <!-- BOTÃO GIGANTE DE 1-TOUCH HIGHLIGHTED -->
+          <!-- BOTÃO GIGANTE DE 1-TOUCH HIGHLIGHTED COM DEGRADE ESMERALDA -->
           <button type="button" class="btn btn-primary" style="width:100%; padding:0.95rem 1.1rem; font-size:1.05rem; font-weight:800; border-radius:12px; background:linear-gradient(135deg, #10b981, #06b6d4); box-shadow:0 0 25px rgba(16, 185, 129, 0.45); display:flex; align-items:center; justify-content:center; gap:0.6rem; cursor:pointer;" onclick="openVoteChoiceModal('${selectedSector}', '${todayBoardKey}', '${todayFocus.name}', '${currentDayCode}')">
-            🗳️ TOCAR AQUI PARA AVALIAR O SETOR ${targetAuditSector.toUpperCase()} AGORA
+            🗳️ TOCAR AQUI PARA AVALIAR O SETOR ${targetAuditSector.toUpperCase()} AGORA (${todayFocus.senso.toUpperCase()})
           </button>
+
         </div>
       `;
     } else {
