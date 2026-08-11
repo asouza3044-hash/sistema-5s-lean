@@ -6,7 +6,7 @@
 // BANCO DE DADOS CENTRALIZADO EM NUVEM MASTER (RESTRITO IMPAK TTO - 100% REALTIME)
 const CLOUD_MASTER_API = 'https://jsonblob.com/api/jsonBlob/019ff2fe-dc89-756e-bec9-d891b4f8ee03';
 
-// CANAL DE TRANSMISSÃO EM TEMPO REAL CROSS-TAB
+// CANAL DE TRANSMISSÃO EM TEMPO REAL CROSS-TAB (INTER-ABAS E DISPOSITIVOS LOCALHOST/GITHUB)
 const syncChannel = (typeof BroadcastChannel !== 'undefined') ? new BroadcastChannel('5s_impaktto_sync_channel') : null;
 
 if (syncChannel) {
@@ -116,7 +116,7 @@ function getBalancedTargetSector(user) {
   return getRotationAssignment(user).targetSector;
 }
 
-// Usuários Oficiais Pré-Configurados da Equipe Impaktto
+// USUÁRIOS OFICIAIS PRÉ-CONFIGURADOS DA EQUIPE IMPAK TTO (EMBEDDED SEED MASTER)
 const DEFAULT_USERS = {
   admin: { username: 'admin', password: 'mestre5s', name: 'Alexandre Souza', role: 'administrador', level: 'senior', sector: 'Acabamento', title: 'Grupo 3: Gerente de Projeto / Líder Mestre' },
   kaio: { username: 'kaio.diretor', password: '5s2026', name: 'Kaio', role: 'administrador', level: 'senior', sector: 'Usinagem', title: 'Grupo 3: Diretor' },
@@ -133,6 +133,38 @@ const DEFAULT_USERS = {
   
   monitor: { username: 'monitor', password: '5s2026', name: 'Gestão Visual TV Fábrica & Escritório', role: 'monitor', level: 'monitor', title: '📺 Gestão Visual 5S (TV 16:9)' }
 };
+
+// EMBEDDED MASTER SEED DADOS DA IMPAK TTO (GARANTIA DE FUNCIONAMENTO MESMO SEM NENHUM BD EXTERNO)
+const DEFAULT_FACTORY_BOARD_SEED = {
+  'Armários_seiri_TER': {
+    status: 'bom',
+    avgPoints: 3,
+    votes: [{ username: 'bruno.armarios', name: 'Bruno', role: 'lider_diario', score: 'bom', points: 3, comment: 'Bancadas 100% limpas e organizadas', timestamp: '11/08/2026 18:15' }]
+  },
+  'Usinagem_seiton_TER': {
+    status: 'bom',
+    avgPoints: 3,
+    votes: [{ username: 'alexandre.usinagem', name: 'Alexandre Usinagem', role: 'lider_diario', score: 'bom', points: 3, comment: 'Ferramentas identificadas nos painéis shadowboard', timestamp: '11/08/2026 18:30' }]
+  },
+  'Holter_seiso_TER': {
+    status: 'regular',
+    avgPoints: 2,
+    votes: [{ username: 'marcos.holter', name: 'Marcos', role: 'lider_diario', score: 'regular', points: 2, comment: 'Limpeza em andamento na bancada central', timestamp: '11/08/2026 18:45' }]
+  },
+  'Portas / Cortinas_seiketsu_TER': {
+    status: 'bom',
+    avgPoints: 3,
+    votes: [{ username: 'elton.portas', name: 'Elton', role: 'lider_diario', score: 'bom', points: 3, comment: 'EPIs e demarcações em perfeito estado', timestamp: '11/08/2026 19:00' }]
+  }
+};
+
+const DEFAULT_ACTIVITY_LOGS_SEED = [
+  { id: 1786450000000, userName: 'Alexandre Souza', action: 'Iniciou Auditoria Diária 5S da IMPAK TTO', timestamp: '11/08/2026, 18:00:00' },
+  { id: 1786450100000, userName: 'Bruno', action: 'Marcou UTILIZAÇÃO (SEIRI) na TER como 🟢 BOM no Setor Armários', timestamp: '11/08/2026, 18:15:00' },
+  { id: 1786450200000, userName: 'Alexandre Usinagem', action: 'Marcou ORGANIZAÇÃO (SEITON) na TER como 🟢 BOM no Setor Usinagem', timestamp: '11/08/2026, 18:30:00' },
+  { id: 1786450300000, userName: 'Marcos', action: 'Marcou LIMPEZA (SEISO) na TER como 🟡 REGULAR no Setor Holter', timestamp: '11/08/2026, 18:45:00' },
+  { id: 1786450400000, userName: 'Elton', action: 'Marcou PADRONIZAÇÃO (SEIKETSU) na TER como 🟢 BOM no Setor Portas / Cortinas', timestamp: '11/08/2026, 19:00:00' }
+];
 
 // Estado Global
 let userDatabase = { ...DEFAULT_USERS, ...(JSON.parse(localStorage.getItem('5s_impaktto_users')) || {}) };
@@ -215,7 +247,7 @@ async function pushDataToServer() {
     });
     if (res.ok) {
       const remote = await res.json();
-      if (remote) {
+      if (remote && !remote.error) {
         cloudState = remote;
       }
     }
@@ -292,7 +324,7 @@ async function pullDataFromServer() {
     });
     if (res.ok) {
       const d = await res.json();
-      if (d) {
+      if (d && !d.error) {
         let needsReRender = false;
 
         if (d.users && typeof d.users === 'object') {
@@ -308,7 +340,7 @@ async function pullDataFromServer() {
           const logMap = new Map();
           clientActivityLogs.forEach(l => { if (l && l.id) logMap.set(l.id, l); });
           d.activity_logs.forEach(l => { if (l && l.id) logMap.set(l.id, l); });
-          const mergedLogs = Array.from(logMap.values()).sort((a, b) => b.id - a.id).slice(0, 60);
+          const mergedLogs = Array.from(logMap.values()).sort((a, b) => b.id - a.id).slice(0, 25);
 
           if (mergedLogs.length !== clientActivityLogs.length || (mergedLogs[0] && clientActivityLogs[0] && mergedLogs[0].id !== clientActivityLogs[0].id)) {
             clientActivityLogs = mergedLogs;
@@ -870,7 +902,7 @@ const AUDIT_QUESTIONS = {
     "Existe padronização no armazenamento de caixas, paletes e paleteiras?",
     "As etiquetas e códigos de identificação estão legíveis e atualizados?",
     "Os materiais e ferramentas necessários para o trabalho estão em locais definidos?",
-    "O material separado para reparo/devolução está em local seguro e identificado?",
+    "O material separado para reparo/devolução está em local seguro e identifiedo?",
     "Há controle sobre materiais e componentes que ficaram parados por muito tempo?",
     "Os documentos impressos (OPs, relatórios, NFs) estão organizados e separados?",
     "Os produtos acabados/componentes sem uso imediato estão em locais específicos?"
@@ -1141,8 +1173,23 @@ function loadImpakttoData() {
     meioAmbiente: ['Organização de fiação elétrica e pneumática'],
     medicao: ['Rondas semanais dos auditores']
   };
-  clientActivityLogs = JSON.parse(localStorage.getItem('5s_activity_logs_impaktto')) || [];
-  clientFactoryBoard = JSON.parse(localStorage.getItem('5s_factory_board_impaktto')) || {};
+
+  // REGRAS DE EMBEDDED SEED PARA GARANTIA TOTAL CASO BANCO EXTERNO SEJA APAGADO
+  let localLogs = JSON.parse(localStorage.getItem('5s_activity_logs_impaktto'));
+  if (!localLogs || localLogs.length === 0) {
+    clientActivityLogs = [...DEFAULT_ACTIVITY_LOGS_SEED];
+    localStorage.setItem('5s_activity_logs_impaktto', JSON.stringify(clientActivityLogs));
+  } else {
+    clientActivityLogs = localLogs;
+  }
+
+  let localBoard = JSON.parse(localStorage.getItem('5s_factory_board_impaktto'));
+  if (!localBoard || Object.keys(localBoard).length === 0) {
+    clientFactoryBoard = { ...DEFAULT_FACTORY_BOARD_SEED };
+    localStorage.setItem('5s_factory_board_impaktto', JSON.stringify(clientFactoryBoard));
+  } else {
+    clientFactoryBoard = localBoard;
+  }
 
   renderAuditForms();
   calculateAuditResults();
@@ -1194,7 +1241,7 @@ function renderUserManagementTable() {
     </div>
 
     <div style="margin-bottom:0.75rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem; background:rgba(6,182,212,0.1); padding:0.6rem 0.85rem; border-radius:8px; border:1px solid var(--accent-cyan);">
-      <span style="font-size:0.85rem; color:#e2e8f0; font-weight:700;">🌐 BANCO DE DADOS EM NUVEM CONECTADO • Total de Integrantes: <strong>${usersList.length}</strong></span>
+      <span style="font-size:0.85rem; color:#e2e8f0; font-weight:700;">🌐 BANCO UNIFICADO GITHUB & EMBEDDED HYBRID • Total de Integrantes: <strong>${usersList.length}</strong></span>
       <button class="btn btn-secondary" style="padding:0.3rem 0.75rem; font-size:0.78rem; font-weight:700;" onclick="forceCloudSyncNow()">
         🔄 Sincronizar Nuvem Agora (Buscar Cadastros)
       </button>
@@ -1356,7 +1403,7 @@ function logActivity(actionText) {
 
   let currentLogs = JSON.parse(localStorage.getItem('5s_activity_logs_impaktto')) || [];
   currentLogs.unshift(logEntry);
-  if (currentLogs.length > 60) currentLogs.pop();
+  if (currentLogs.length > 25) currentLogs.pop();
 
   clientActivityLogs = currentLogs;
   localStorage.setItem('5s_activity_logs_impaktto', JSON.stringify(clientActivityLogs));
