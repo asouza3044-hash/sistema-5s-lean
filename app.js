@@ -345,56 +345,64 @@ window.forceCloudSyncNow = async function() {
   alert('🎉 Sincronização Mestre de Nuvem Concluída! Todos os cadastros e votos de celulares estão atualizados.');
 };
 
-// RENDERIZAÇÃO DA TELA ÚNICA DIRETA DE VOTAÇÃO DO NÍVEL 1 (MANTÉM TÍTULO LIMPO "SISTEMA DE VOTAÇÃO 5S", REMOVE SUBTÍTULO REDUNDANTE DE 3 NÍVEIS)
+// RENDERIZAÇÃO UNIVERSAL DA TELA ÚNICA DIRETA DE VOTAÇÃO (PADRÃO MESTRE DE ABERTURA PARA TODOS OS NÍVEIS 1, 2 E 3)
 function renderLevel1DirectVotingScreen() {
-  const container = document.getElementById('factory-board-container');
-  const titleEl = document.getElementById('factory-board-title');
-  const filterSelectContainer = document.getElementById('factory-board-filter-container');
-  const subtitleEl = document.getElementById('factory-board-subtitle');
+  let container = document.getElementById('universal-voting-container');
+  if (!container) container = document.getElementById('factory-board-container');
   if (!container) return;
 
-  // MANTÉM O TÍTULO LIMPO PRINCIPAL DA FOTO 3 ("📋 Sistema de Votação 5S (Chão de Fábrica)")
-  if (titleEl) {
-    titleEl.style.display = 'block';
-    titleEl.innerHTML = `📋 Sistema de Votação 5S (Chão de Fábrica)`;
-  }
-  
-  // OCULTA O SUBTÍTULO REDUNDANTE QUE XANDINHO PEDIU PARA REMOVER ("Avaliação diária de 3 Níveis (Bom | Regular | Ruim)...")
-  if (subtitleEl) {
-    subtitleEl.style.display = 'none';
-  }
+  const level = currentUser ? (currentUser.level || 'colaborador') : 'colaborador';
+  const role = currentUser ? (currentUser.role || 'colaborador') : 'colaborador';
+  const isLevel1 = (level === 'diario' || level === 'colaborador' || role === 'colaborador' || role === 'lider_diario');
 
-  if (filterSelectContainer) filterSelectContainer.style.display = 'none';
+  const titleEl = document.getElementById('factory-board-title');
+  const subtitleEl = document.getElementById('factory-board-subtitle');
+  const filterSelectContainer = document.getElementById('factory-board-filter-container');
+
+  if (isLevel1) {
+    if (titleEl) {
+      titleEl.style.display = 'block';
+      titleEl.innerHTML = `📋 Sistema de Votação 5S (Chão de Fábrica)`;
+    }
+    if (subtitleEl) subtitleEl.style.display = 'none';
+    if (filterSelectContainer) filterSelectContainer.style.display = 'none';
+  }
 
   const dayNames = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
   const todayIdxRaw = new Date().getDay();
   const currentDayCode = dayNames[todayIdxRaw] === 'DOM' ? 'SEG' : dayNames[todayIdxRaw];
 
   const assignment = getRotationAssignment(currentUser, currentDayCode);
-  const userSector = currentUser.sector || 'Fábrica';
+  const userSector = currentUser ? (currentUser.sector || 'Fábrica') : 'Fábrica';
 
   const todayDateStr = new Date().toISOString().split('T')[0];
-  const userVoteKey = `5s_user_voted_${currentUser.username}_${todayDateStr}`;
+  const userVoteKey = currentUser ? `5s_user_voted_${currentUser.username}_${todayDateStr}` : '5s_user_voted_guest';
   const hasVotedToday = (localStorage.getItem(userVoteKey) === 'true');
 
   level1SelectedOption = 'bom';
 
+  const levelBadgeLabel = isLevel1 
+    ? '🟢 Nível 1: Chão de Fábrica' 
+    : (level === 'semanal' ? '🟡 Nível 2: Auditor Volante / Encarregado' : '👑 Nível 3: Gerência & Diretoria');
+
   if (hasVotedToday) {
     container.innerHTML = `
-      <div style="max-width:540px; margin:1rem auto; background:rgba(30,41,59,0.7); backdrop-filter:blur(12px); border:1px solid rgba(16,185,129,0.4); border-radius:16px; padding:2rem 1.5rem; text-align:center; box-shadow:0 10px 30px rgba(0,0,0,0.5);">
-        <div style="font-size: 3.8rem; margin-bottom: 0.5rem; animation: pulse 2s infinite;">✨</div>
-        <h2 style="color: #34d399; font-size: 1.6rem; font-family: Outfit, sans-serif; font-weight: 800; margin-bottom: 0.5rem;">
+      <div style="max-width:540px; margin:0.5rem auto; background:rgba(30,41,59,0.7); backdrop-filter:blur(12px); border:1px solid rgba(16,185,129,0.4); border-radius:16px; padding:1.8rem 1.4rem; text-align:center; box-shadow:0 10px 30px rgba(0,0,0,0.5);">
+        <div style="font-size: 3.5rem; margin-bottom: 0.4rem; animation: pulse 2s infinite;">✨</div>
+        <h2 style="color: #34d399; font-size: 1.55rem; font-family: Outfit, sans-serif; font-weight: 800; margin-bottom: 0.4rem;">
           AVALIAÇÃO REGISTRADA COM SUCESSO!
         </h2>
-        <p style="color: #e2e8f0; font-size: 1rem; line-height: 1.4; margin-bottom: 1.4rem;">
-          Obrigado, <strong>${currentUser.name}</strong>! Sua nota de hoje no Rodízio 5S para o Setor <strong>${assignment.targetSector}</strong> já foi gravada e computada no sistema.
+        <p style="color: #e2e8f0; font-size: 0.98rem; line-height: 1.4; margin-bottom: 1.2rem;">
+          Obrigado, <strong>${currentUser ? currentUser.name : 'Colaborador'}</strong>! Sua nota de hoje no Rodízio 5S para o Setor <strong>${assignment.targetSector}</strong> já foi gravada e computada no sistema.
         </p>
-        <div style="background: rgba(16, 185, 129, 0.18); border: 2px solid #10b981; padding: 1rem; border-radius: 12px; color: #a7f3d0; font-size: 0.88rem; font-weight: 700; text-align: left; margin-bottom: 1.6rem;">
-          🔒 <strong>Dever Cumprido no Chão de Fábrica:</strong> Seu voto diário foi finalizado com sucesso. Não é necessário fazer mais nada hoje!
+        <div style="background: rgba(16, 185, 129, 0.18); border: 2px solid #10b981; padding: 0.9rem; border-radius: 12px; color: #a7f3d0; font-size: 0.88rem; font-weight: 700; text-align: left; margin-bottom: 1.4rem;">
+          🔒 <strong>Dever Cumprido no 5S:</strong> Seu voto diário foi finalizado com sucesso! ${isLevel1 ? 'Bom trabalho na fábrica!' : 'Utilize os quadros e abas abaixo para acompanhar a gestão e auditoria.'}
         </div>
-        <button class="btn btn-secondary" onclick="handleLogout()" style="padding: 0.9rem 1.5rem; font-size: 1rem; font-weight: 800; width: 100%; border-radius: 10px;">
-          🚪 Sair do Sistema
-        </button>
+        ${isLevel1 ? `
+          <button class="btn btn-secondary" onclick="handleLogout()" style="padding: 0.85rem 1.5rem; font-size: 1rem; font-weight: 800; width: 100%; border-radius: 10px;">
+            🚪 Sair do Sistema
+          </button>
+        ` : ''}
       </div>
     `;
     return;
@@ -409,7 +417,7 @@ function renderLevel1DirectVotingScreen() {
           <span style="font-size:0.82rem; color:var(--accent-cyan); font-weight:800;">📍 Dia: ${currentDayCode}</span>
         </div>
         <span style="background:rgba(16,185,129,0.2); border:1px solid #10b981; color:#34d399; font-size:0.75rem; font-weight:800; padding:0.25rem 0.6rem; border-radius:12px;">
-          🟢 Nível 1: Chão de Fábrica
+          ${levelBadgeLabel}
         </span>
       </div>
 
@@ -431,7 +439,7 @@ function renderLevel1DirectVotingScreen() {
         </div>
 
         <div style="font-size:0.82rem; color:#e2e8f0; margin-top:0.45rem;">
-          👤 <strong>Avaliador:</strong> ${currentUser.name} (Origem: <strong>${userSector}</strong> ➔ Destino: <strong>${assignment.targetSector}</strong>)
+          👤 <strong>Avaliador:</strong> ${currentUser ? currentUser.name : 'Colaborador'} (Origem: <strong>${userSector}</strong> ➔ Destino: <strong>${assignment.targetSector}</strong>)
         </div>
       </div>
 
@@ -536,7 +544,9 @@ window.submitLevel1DirectVote = function() {
   const todayDateStr = new Date().toISOString().split('T')[0];
   const userVoteKey = `5s_user_voted_${currentUser.username}_${todayDateStr}`;
 
-  if (localStorage.getItem(userVoteKey) === 'true') {
+  const isLevel1 = (currentUser.level === 'diario' || currentUser.level === 'colaborador' || currentUser.role === 'colaborador' || currentUser.role === 'lider_diario');
+
+  if (isLevel1 && localStorage.getItem(userVoteKey) === 'true') {
     renderLevel1DirectVotingScreen();
     return;
   }
@@ -926,7 +936,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('form-ishikawa')?.addEventListener('submit', handleUpdateIshikawa);
 });
 
-// 4. CONTROLE ESTRITO DE SESSÃO E VISIBILIDADE POR GRUPO
+// 4. CONTROLE ESTRITO DE SESSÃO E VISIBILIDADE POR GRUPO (UNIFICAÇÃO MESTRE DA TELA DE VOTAÇÃO NO NÍVEL 1, 2 E 3)
 function checkAuthSession() {
   const loginOverlay = document.getElementById('login-overlay');
 
@@ -961,6 +971,7 @@ function checkAuthSession() {
   const isLider = (role === 'lider_diario' || level === 'diario');
   const isColaborador = (!isSenior && !isSemanal && !isMonitor && !isLider);
 
+  const cardUniversalVoting = document.getElementById('card-universal-voting');
   const cardFactoryBoard = document.getElementById('card-factory-board');
   const cardMaturity = document.getElementById('card-maturity-dashboard');
   const cardActivityFeed = document.getElementById('card-activity-feed');
@@ -981,6 +992,7 @@ function checkAuthSession() {
     document.body.classList.add('monitor-mode');
     activeFactorySectorFilter = 'ALL';
 
+    if (cardUniversalVoting) cardUniversalVoting.style.display = 'none';
     if (cardMaturity) cardMaturity.style.display = 'block';
     if (cardFactoryBoard) cardFactoryBoard.style.display = 'block';
     if (cardActivityFeed) cardActivityFeed.style.display = 'none';
@@ -998,7 +1010,8 @@ function checkAuthSession() {
     document.body.classList.remove('monitor-mode');
 
     if (isLider || isColaborador) {
-      // NÍVEL 1: EXIBE TENSAMENTE A TELA ÚNICA DE VOTAÇÃO DIRETA DO RODÍZIO (ZERO POLUIÇÃO DE TABELAS)
+      // NÍVEL 1: UNTOUCHED & PERFECT! TELA ÚNICA DE VOTAÇÃO DIRETA (ZERO TABELAS)
+      if (cardUniversalVoting) cardUniversalVoting.style.display = 'none';
       if (cardFactoryBoard) cardFactoryBoard.style.display = 'block';
       if (cardMaturity) cardMaturity.style.display = 'none';
       if (cardActivityFeed) cardActivityFeed.style.display = 'none';
@@ -1015,6 +1028,8 @@ function checkAuthSession() {
       renderLevel1DirectVotingScreen();
 
     } else if (isSemanal) {
+      // NÍVEL 2: ABRIR COM A MESMA TELA DE VOTAÇÃO UNIVERSAL NO TOPO + NAVEGAÇÃO COMPLETA EM ABAS
+      if (cardUniversalVoting) cardUniversalVoting.style.display = 'block';
       if (cardFactoryBoard) cardFactoryBoard.style.display = 'block';
       if (cardMaturity) cardMaturity.style.display = 'block';
       if (cardActivityFeed) cardActivityFeed.style.display = 'block';
@@ -1030,7 +1045,11 @@ function checkAuthSession() {
       document.querySelector('.nav-btn[data-tab="tab-dashboard"]')?.classList.add('active');
       document.getElementById('tab-dashboard')?.classList.add('active');
 
+      renderLevel1DirectVotingScreen();
+
     } else {
+      // NÍVEL 3 (ADM / GERÊNCIA / DIRETORIA): MESMA TELA DE VOTAÇÃO NO TOPO + PAINEL COMPLETO DE GESTÃO EM ABAS
+      if (cardUniversalVoting) cardUniversalVoting.style.display = 'block';
       if (cardFactoryBoard) cardFactoryBoard.style.display = 'block';
       if (cardMaturity) cardMaturity.style.display = 'block';
       if (cardActivityFeed) cardActivityFeed.style.display = 'block';
@@ -1040,6 +1059,13 @@ function checkAuthSession() {
       if (navTabsContainer) navTabsContainer.style.display = 'flex';
       if (navBtnTools) navBtnTools.style.display = 'flex';
       if (navBtnManual) navBtnManual.style.display = 'flex';
+
+      document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      document.querySelector('.nav-btn[data-tab="tab-dashboard"]')?.classList.add('active');
+      document.getElementById('tab-dashboard')?.classList.add('active');
+
+      renderLevel1DirectVotingScreen();
     }
   }
 
@@ -1106,12 +1132,8 @@ function loadImpakttoData() {
   renderAuditForms();
   calculateAuditResults();
   
-  const isLevel1 = (currentUser && (currentUser.level === 'diario' || currentUser.level === 'colaborador' || currentUser.role === 'colaborador' || currentUser.role === 'lider_diario'));
-  if (isLevel1) {
-    renderLevel1DirectVotingScreen();
-  } else {
-    renderFactoryBoard();
-  }
+  renderLevel1DirectVotingScreen();
+  renderFactoryBoard();
 
   renderGUTTable();
   renderKanban();
