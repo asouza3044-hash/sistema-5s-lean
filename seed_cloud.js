@@ -1,6 +1,6 @@
 const CLOUD_MASTER_API = 'https://jsonblob.com/api/jsonBlob/019ff2fe-dc89-756e-bec9-d891b4f8ee03';
 
-async function syncCleanUsers() {
+async function syncCleanUsersWithXando() {
   try {
     const res = await fetch(CLOUD_MASTER_API, { headers: { 'Accept': 'application/json' } });
     let data = await res.json();
@@ -20,6 +20,9 @@ async function syncCleanUsers() {
       elton: { username: 'elton.portas', password: '5s2026', name: 'Elton', role: 'lider_diario', level: 'diario', sector: 'Portas / Cortinas', title: 'Grupo 1: Líder de Portas / Cortinas' },
       giovanna: { username: 'giovanna.acabamento', password: '5s2026', name: 'Giovanna', role: 'lider_diario', level: 'diario', sector: 'Acabamento', title: 'Grupo 1: Líder de Acabamento' },
 
+      xando: { username: 'xando', password: '5s2026', name: 'Xando Souza', role: 'lider_diario', level: 'diario', sector: 'Usinagem', title: 'Grupo 1: Líder de Usinagem' },
+      xandinho: { username: 'xandinho', password: '5s2026', name: 'Xandinho (Teste)', role: 'colaborador', level: 'colaborador', sector: 'Acabamento', title: 'Grupo 1: Colaborador de Acabamento' },
+
       monitor: { username: 'monitor', password: '5s2026', name: 'Gestão Visual TV Fábrica & Escritório', role: 'monitor', level: 'monitor', title: '📺 Gestão Visual 5S (TV 16:9)' }
     };
 
@@ -35,13 +38,13 @@ async function syncCleanUsers() {
     });
 
     if (putRes.ok) {
-      console.log('🎉 BANCO DE DADOS DA NUVEM REESTRUTURADO APENAS COM OS 11 INTEGRANTES OFICIAIS DA IMPAK TTO!');
+      console.log('🎉 XANDO E XANDINHO INCLUÍDOS COM SUCESSO NO BANCO DA NUVEM!');
     } else {
       console.error('Erro ao atualizar a nuvem:', putRes.status);
     }
   } catch (err) {
-    console.error('Erro ao sincronizar usuários limpos:', err);
+    console.error('Erro ao sincronizar usuários:', err);
   }
 }
 
-syncCleanUsers();
+syncCleanUsersWithXando();
