@@ -116,13 +116,12 @@ function getBalancedTargetSector(user) {
   return getRotationAssignment(user).targetSector;
 }
 
-// USUÁRIOS OFICIAIS PRÉ-CONFIGURADOS DA EQUIPE IMPAK TTO (EMBEDDED SEED MASTER)
+// USUÁRIOS OFICIAIS PRÉ-CONFIGURADOS DA EQUIPE IMPAK TTO (EXCLUSIVAMENTE OS 11 OFICIAIS DA EMPRESA)
 const DEFAULT_USERS = {
   admin: { username: 'admin', password: 'mestre5s', name: 'Alexandre Souza', role: 'administrador', level: 'senior', sector: 'Acabamento', title: 'Grupo 3: Gerente de Projeto / Líder Mestre' },
   kaio: { username: 'kaio.diretor', password: '5s2026', name: 'Kaio', role: 'administrador', level: 'senior', sector: 'Usinagem', title: 'Grupo 3: Diretor' },
   diego: { username: 'diego.fabrica', password: '5s2026', name: 'Diego', role: 'auditor_semanal', level: 'semanal', sector: 'Holter', title: 'Grupo 2: Encarregado de Fábrica' },
   filipe: { username: 'filipe.rh', password: '5s2026', name: 'Filipe', role: 'auditor_semanal', level: 'semanal', sector: 'Armários', title: 'Grupo 2: Encarregado RH - 5S' },
-  
   clayton: { username: 'clayton.auditor', password: '5s2026', name: 'Clayton', role: 'auditor_semanal', level: 'semanal', sector: 'Portas / Cortinas', title: 'Grupo 2: Auditor Volante 5S / Suplência & Calibração' },
 
   alexandre_u: { username: 'alexandre.usinagem', password: '5s2026', name: 'Alexandre Usinagem', role: 'lider_diario', level: 'diario', sector: 'Usinagem', title: 'Grupo 1: Líder de Usinagem' },
@@ -130,12 +129,6 @@ const DEFAULT_USERS = {
   bruno: { username: 'bruno.armarios', password: '5s2026', name: 'Bruno', role: 'lider_diario', level: 'diario', sector: 'Armários', title: 'Grupo 1: Líder de Armários' },
   elton: { username: 'elton.portas', password: '5s2026', name: 'Elton', role: 'lider_diario', level: 'diario', sector: 'Portas / Cortinas', title: 'Grupo 1: Líder de Portas / Cortinas' },
   giovanna: { username: 'giovanna.acabamento', password: '5s2026', name: 'Giovanna', role: 'lider_diario', level: 'diario', sector: 'Acabamento', title: 'Grupo 1: Líder de Acabamento' },
-  
-  xando: { username: 'xando', password: '5s2026', name: 'Xando Souza', role: 'administrador', level: 'senior', sector: 'Acabamento', title: 'Grupo 3: Administrador Mestre 5S' },
-  ararinha: { username: 'ararinha', password: '5s2026', name: 'Ararinha Azul', role: 'lider_diario', level: 'diario', sector: 'Usinagem', title: 'Grupo 1: Líder de Usinagem' },
-  maria: { username: 'maria.sohipren', password: '5s2026', name: 'Maria Silva', role: 'auditor_semanal', level: 'semanal', sector: 'Holter', title: 'Grupo 2: Auditora Volante 5S' },
-  sohipren_user: { username: 'sohipren', password: '5s2026', name: 'Operador Sohipren', role: 'lider_diario', level: 'diario', sector: 'Armários', title: 'Grupo 1: Líder de Armários' },
-  logistica_user: { username: 'logistica', password: '5s2026', name: 'Gerente Logística', role: 'auditor_semanal', level: 'semanal', sector: 'Portas / Cortinas', title: 'Grupo 2: Auditor Logística' },
 
   monitor: { username: 'monitor', password: '5s2026', name: 'Gestão Visual TV Fábrica & Escritório', role: 'monitor', level: 'monitor', title: '📺 Gestão Visual 5S (TV 16:9)' }
 };
@@ -299,7 +292,7 @@ async function pushDataToServer() {
   const mergedLogs = Array.from(logMap.values()).sort((a, b) => b.id - a.id).slice(0, 25);
 
   const payload = {
-    users: { ...DEFAULT_USERS, ...cloudState.users, ...userDatabase },
+    users: userDatabase,
     activity_logs: mergedLogs,
     factory_board: mergedCloudBoard,
     audit_scores: clientAuditScores
@@ -334,12 +327,9 @@ async function pullDataFromServer() {
         let needsReRender = false;
 
         if (d.users && typeof d.users === 'object') {
-          const merged = { ...DEFAULT_USERS, ...userDatabase, ...d.users };
-          if (Object.keys(merged).length !== Object.keys(userDatabase).length) {
-            userDatabase = merged;
-            localStorage.setItem('5s_impaktto_users', JSON.stringify(userDatabase));
-            needsReRender = true;
-          }
+          userDatabase = d.users;
+          localStorage.setItem('5s_impaktto_users', JSON.stringify(userDatabase));
+          needsReRender = true;
         }
 
         if (Array.isArray(d.activity_logs)) {
@@ -1180,7 +1170,7 @@ function loadImpakttoData() {
     medicao: ['Rondas semanais dos auditores']
   };
 
-  // REGRAS DE EMBEDDED SEED PARA GARANTIA TOTAL CASO BANCO EXTERNO SEJA APAGADO
+  // REGRAS DE EMBEDDED SEED PARA GARANTIA TOTAL
   let localLogs = JSON.parse(localStorage.getItem('5s_activity_logs_impaktto'));
   if (!localLogs || localLogs.length === 0) {
     clientActivityLogs = [...DEFAULT_ACTIVITY_LOGS_SEED];
@@ -1210,7 +1200,7 @@ function loadImpakttoData() {
   renderUserManagementTable();
 }
 
-// 7. RENDERIZAÇÃO DO PAINEL DE GESTÃO DE COLABORADORES E FORMULÁRIO RÁPIDO ADM
+// 7. RENDERIZAÇÃO DO PAINEL DE GESTÃO DE COLABORADORES E PODER DE EXCLUSÃO 1-CLICK NIVEL 3
 function renderUserManagementTable() {
   const container = document.getElementById('user-management-table-container');
   if (!container) return;
@@ -1247,9 +1237,9 @@ function renderUserManagementTable() {
     </div>
 
     <div style="margin-bottom:0.75rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem; background:rgba(6,182,212,0.1); padding:0.6rem 0.85rem; border-radius:8px; border:1px solid var(--accent-cyan);">
-      <span style="font-size:0.85rem; color:#e2e8f0; font-weight:700;">🌐 BANCO UNIFICADO GITHUB & EMBEDDED HYBRID • Total de Integrantes: <strong>${usersList.length}</strong></span>
+      <span style="font-size:0.85rem; color:#e2e8f0; font-weight:700;">👑 PAINEL DE GESTÃO NÍVEL 3 • Total de Integrantes Ativos: <strong>${usersList.length}</strong></span>
       <button class="btn btn-secondary" style="padding:0.3rem 0.75rem; font-size:0.78rem; font-weight:700;" onclick="forceCloudSyncNow()">
-        🔄 Sincronizar Nuvem Agora (Buscar Cadastros)
+        🔄 Sincronizar Nuvem Agora
       </button>
     </div>
 
@@ -1261,7 +1251,7 @@ function renderUserManagementTable() {
           <th style="padding:0.6rem;">Setor Origem</th>
           <th style="padding:0.6rem;">Alvo no Rodízio</th>
           <th style="padding:0.6rem;">Classificação & Governança</th>
-          <th style="padding:0.6rem; text-align:center;">Ações de Teste / Gestão</th>
+          <th style="padding:0.6rem; text-align:center;">Ações Nível 3 (Gestão / Exclusão)</th>
         </tr>
       </thead>
       <tbody>
@@ -1277,7 +1267,7 @@ function renderUserManagementTable() {
     html += `
       <tr style="border-bottom:1px solid rgba(255,255,255,0.04);">
         <td style="padding:0.6rem; font-weight:700; color:var(--text-main);">
-          👤 ${u.name} ${isSelfAdmin ? '<span style="color:var(--accent-cyan); font-size:0.7rem;">(ADM Mestre)</span>' : ''}
+          👤 ${u.name} ${isSelfAdmin ? '<span style="color:var(--accent-cyan); font-size:0.7rem;">(Líder Mestre)</span>' : ''}
           ${votedToday ? '<span style="color:#34d399; font-size:0.7rem; display:block;">✅ Já Votou Hoje</span>' : ''}
         </td>
         <td style="padding:0.6rem; color:var(--text-muted);"><code>${u.username}</code></td>
@@ -1297,11 +1287,15 @@ function renderUserManagementTable() {
             <option value="senior" ${uLevel === 'senior' ? 'selected' : ''}>👑 Grupo 3: Gerência & Diretoria (Gestão Mestre)</option>
           </select>
         </td>
-        <td style="padding:0.6rem; text-align:center; display:flex; gap:0.3rem; justify-content:center;">
-          <button class="btn btn-secondary" style="padding:0.2rem 0.45rem; font-size:0.7rem;" onclick="resetUserDailyVote('${u.username}')" title="Liberar usuário para dar novo voto de teste hoje">
+        <td style="padding:0.6rem; text-align:center; display:flex; gap:0.4rem; justify-content:center; align-items:center;">
+          <button class="btn btn-secondary" style="padding:0.25rem 0.5rem; font-size:0.72rem; font-weight:700;" onclick="resetUserDailyVote('${u.username}')" title="Liberar usuário para dar novo voto de teste hoje">
             🔄 Liberar Voto
           </button>
-          ${!isSelfAdmin ? `<button class="btn btn-danger" style="padding:0.2rem 0.45rem; font-size:0.7rem;" onclick="deleteUserAccount('${u.username}')">Excluir</button>` : ''}
+          ${!isSelfAdmin ? `
+            <button type="button" class="btn btn-danger" style="padding:0.25rem 0.6rem; font-size:0.75rem; font-weight:800; background:#ef4444; color:#fff; border:none; border-radius:6px; cursor:pointer;" onclick="deleteUserAccount('${u.username}')">
+              🗑️ Excluir
+            </button>
+          ` : ''}
         </td>
       </tr>
     `;
@@ -1382,17 +1376,28 @@ window.updateUserSector = function(username, newSector) {
   renderUserManagementTable();
 };
 
-window.deleteUserAccount = function(username) {
+window.deleteUserAccount = async function(username) {
   if (!userDatabase[username]) return;
 
-  if (confirm(`Deseja realmente excluir o acesso de "${userDatabase[username].name}"?`)) {
-    const deletedName = userDatabase[username].name;
+  const targetUser = userDatabase[username];
+  const targetName = targetUser.name || username;
+
+  if (username === 'admin') {
+    alert('⚠️ O usuário Líder Mestre (admin) não pode ser excluído.');
+    return;
+  }
+
+  if (confirm(`🗑️ Tem certeza que deseja EXCLUIR o acesso de "${targetName}" (${username})?`)) {
     delete userDatabase[username];
     localStorage.setItem('5s_impaktto_users', JSON.stringify(userDatabase));
 
-    logActivity(`Excluiu o usuário de "${deletedName}"`);
-    pushDataToServer();
+    logActivity(`🗑️ Excluiu o acesso do colaborador "${targetName}" (${username})`);
+    
+    await pushDataToServer();
     renderUserManagementTable();
+    checkAuthSession();
+
+    alert(`🎉 O integrante "${targetName}" foi excluído com sucesso!`);
   }
 };
 
