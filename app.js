@@ -196,7 +196,7 @@ function getBoardCellSummary(boardKey) {
   return { status: 'pendente', avgPoints: 0, voteCount: 0, votes: [] };
 }
 
-// FUNÇÕES MESTRE DE SINCRONIZAÇÃO EM NUVEM REALTIME (GARANTIA TOTAL DE PROPAGAÇÃO INSTANTÂNEA)
+// FUNÇÕES MESTRE DE SINCRONIZAÇÃO EM NUVEM REALTIME (MESCLA BIDIRECIONAL COMPLETA SEM PERDAS)
 async function pushDataToServer() {
   localStorage.setItem('5s_factory_board_impaktto', JSON.stringify(clientFactoryBoard));
   localStorage.setItem('5s_activity_logs_impaktto', JSON.stringify(clientActivityLogs));
@@ -206,10 +206,6 @@ async function pushDataToServer() {
   if (syncChannel) {
     try { syncChannel.postMessage({ type: 'SYNC_ALL_DATA', timestamp: Date.now() }); } catch (e) {}
   }
-
-  renderFactoryBoard();
-  renderActivityLogs();
-  calculateAuditResults();
 
   let cloudState = { users: {}, activity_logs: [], factory_board: {}, audit_scores: {} };
 
@@ -225,10 +221,39 @@ async function pushDataToServer() {
     }
   } catch(e) {}
 
+  // MESCLA BIDIRECIONAL DAS CÉLULAS DO QUADRO DA FÁBRICA
   const cloudBoard = cloudState.factory_board || {};
-  for (const [key, val] of Object.entries(clientFactoryBoard)) {
-    cloudBoard[key] = val;
+  
+  // 1. Incorporar o que estava na nuvem que não temos localmente
+  for (const [key, val] of Object.entries(cloudBoard)) {
+    if (!clientFactoryBoard[key]) {
+      clientFactoryBoard[key] = val;
+    } else if (typeof val === 'object' && val.votes && Array.isArray(val.votes)) {
+      // Mesclar votos locais com votos remotos para a mesma célula
+      const localCell = getBoardCellSummary(key);
+      const voteMap = new Map();
+      (localCell.votes || []).forEach(v => voteMap.set(v.username || v.name, v));
+      (val.votes || []).forEach(v => voteMap.set(v.username || v.name, v));
+
+      const mergedVotes = Array.from(voteMap.values());
+      const totalPts = mergedVotes.reduce((acc, v) => acc + (v.points || (v.score === 'bom' ? 3 : (v.score === 'regular' ? 2 : 1))), 0);
+      const avgPts = mergedVotes.length > 0 ? totalPts / mergedVotes.length : 3;
+
+      let avgStatus = 'bom';
+      if (avgPts >= 2.5) avgStatus = 'bom';
+      else if (avgPts >= 1.7) avgStatus = 'regular';
+      else avgStatus = 'ruim';
+
+      clientFactoryBoard[key] = {
+        status: avgStatus,
+        avgPoints: Math.round(avgPts * 10) / 10,
+        votes: mergedVotes
+      };
+    }
   }
+
+  // 2. Garantir que todas as células locais estejam presentes na nuvem
+  const mergedCloudBoard = { ...cloudBoard, ...clientFactoryBoard };
 
   const logMap = new Map();
   (cloudState.activity_logs || []).forEach(l => { if (l && l.id) logMap.set(l.id, l); });
@@ -238,7 +263,7 @@ async function pushDataToServer() {
   const payload = {
     users: { ...DEFAULT_USERS, ...cloudState.users, ...userDatabase },
     activity_logs: mergedLogs,
-    factory_board: cloudBoard,
+    factory_board: mergedCloudBoard,
     audit_scores: clientAuditScores
   };
 
@@ -254,6 +279,10 @@ async function pushDataToServer() {
   } catch (e) {
     console.error('Erro no Push da Nuvem:', e);
   }
+
+  renderFactoryBoard();
+  renderActivityLogs();
+  calculateAuditResults();
 }
 
 async function pullDataFromServer() {
@@ -298,7 +327,6 @@ async function pullDataFromServer() {
           }
         }
 
-        // SEMPRE SALVAR E RE-RENDERIZAR PARA GARANTIR RADAR CHART E MATRIZ ATUALIZADOS
         localStorage.setItem('5s_factory_board_impaktto', JSON.stringify(clientFactoryBoard));
         renderFactoryBoard();
         renderActivityLogs();
@@ -319,6 +347,17 @@ window.forceCloudSyncNow = async function() {
   renderFactoryBoard();
   calculateAuditResults();
   alert('🎉 Sincronização Mestre de Nuvem Concluída! Todos os cadastros, votos e gráficos estão atualizados.');
+};
+
+// HELPER PARA LIBERAR O VOTO DO USUÁRIO ATUAL DURANTE OS TESTES
+window.resetCurrentMyVoteForTesting = function() {
+  if (!currentUser) return;
+  const todayDateStr = new Date().toISOString().split('T')[0];
+  const userVoteKey = `5s_user_voted_${currentUser.username}_${todayDateStr}`;
+  localStorage.removeItem(userVoteKey);
+  alert(`🔄 Seu voto diário de hoje foi LIBERADO para novo teste!`);
+  renderLevel1DirectVotingScreen();
+  checkAuthSession();
 };
 
 // RENDERIZAÇÃO UNIVERSAL DA TELA ÚNICA DIRETA DE VOTAÇÃO (PADRÃO MESTRE DE ABERTURA PARA TODOS OS NÍVEIS 1, 2 E 3)
@@ -374,11 +413,17 @@ function renderLevel1DirectVotingScreen() {
         <div style="background: rgba(16, 185, 129, 0.18); border: 2px solid #10b981; padding: 0.9rem; border-radius: 12px; color: #a7f3d0; font-size: 0.88rem; font-weight: 700; text-align: left; margin-bottom: 1.4rem;">
           🔒 <strong>Dever Cumprido no 5S:</strong> Seu voto diário foi finalizado com sucesso! ${isLevel1 ? 'Bom trabalho na fábrica!' : 'Utilize os quadros e abas abaixo para acompanhar a gestão e auditoria.'}
         </div>
-        ${isLevel1 ? `
-          <button class="btn btn-secondary" onclick="handleLogout()" style="padding: 0.85rem 1.5rem; font-size: 1rem; font-weight: 800; width: 100%; border-radius: 10px;">
-            🚪 Sair do Sistema
+        
+        <div style="display:flex; gap:0.5rem; flex-direction:column;">
+          <button class="btn btn-secondary" onclick="resetCurrentMyVoteForTesting()" style="padding: 0.65rem 1rem; font-size: 0.85rem; font-weight: 700; width: 100%; border-radius: 10px; background: rgba(99,102,241,0.2); border: 1px solid var(--accent-cyan);">
+            🔄 Liberar Meu Voto Novamente (Para Testes)
           </button>
-        ` : ''}
+          ${isLevel1 ? `
+            <button class="btn btn-secondary" onclick="handleLogout()" style="padding: 0.85rem 1.5rem; font-size: 1rem; font-weight: 800; width: 100%; border-radius: 10px;">
+              🚪 Sair do Sistema
+            </button>
+          ` : ''}
+        </div>
       </div>
     `;
     return;
@@ -496,7 +541,7 @@ window.selectLevel1VoteOption = function(opt) {
   });
 };
 
-window.submitLevel1DirectVote = function() {
+window.submitLevel1DirectVote = async function() {
   if (!currentUser) return;
 
   const dayNames = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
@@ -519,13 +564,6 @@ window.submitLevel1DirectVote = function() {
 
   const todayDateStr = new Date().toISOString().split('T')[0];
   const userVoteKey = `5s_user_voted_${currentUser.username}_${todayDateStr}`;
-
-  const isLevel1 = (currentUser.level === 'diario' || currentUser.level === 'colaborador' || currentUser.role === 'colaborador' || currentUser.role === 'lider_diario');
-
-  if (isLevel1 && localStorage.getItem(userVoteKey) === 'true') {
-    renderLevel1DirectVotingScreen();
-    return;
-  }
 
   existingVotes = existingVotes.filter(v => (v.username || v.name) !== currentUser.username && (v.username || v.name) !== currentUser.name);
 
@@ -564,7 +602,7 @@ window.submitLevel1DirectVote = function() {
 
   logActivity(`Marcou ${sensoName} na ${currentDayCode} como ${labelMap[scoreChoice]} no Setor ${sectorName} (Rodízio por ${auditorName} - Origem: ${originSector} ➔ Destino: ${sectorName})${commentSuffix}`);
 
-  pushDataToServer();
+  await pushDataToServer();
   renderLevel1DirectVotingScreen();
 };
 
@@ -845,7 +883,7 @@ const AUDIT_QUESTIONS = {
     "Os materiais estão armazenados de forma a facilitar o acesso e evitar acidentes?",
     "As áreas livres de circulação de pessoas e empilhadeiras estão sem obstrução?",
     "A coleta seletiva de resíduos/recicláveis está identificada e funcionando?",
-    "Os cabos elétricos, mangueiras e fios estão devidamente organizedos e seguros?",
+    "Os cabos elétricos, mangueiras e fios estão devidamente organizados e seguros?",
     "Os colaboradores conhecem e respeitam o padrão de organização do setor?",
     "Equipamentos e máquinas desligados ao final do expediente conforme padrão?"
   ],
