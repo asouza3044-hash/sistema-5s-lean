@@ -351,7 +351,7 @@ window.forceCloudSyncNow = async function() {
   alert('🎉 Sincronização Mestre de Nuvem Concluída! Todos os cadastros e votos de celulares estão atualizados.');
 };
 
-// MODAL INTERATIVO DE ESCOLHA EXPLÍCITA DE VOTO (COM SUPORTE 100% MOBILE TOUCH E CARDS ELEGANTES)
+// MODAL INTERATIVO DE ESCOLHA EXPLÍCITA DE VOTO (COM FECHAMENTO REMOVIDO 100% DO DOM AO CONFIRMAR)
 window.openVoteChoiceModal = function(sectorName, boardKey, sensoName, day) {
   if (!currentUser) return;
 
@@ -363,15 +363,14 @@ window.openVoteChoiceModal = function(sectorName, boardKey, sensoName, day) {
   const myPreviousVote = existingVotes.find(v => (v.username === currentUser.username || v.name === currentUser.name));
   selectedVoteOption = myPreviousVote ? myPreviousVote.score : 'bom';
 
-  let modal = document.getElementById('modal-vote-choice');
-  if (!modal) {
-    modal = document.createElement('div');
-    modal.id = 'modal-vote-choice';
-    modal.className = 'vote-modal-overlay';
-    document.body.appendChild(modal);
-  } else {
-    modal.className = 'vote-modal-overlay';
-  }
+  // Eliminar qualquer modal remanescente
+  const oldModal = document.getElementById('modal-vote-choice');
+  if (oldModal) oldModal.remove();
+
+  const modal = document.createElement('div');
+  modal.id = 'modal-vote-choice';
+  modal.className = 'vote-modal-overlay';
+  document.body.appendChild(modal);
 
   let historyHtml = '';
   if (existingVotes.length > 0) {
@@ -400,7 +399,7 @@ window.openVoteChoiceModal = function(sectorName, boardKey, sensoName, day) {
           <h3 style="margin:0; font-size:1.2rem; color:#ffffff; font-family:Outfit, sans-serif;">🗳️ Registrar Avaliação (Rodízio 5S)</h3>
           <span style="font-size:0.82rem; color:var(--accent-cyan); font-weight:800;">📍 Setor Destino: ${sectorName} • ${sensoName} (${day})</span>
         </div>
-        <button onclick="closeVoteChoiceModal()" ontouchend="closeVoteChoiceModal()" style="background:rgba(255,255,255,0.1); border:none; color:#ffffff; font-size:1.5rem; width:38px; height:38px; border-radius:50%; cursor:pointer; display:flex; align-items:center; justify-content:center;">✕</button>
+        <button type="button" onclick="closeVoteChoiceModal(event)" style="background:rgba(255,255,255,0.1); border:none; color:#ffffff; font-size:1.5rem; width:38px; height:38px; border-radius:50%; cursor:pointer; display:flex; align-items:center; justify-content:center;">✕</button>
       </div>
 
       <div style="background:rgba(99,102,241,0.15); border:1px solid var(--primary); padding:0.65rem 0.85rem; border-radius:10px; margin-bottom:1.1rem; font-size:0.85rem;">
@@ -416,11 +415,11 @@ window.openVoteChoiceModal = function(sectorName, boardKey, sensoName, day) {
         👉 TOCAR NA SUA NOTA ABAIXO PARA SELECIONAR:
       </span>
 
-      <!-- AS 3 OPÇÕES DE VOTO ULTRA-CLACÁVEIS PARA CELULAR (MIN-HEIGHT 54PX E TOUCH OPTIMIZED) -->
+      <!-- AS 3 OPÇÕES DE VOTO CLARAS E CLICÁVEIS PARA QUALQUER NAVEGADOR -->
       <div style="display:flex; flex-direction:column; gap:0.7rem; margin-bottom:1.2rem;">
         
         <!-- BOTAO 1: BOM -->
-        <button type="button" id="vote-opt-bom" onclick="selectVoteOptionInModal('bom')" ontouchstart="selectVoteOptionInModal('bom')" style="display:flex; align-items:center; justify-content:space-between; padding:0.9rem 1.1rem; min-height:56px; border-radius:12px; border:2px solid ${selectedVoteOption === 'bom' ? '#10b981' : 'rgba(255,255,255,0.12)'}; background:${selectedVoteOption === 'bom' ? 'rgba(16,185,129,0.3)' : 'rgba(255,255,255,0.04)'}; color:${selectedVoteOption === 'bom' ? '#ffffff' : '#9ca3af'}; cursor:pointer; text-align:left; transition:all 0.2s; touch-action:manipulation;">
+        <button type="button" id="vote-opt-bom" onclick="selectVoteOptionInModal('bom')" style="display:flex; align-items:center; justify-content:space-between; padding:0.9rem 1.1rem; min-height:56px; border-radius:12px; border:2px solid ${selectedVoteOption === 'bom' ? '#10b981' : 'rgba(255,255,255,0.12)'}; background:${selectedVoteOption === 'bom' ? 'rgba(16,185,129,0.3)' : 'rgba(255,255,255,0.04)'}; color:${selectedVoteOption === 'bom' ? '#ffffff' : '#9ca3af'}; cursor:pointer; text-align:left; transition:all 0.2s; touch-action:manipulation;">
           <div>
             <div style="font-size:1.05rem; font-weight:800;">🟢 Bom (3.0 Pontos)</div>
             <div style="font-size:0.78rem; font-weight:400; color:#a7f3d0; margin-top:0.15rem;">Setor limpo, organizado e dentro dos padrões 5S</div>
@@ -429,7 +428,7 @@ window.openVoteChoiceModal = function(sectorName, boardKey, sensoName, day) {
         </button>
 
         <!-- BOTAO 2: REGULAR -->
-        <button type="button" id="vote-opt-regular" onclick="selectVoteOptionInModal('regular')" ontouchstart="selectVoteOptionInModal('regular')" style="display:flex; align-items:center; justify-content:space-between; padding:0.9rem 1.1rem; min-height:56px; border-radius:12px; border:2px solid ${selectedVoteOption === 'regular' ? '#f59e0b' : 'rgba(255,255,255,0.12)'}; background:${selectedVoteOption === 'regular' ? 'rgba(245,158,11,0.3)' : 'rgba(255,255,255,0.04)'}; color:${selectedVoteOption === 'regular' ? '#ffffff' : '#9ca3af'}; cursor:pointer; text-align:left; transition:all 0.2s; touch-action:manipulation;">
+        <button type="button" id="vote-opt-regular" onclick="selectVoteOptionInModal('regular')" style="display:flex; align-items:center; justify-content:space-between; padding:0.9rem 1.1rem; min-height:56px; border-radius:12px; border:2px solid ${selectedVoteOption === 'regular' ? '#f59e0b' : 'rgba(255,255,255,0.12)'}; background:${selectedVoteOption === 'regular' ? 'rgba(245,158,11,0.3)' : 'rgba(255,255,255,0.04)'}; color:${selectedVoteOption === 'regular' ? '#ffffff' : '#9ca3af'}; cursor:pointer; text-align:left; transition:all 0.2s; touch-action:manipulation;">
           <div>
             <div style="font-size:1.05rem; font-weight:800;">🟡 Regular (2.0 Pontos)</div>
             <div style="font-size:0.78rem; font-weight:400; color:#fde68a; margin-top:0.15rem;">Encontradas pequenas oportunidades de melhoria</div>
@@ -438,7 +437,7 @@ window.openVoteChoiceModal = function(sectorName, boardKey, sensoName, day) {
         </button>
 
         <!-- BOTAO 3: RUIM -->
-        <button type="button" id="vote-opt-ruim" onclick="selectVoteOptionInModal('ruim')" ontouchstart="selectVoteOptionInModal('ruim')" style="display:flex; align-items:center; justify-content:space-between; padding:0.9rem 1.1rem; min-height:56px; border-radius:12px; border:2px solid ${selectedVoteOption === 'ruim' ? '#ef4444' : 'rgba(255,255,255,0.12)'}; background:${selectedVoteOption === 'ruim' ? 'rgba(239,68,68,0.3)' : 'rgba(255,255,255,0.04)'}; color:${selectedVoteOption === 'ruim' ? '#ffffff' : '#9ca3af'}; cursor:pointer; text-align:left; transition:all 0.2s; touch-action:manipulation;">
+        <button type="button" id="vote-opt-ruim" onclick="selectVoteOptionInModal('ruim')" style="display:flex; align-items:center; justify-content:space-between; padding:0.9rem 1.1rem; min-height:56px; border-radius:12px; border:2px solid ${selectedVoteOption === 'ruim' ? '#ef4444' : 'rgba(255,255,255,0.12)'}; background:${selectedVoteOption === 'ruim' ? 'rgba(239,68,68,0.3)' : 'rgba(255,255,255,0.04)'}; color:${selectedVoteOption === 'ruim' ? '#ffffff' : '#9ca3af'}; cursor:pointer; text-align:left; transition:all 0.2s; touch-action:manipulation;">
           <div>
             <div style="font-size:1.05rem; font-weight:800;">🔴 Ruim (1.0 Ponto)</div>
             <div style="font-size:0.78rem; font-weight:400; color:#fca5a5; margin-top:0.15rem;">Não conformidade ou desordem identificada</div>
@@ -455,8 +454,8 @@ window.openVoteChoiceModal = function(sectorName, boardKey, sensoName, day) {
       </div>
 
       <div style="display:flex; gap:0.6rem; justify-content:flex-end;">
-        <button type="button" class="btn btn-secondary" onclick="closeVoteChoiceModal()" ontouchend="closeVoteChoiceModal()" style="padding:0.7rem 1.1rem; font-size:0.88rem; min-height:44px;">✕ Cancelar</button>
-        <button type="button" class="btn btn-primary" onclick="confirmVoteChoiceModal()" ontouchend="confirmVoteChoiceModal()" style="padding:0.7rem 1.5rem; font-size:0.95rem; font-weight:800; min-height:44px; background:linear-gradient(135deg, #6366f1, #06b6d4);">✅ Confirmar Voto</button>
+        <button type="button" class="btn btn-secondary" onclick="closeVoteChoiceModal(event)" style="padding:0.7rem 1.1rem; font-size:0.88rem; min-height:44px;">✕ Cancelar</button>
+        <button type="button" class="btn btn-primary" onclick="confirmVoteChoiceModal(event)" style="padding:0.7rem 1.5rem; font-size:0.95rem; font-weight:800; min-height:44px; background:linear-gradient(135deg, #6366f1, #06b6d4);">✅ Confirmar Voto</button>
       </div>
 
     </div>
@@ -465,45 +464,31 @@ window.openVoteChoiceModal = function(sectorName, boardKey, sensoName, day) {
   modal.style.display = 'flex';
 };
 
-// ALTERNAR OPÇÃO SELECIONADA DENTRO DA MODAL COM DESTAQUE VISUAL MÁXIMO
-window.selectVoteOptionInModal = function(opt) {
-  selectedVoteOption = opt;
-
-  const stylesMap = {
-    bom: { border: '#10b981', bg: 'rgba(16,185,129,0.3)' },
-    regular: { border: '#f59e0b', bg: 'rgba(245,158,11,0.3)' },
-    ruim: { border: '#ef4444', bg: 'rgba(239,68,68,0.3)' }
-  };
-
-  ['bom', 'regular', 'ruim'].forEach(o => {
-    const btn = document.getElementById(`vote-opt-${o}`);
-    const chk = document.getElementById(`chk-${o}`);
-    if (o === opt) {
-      if (btn) {
-        btn.style.borderColor = stylesMap[o].border;
-        btn.style.background = stylesMap[o].bg;
-        btn.style.color = '#ffffff';
-      }
-      if (chk) chk.style.display = 'inline';
-    } else {
-      if (btn) {
-        btn.style.borderColor = 'rgba(255,255,255,0.12)';
-        btn.style.background = 'rgba(255,255,255,0.04)';
-        btn.style.color = '#9ca3af';
-      }
-      if (chk) chk.style.display = 'none';
-    }
-  });
-};
-
-window.closeVoteChoiceModal = function() {
+// FECHAR MODAL DEFINITIVAMENTE E REMOVER DO DOM
+window.closeVoteChoiceModal = function(e) {
+  if (e && typeof e.preventDefault === 'function') {
+    e.preventDefault();
+    e.stopPropagation();
+  }
   const modal = document.getElementById('modal-vote-choice');
-  if (modal) modal.style.display = 'none';
+  if (modal) {
+    modal.style.display = 'none';
+    modal.remove(); // REMOVE DO DOM INTEGRALMENTE
+  }
   currentVoteTarget = null;
 };
 
-window.confirmVoteChoiceModal = function() {
-  if (!currentVoteTarget || !currentUser) return;
+// CONFIRMAR VOTO, SALVAR NA NUVEM E FECHAR MODAL INSTANTANEAMENTE
+window.confirmVoteChoiceModal = function(e) {
+  if (e && typeof e.preventDefault === 'function') {
+    e.preventDefault();
+    e.stopPropagation();
+  }
+
+  if (!currentVoteTarget || !currentUser) {
+    closeVoteChoiceModal();
+    return;
+  }
 
   const { sectorName, boardKey, sensoName, day } = currentVoteTarget;
   const commentInput = document.getElementById('vote-comment-input');
@@ -515,6 +500,7 @@ window.confirmVoteChoiceModal = function() {
   const currentSummary = getBoardCellSummary(boardKey);
   let existingVotes = currentSummary.votes || [];
 
+  // Filtrar voto anterior do mesmo usuário
   existingVotes = existingVotes.filter(v => (v.username || v.name) !== currentUser.username && (v.username || v.name) !== currentUser.name);
 
   const timestamp = new Date().toLocaleString('pt-BR');
@@ -552,7 +538,10 @@ window.confirmVoteChoiceModal = function() {
     localStorage.setItem(userVoteKey, 'true');
   }
 
+  // 1. FECHAR E REMOVER O MODAL IMEDIATAMENTE!
   closeVoteChoiceModal();
+
+  // 2. RENDERIZAR O QUADRO ATUALIZADO
   renderFactoryBoard();
 
   const labelMap = { bom: '🟢 BOM', regular: '🟡 REGULAR', ruim: '🔴 RUIM' };
@@ -568,6 +557,37 @@ window.confirmVoteChoiceModal = function() {
   }
 
   pushDataToServer();
+};
+
+// ALTERNAR OPÇÃO SELECIONADA DENTRO DA MODAL COM DESTAQUE VISUAL MÁXIMO
+window.selectVoteOptionInModal = function(opt) {
+  selectedVoteOption = opt;
+
+  const stylesMap = {
+    bom: { border: '#10b981', bg: 'rgba(16,185,129,0.3)' },
+    regular: { border: '#f59e0b', bg: 'rgba(245,158,11,0.3)' },
+    ruim: { border: '#ef4444', bg: 'rgba(239,68,68,0.3)' }
+  };
+
+  ['bom', 'regular', 'ruim'].forEach(o => {
+    const btn = document.getElementById(`vote-opt-${o}`);
+    const chk = document.getElementById(`chk-${o}`);
+    if (o === opt) {
+      if (btn) {
+        btn.style.borderColor = stylesMap[o].border;
+        btn.style.background = stylesMap[o].bg;
+        btn.style.color = '#ffffff';
+      }
+      if (chk) chk.style.display = 'inline';
+    } else {
+      if (btn) {
+        btn.style.borderColor = 'rgba(255,255,255,0.12)';
+        btn.style.background = 'rgba(255,255,255,0.04)';
+        btn.style.color = '#9ca3af';
+      }
+      if (chk) chk.style.display = 'none';
+    }
+  });
 };
 
 window.cycleFactoryBoard = function(sectorName, boardKey, sensoName, day) {
@@ -1486,7 +1506,7 @@ function renderFactoryBoard() {
           </div>
 
           <!-- BOTÃO GIGANTE PROPRIO PARA CELULAR DENTRO DO BANNER -->
-          <button type="button" class="btn btn-primary" style="width:100%; padding:0.85rem 1rem; font-size:1rem; font-weight:800; border-radius:12px; background:linear-gradient(135deg, #6366f1, #06b6d4); box-shadow:0 4px 15px rgba(99, 102, 241, 0.4); display:flex; align-items:center; justify-content:center; gap:0.5rem; cursor:pointer;" onclick="openVoteChoiceModal('${selectedSector}', '${todayBoardKey}', '${todayFocus.name}', '${currentDayCode}')" ontouchend="openVoteChoiceModal('${selectedSector}', '${todayBoardKey}', '${todayFocus.name}', '${currentDayCode}')">
+          <button type="button" class="btn btn-primary" style="width:100%; padding:0.85rem 1rem; font-size:1rem; font-weight:800; border-radius:12px; background:linear-gradient(135deg, #6366f1, #06b6d4); box-shadow:0 4px 15px rgba(99, 102, 241, 0.4); display:flex; align-items:center; justify-content:center; gap:0.5rem; cursor:pointer;" onclick="openVoteChoiceModal('${selectedSector}', '${todayBoardKey}', '${todayFocus.name}', '${currentDayCode}')">
             🗳️ TOCAR AQUI PARA AVALIAR HOJE (${currentDayCode}: ${todayFocus.senso.toUpperCase()})
           </button>
         </div>
@@ -1557,7 +1577,7 @@ function renderFactoryBoard() {
 
               return `
                 <td style="vertical-align:middle; padding:0.3rem 0.2rem;">
-                  <button class="score-btn-factory selected" data-level="${summary.status}" style="display:inline-block; padding:0.35rem 0.5rem; font-size:0.75rem; font-weight:700; cursor:pointer; border:none;" onclick="openVoteChoiceModal('${sec}', '${boardKey}', '${s.name}', '${s.dayCode}')" ontouchend="openVoteChoiceModal('${sec}', '${boardKey}', '${s.name}', '${s.dayCode}')" title="Clique para abrir opções de voto. Média Atual: ${summary.avgPoints} (${summary.voteCount} votos)">
+                  <button class="score-btn-factory selected" data-level="${summary.status}" style="display:inline-block; padding:0.35rem 0.5rem; font-size:0.75rem; font-weight:700; cursor:pointer; border:none;" onclick="openVoteChoiceModal('${sec}', '${boardKey}', '${s.name}', '${s.dayCode}')" title="Clique para abrir opções de voto. Média Atual: ${summary.avgPoints} (${summary.voteCount} votos)">
                     ${iconMap[summary.status]} ${countBadge}
                   </button>
                 </td>
@@ -1678,7 +1698,7 @@ function renderFactoryBoard() {
 
               return `
                 <td style="vertical-align:middle; ${day === currentDayCode ? 'background:rgba(99,102,241,0.1);' : ''}">
-                  <button class="btn btn-secondary" style="padding:0.4rem 0.75rem; font-size:0.85rem; font-weight:800; cursor:pointer; min-height:42px; width:100%; border-radius:8px;" onclick="openVoteChoiceModal('${selectedSector}', '${boardKey}', '${s.name}', '${day}')" ontouchend="openVoteChoiceModal('${selectedSector}', '${boardKey}', '${s.name}', '${day}')" title="Clique para abrir caixa de escolha de voto. Média: ${summary.avgPoints} (${summary.voteCount} votos)">
+                  <button class="btn btn-secondary" style="padding:0.4rem 0.75rem; font-size:0.85rem; font-weight:800; cursor:pointer; min-height:42px; width:100%; border-radius:8px;" onclick="openVoteChoiceModal('${selectedSector}', '${boardKey}', '${s.name}', '${day}')" title="Clique para abrir caixa de escolha de voto. Média: ${summary.avgPoints} (${summary.voteCount} votos)">
                     ${iconMap[summary.status]} ${countBadge}
                   </button>
                 </td>
