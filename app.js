@@ -845,7 +845,7 @@ const AUDIT_QUESTIONS = {
     "Os materiais estão armazenados de forma a facilitar o acesso e evitar acidentes?",
     "As áreas livres de circulação de pessoas e empilhadeiras estão sem obstrução?",
     "A coleta seletiva de resíduos/recicláveis está identificada e funcionando?",
-    "Os cabos elétricos, mangueiras e fios estão devidamente organizados e seguros?",
+    "Os cabos elétricos, mangueiras e fios estão devidamente organizedos e seguros?",
     "Os colaboradores conhecem e respeitam o padrão de organização do setor?",
     "Equipamentos e máquinas desligados ao final do expediente conforme padrão?"
   ],
@@ -1443,7 +1443,7 @@ window.selectScore3Level = function(sensoName, qNum, qKey, level) {
   pushDataToServer();
 };
 
-// 5. RENDERIZAÇÃO DO QUADRO DA FÁBRICA COM DISTINÇÃO CLARA ENTRE CÉLULAS PENDENTES (0 VOTOS) E VOTADAS (1+ VOTOS)
+// 5. RENDERIZAÇÃO DO QUADRO DA FÁBRICA COM KPIS EXECUTIVOS E DISTINÇÃO CLARA (EXCLUSIVO PARA DIRETORIA & AUDITORIA SENAI)
 function renderFactoryBoard() {
   const container = document.getElementById('factory-board-container');
   const titleEl = document.getElementById('factory-board-title');
@@ -1510,8 +1510,57 @@ function renderFactoryBoard() {
 
   const days = ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
 
+  // CÁLCULO DE KPIS EXECUTIVOS PARA CABEÇALHO DA AUDITORIA DA DIRETORIA
+  let totalPossibleSectors = IMPAKTTO_SECTORS.length;
+  let evaluatedSectorsCount = 0;
+  let totalVotesToday = 0;
+  let overallPointsSum = 0;
+
+  IMPAKTTO_SECTORS.forEach(sec => {
+    let sectorVoted = false;
+    SENSOS_LIST.forEach(s => {
+      const bKey = `${sec}_${s.key}_${currentDayCode}`;
+      const summary = getBoardCellSummary(bKey);
+      if (summary.voteCount > 0) {
+        sectorVoted = true;
+        totalVotesToday += summary.voteCount;
+        overallPointsSum += summary.avgPoints;
+      }
+    });
+    if (sectorVoted) evaluatedSectorsCount++;
+  });
+
+  const coveragePct = Math.round((evaluatedSectorsCount / totalPossibleSectors) * 100);
+  const overallScoreAvg = totalVotesToday > 0 ? Math.round((overallPointsSum / (totalPossibleSectors * SENSOS_LIST.length)) * 10) / 10 : 3.0;
+
+  let html = `
+    <!-- HEADER EXECUTIVO DE KPIS PARA A DIRETORIA & AUDITORIA SENAI -->
+    <div style="background: linear-gradient(135deg, rgba(30, 41, 59, 0.9), rgba(15, 23, 42, 0.9)); border: 1px solid var(--border-highlight); border-radius: 12px; padding: 0.85rem 1.1rem; margin-bottom: 1.1rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);">
+      <div style="display: flex; align-items: center; gap: 0.85rem;">
+        <div style="background: rgba(16, 185, 129, 0.2); border: 1px solid #10b981; padding: 0.55rem 0.75rem; border-radius: 10px; text-align: center;">
+          <span style="font-size: 0.7rem; font-weight: 800; color: #34d399; text-transform: uppercase; display: block;">COBERTURA DIÁRIA</span>
+          <span style="font-size: 1.25rem; font-weight: 800; color: #ffffff;">${coveragePct}%</span>
+        </div>
+        <div>
+          <span style="font-size: 0.88rem; font-weight: 800; color: #ffffff; display: block;">
+            📊 Auditoria Diária 5S • IMPAK TTO Plásticos de Engenharia
+          </span>
+          <span style="font-size: 0.78rem; color: var(--text-muted);">
+            ${evaluatedSectorsCount} de ${totalPossibleSectors} Setores Avaliados Hoje (${currentDayCode}) • Total de Votos: <strong>${totalVotesToday}</strong>
+          </span>
+        </div>
+      </div>
+      <div style="display: flex; align-items: center; gap: 0.5rem;">
+        <span style="font-size: 0.75rem; color: #9ca3af; font-weight: 700;">STATUS FÁBRICA:</span>
+        <span style="background: ${overallScoreAvg >= 2.5 ? 'rgba(16,185,129,0.2)' : 'rgba(245,158,11,0.2)'}; border: 1px solid ${overallScoreAvg >= 2.5 ? '#10b981' : '#f59e0b'}; color: ${overallScoreAvg >= 2.5 ? '#34d399' : '#fde047'}; font-size: 0.8rem; font-weight: 800; padding: 0.35rem 0.75rem; border-radius: 20px;">
+          ${overallScoreAvg >= 2.5 ? '🟢 Padrão de Excelência' : '🟡 Atenção / Em Ajuste'} (${overallScoreAvg}/3.0 pts)
+        </span>
+      </div>
+    </div>
+  `;
+
   if (isMonitor || selectedSector === 'ALL') {
-    let html = `
+    html += `
       <table class="factory-board-table">
         <thead>
           <tr>
@@ -1611,10 +1660,9 @@ function renderFactoryBoard() {
     `;
 
     html += `</tbody></table>`;
-    container.innerHTML = html;
 
   } else {
-    let html = `
+    html += `
       <table class="factory-board-table">
         <thead>
           <tr>
@@ -1683,8 +1731,23 @@ function renderFactoryBoard() {
     });
 
     html += `</tbody></table>`;
-    container.innerHTML = html;
   }
+
+  // LEGENDA EXECUTIVA AO RODAPÉ
+  html += `
+    <div style="margin-top: 0.9rem; padding: 0.65rem 0.95rem; background: rgba(0,0,0,0.25); border-radius: 8px; border: 1px solid rgba(255,255,255,0.08); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem; font-size: 0.78rem; color: var(--text-muted);">
+      <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
+        <span style="font-weight: 800; color: #ffffff;">📌 LEGENDA GOVERNANÇA SENAI & DIRETORIA:</span>
+        <span><strong style="color: #9ca3af;">⚪ Pendente:</strong> Aguardando rodízio do dia</span>
+        <span><strong style="color: #34d399;">🟢 Bom (3.0):</strong> Conforme</span>
+        <span><strong style="color: #fde047;">🟡 Regular (2.0):</strong> Oportunidade</span>
+        <span><strong style="color: #fca5a5;">🔴 Ruim (1.0):</strong> Não Conforme</span>
+      </div>
+      <span>💡 Sincronização automatizada em nuvem real-time</span>
+    </div>
+  `;
+
+  container.innerHTML = html;
 }
 
 window.changeFactorySectorFilter = function(val) {
