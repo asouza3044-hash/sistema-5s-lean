@@ -1224,7 +1224,7 @@ function renderUserManagementTable() {
   const container = document.getElementById('user-management-table-container');
   if (!container) return;
 
-  const usersList = Object.values(userDatabase).filter(u => u.username !== 'monitor');
+  const usersList = Object.values(userDatabase);
   const todayDateStr = new Date().toISOString().split('T')[0];
 
   let html = `
