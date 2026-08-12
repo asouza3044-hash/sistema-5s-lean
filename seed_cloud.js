@@ -1,12 +1,7 @@
-const CLOUD_MASTER_API = 'https://jsonblob.com/api/jsonBlob/019ff2fe-dc89-756e-bec9-d891b4f8ee03';
+const CLOUD_MASTER_API = 'https://api.restful-api.dev/objects/ff8081819f7e10ae019ff3b195e32be6';
 
-async function purgeCloudMaster() {
+async function seedRestfulCloud() {
   try {
-    const res = await fetch(CLOUD_MASTER_API, { headers: { 'Accept': 'application/json' } });
-    let data = await res.json();
-    
-    if (!data) data = {};
-
     const OFFICIAL_IMPAK_USERS = {
       admin: { username: 'admin', password: 'mestre5s', name: 'Alexandre Souza', role: 'administrador', level: 'senior', sector: 'Acabamento', title: 'Grupo 3: Gerente de Projeto / Líder Mestre' },
       kaio: { username: 'kaio.diretor', password: '5s2026', name: 'Kaio', role: 'administrador', level: 'senior', sector: 'Usinagem', title: 'Grupo 3: Diretor' },
@@ -23,25 +18,38 @@ async function purgeCloudMaster() {
       monitor: { username: 'monitor', password: '5s2026', name: 'Gestão Visual TV Fábrica & Escritório', role: 'monitor', level: 'monitor', title: '📺 Gestão Visual 5S (TV 16:9)' }
     };
 
-    data.users = OFFICIAL_IMPAK_USERS;
+    const payload = {
+      name: 'IMPAK_TTO_5S_MASTER_STATE',
+      data: {
+        users: OFFICIAL_IMPAK_USERS,
+        activity_logs: [
+          { id: 1786450000000, userName: 'Alexandre Souza', action: 'Iniciou Auditoria Diária 5S da IMPAK TTO', timestamp: '11/08/2026, 18:00:00' }
+        ],
+        factory_board: {
+          'Armários_seiri_TER': {
+            status: 'bom',
+            avgPoints: 3,
+            votes: [{ username: 'bruno.armarios', name: 'Bruno', role: 'lider_diario', score: 'bom', points: 3, comment: 'Bancadas 100% limpas e organizadas', timestamp: '11/08/2026 18:15' }]
+          }
+        },
+        audit_scores: {}
+      }
+    };
 
-    const putRes = await fetch(CLOUD_MASTER_API, {
+    const res = await fetch(CLOUD_MASTER_API, {
       method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
-      },
-      body: JSON.stringify(data)
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
     });
 
-    if (putRes.ok) {
-      console.log('🎉 BANCO DE DADOS MASTER DA NUVEM REESTRUTURADO APENAS COM INTEGRANTES OFICIAIS!');
+    if (res.ok) {
+      console.log('🎉 NUVEM RESTFUL-API POPULADA COM SUCESSO TOTAL!');
     } else {
-      console.error('Erro ao atualizar a nuvem:', putRes.status);
+      console.error('Erro na população da nuvem:', res.status);
     }
   } catch (err) {
-    console.error('Erro ao purgar nuvem:', err);
+    console.error('Erro na semente da nuvem:', err);
   }
 }
 
-purgeCloudMaster();
+seedRestfulCloud();

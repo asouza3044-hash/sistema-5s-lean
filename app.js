@@ -328,11 +328,11 @@ async function pushDataToServer() {
 
 async function pullDataFromServer() {
   try {
-    const res = await fetch(CLOUD_MASTER_API, {
-      headers: { 'Accept': 'application/json' }
-    });
+    const res = await fetch(CLOUD_MASTER_API);
     if (res.ok) {
-      const d = await res.json();
+      const raw = await res.json();
+      const d = (raw && raw.data) ? raw.data : raw;
+
       if (d && !d.error) {
         let needsReRender = false;
 
