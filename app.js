@@ -176,7 +176,12 @@ function purgeDeletedUsers(usersObj) {
 }
 
 // Estado Global
-let userDatabase = purgeDeletedUsers({ ...DEFAULT_USERS, ...(JSON.parse(localStorage.getItem('5s_impaktto_users')) || {}) });
+const mobileCustomUsersInit = JSON.parse(localStorage.getItem('5s_mobile_custom_users')) || {};
+let userDatabase = purgeDeletedUsers({ 
+  ...DEFAULT_USERS, 
+  ...mobileCustomUsersInit, 
+  ...(JSON.parse(localStorage.getItem('5s_impaktto_users')) || {}) 
+});
 userDatabase.admin = DEFAULT_USERS.admin;
 userDatabase.clayton = DEFAULT_USERS.clayton;
 userDatabase.monitor = DEFAULT_USERS.monitor;
@@ -734,6 +739,10 @@ window.handleAddUserFromADM = async function(e) {
   userDatabase[username] = newUser;
   localStorage.setItem('5s_impaktto_users', JSON.stringify(userDatabase));
 
+  let mobileUsers = JSON.parse(localStorage.getItem('5s_mobile_custom_users')) || {};
+  mobileUsers[username] = newUser;
+  localStorage.setItem('5s_mobile_custom_users', JSON.stringify(mobileUsers));
+
   logActivity(`✨ Cadastrou o colaborador "${name}" (${titleMap[level]}) direto pelo Painel ADM`);
   renderUserManagementTable();
   await pushDataToServer();
@@ -1242,9 +1251,9 @@ function renderUserManagementTable() {
         ➕ CADASTRO RÁPIDO DE COLABORADOR (INCLUSÃO DIRETA PELO ADM)
       </span>
       <form onsubmit="handleAddUserFromADM(event)" style="display:flex; gap:0.5rem; flex-wrap:wrap; align-items:center;">
-        <input type="text" id="adm-add-name" class="form-control" placeholder="Nome Completo (ex: João Silva)" style="flex:1; min-width:180px; font-size:0.8rem; padding:0.4rem 0.6rem;" required>
-        <input type="text" id="adm-add-username" class="form-control" placeholder="Usuário (ex: joao.silva)" style="flex:1; min-width:140px; font-size:0.8rem; padding:0.4rem 0.6rem;" required>
-        <input type="text" id="adm-add-password" class="form-control" placeholder="Senha (padrão: 5s2026)" value="5s2026" style="width:130px; font-size:0.8rem; padding:0.4rem 0.6rem;">
+        <input type="text" id="adm-add-name" class="form-control" placeholder="Nome Completo (ex: João Silva)" style="flex:1; min-width:180px; font-size:0.8rem; padding:0.4rem 0.6rem;" required autocorrect="off" spellcheck="false">
+        <input type="text" id="adm-add-username" class="form-control" placeholder="Usuário (ex: joao.silva)" style="flex:1; min-width:140px; font-size:0.8rem; padding:0.4rem 0.6rem;" required autocorrect="off" autocapitalize="none" spellcheck="false">
+        <input type="text" id="adm-add-password" class="form-control" placeholder="Senha (padrão: 5s2026)" value="5s2026" style="width:130px; font-size:0.8rem; padding:0.4rem 0.6rem;" autocorrect="off" autocapitalize="none" spellcheck="false">
         
         <select id="adm-add-sector" class="form-control" style="width:auto; font-size:0.8rem; padding:0.4rem 0.6rem;">
           ${IMPAKTTO_SECTORS.map(s => `<option value="${s}">📍 ${s}</option>`).join('')}
