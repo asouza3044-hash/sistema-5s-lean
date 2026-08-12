@@ -324,6 +324,7 @@ async function pushDataToServer() {
   renderFactoryBoard();
   renderActivityLogs();
   calculateAuditResults();
+  renderUserManagementTable();
 }
 
 async function pullDataFromServer() {
@@ -726,6 +727,7 @@ window.handleAddUserFromADM = async function(e) {
   localStorage.setItem('5s_impaktto_users', JSON.stringify(userDatabase));
 
   logActivity(`✨ Cadastrou o colaborador "${name}" (${titleMap[level]}) direto pelo Painel ADM`);
+  renderUserManagementTable();
   await pushDataToServer();
 
   if (nameInput) nameInput.value = '';
