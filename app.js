@@ -256,8 +256,13 @@ async function pushDataToServer() {
   let cloudState = { users: {}, activity_logs: [], factory_board: {}, audit_scores: {} };
 
   try {
-    const res = await fetch(CLOUD_MASTER_API, {
-      headers: { 'Accept': 'application/json' }
+    const res = await fetch(`${CLOUD_MASTER_API}?t=${Date.now()}`, {
+      cache: 'no-store',
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Accept': 'application/json'
+      }
     });
     if (res.ok) {
       const remote = await res.json();
@@ -338,7 +343,14 @@ async function pushDataToServer() {
 
 async function pullDataFromServer() {
   try {
-    const res = await fetch(CLOUD_MASTER_API);
+    const res = await fetch(`${CLOUD_MASTER_API}?t=${Date.now()}`, {
+      cache: 'no-store',
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Accept': 'application/json'
+      }
+    });
     if (res.ok) {
       const raw = await res.json();
       const d = (raw && raw.data) ? raw.data : raw;
