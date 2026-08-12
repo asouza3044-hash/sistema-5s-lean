@@ -262,6 +262,10 @@ async function pushDataToServer() {
     }
   } catch(e) {}
 
+  // MESCLA BIDIRECIONAL DA BASE DE USUÁRIOS (PRESERVA NOVOS USUÁRIOS CRIADOS SEM APAGAR)
+  const mergedUsers = purgeDeletedUsers({ ...DEFAULT_USERS, ...(cloudState.users || {}), ...userDatabase });
+  userDatabase = mergedUsers;
+
   // MESCLA BIDIRECIONAL DAS CÉLULAS DO QUADRO DA FÁBRICA
   const cloudBoard = cloudState.factory_board || {};
   
@@ -338,9 +342,13 @@ async function pullDataFromServer() {
         let needsReRender = false;
 
         if (d.users && typeof d.users === 'object') {
-          userDatabase = purgeDeletedUsers(d.users);
-          localStorage.setItem('5s_impaktto_users', JSON.stringify(userDatabase));
-          needsReRender = true;
+          // MESCLA UNIFICADA: Preserva usuários recém-criados localmente + incorpora remotos da nuvem
+          const mergedUsers = purgeDeletedUsers({ ...DEFAULT_USERS, ...d.users, ...userDatabase });
+          if (Object.keys(mergedUsers).length !== Object.keys(userDatabase).length || JSON.stringify(Object.keys(mergedUsers)) !== JSON.stringify(Object.keys(userDatabase))) {
+            userDatabase = mergedUsers;
+            localStorage.setItem('5s_impaktto_users', JSON.stringify(userDatabase));
+            needsReRender = true;
+          }
         }
 
         if (Array.isArray(d.activity_logs)) {
