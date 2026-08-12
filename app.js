@@ -431,7 +431,14 @@ function renderLevel1DirectVotingScreen() {
   const userVoteKey = currentUser ? `5s_user_voted_${currentUser.username}_${todayDateStr}` : '5s_user_voted_guest';
   const hasVotedToday = (localStorage.getItem(userVoteKey) === 'true');
 
-  level1SelectedOption = 'bom';
+  if (!level1SelectedOption) {
+    level1SelectedOption = 'bom';
+  }
+
+  const selOpt = level1SelectedOption || 'bom';
+  const isBom = (selOpt === 'bom');
+  const isRegular = (selOpt === 'regular');
+  const isRuim = (selOpt === 'ruim');
 
   const levelBadgeLabel = isLevel1 
     ? '🟢 Nível 1: Chão de Fábrica' 
@@ -505,31 +512,31 @@ function renderLevel1DirectVotingScreen() {
         👉 TOCAR NA SUA NOTA ABAIXO PARA SELECIONAR:
       </span>
 
-      <!-- AS 3 OPÇÕES DE VOTO CLARAS E CLICÁVEIS -->
+      <!-- AS 3 OPÇÕES DE VOTO CLARAS E CLICÁVEIS DINAÂMICAS -->
       <div style="display:flex; flex-direction:column; gap:0.75rem; margin-bottom:1.2rem;">
         
-        <button type="button" id="lvl1-opt-bom" onclick="selectLevel1VoteOption('bom')" style="display:flex; align-items:center; justify-content:space-between; padding:1rem 1.15rem; min-height:60px; border-radius:12px; border:2px solid #10b981; background:rgba(16,185,129,0.3); color:#ffffff; cursor:pointer; text-align:left; touch-action:manipulation;">
+        <button type="button" id="lvl1-opt-bom" onclick="selectLevel1VoteOption('bom')" style="display:flex; align-items:center; justify-content:space-between; padding:1rem 1.15rem; min-height:60px; border-radius:12px; border:2px solid ${isBom ? '#10b981' : 'rgba(255,255,255,0.12)'}; background:${isBom ? 'rgba(16,185,129,0.3)' : 'rgba(255,255,255,0.04)'}; color:${isBom ? '#ffffff' : '#9ca3af'}; cursor:pointer; text-align:left; touch-action:manipulation;">
           <div>
             <div style="font-size:1.1rem; font-weight:800;">🟢 Bom (3.0 Pontos)</div>
             <div style="font-size:0.78rem; font-weight:400; color:#a7f3d0; margin-top:0.15rem;">Setor limpo, organizado e dentro dos padrões 5S</div>
           </div>
-          <span id="lvl1-chk-bom" style="font-size:1.5rem; display:inline;">✅</span>
+          <span id="lvl1-chk-bom" style="font-size:1.5rem; display:${isBom ? 'inline' : 'none'};">✅</span>
         </button>
 
-        <button type="button" id="lvl1-opt-regular" onclick="selectLevel1VoteOption('regular')" style="display:flex; align-items:center; justify-content:space-between; padding:1rem 1.15rem; min-height:60px; border-radius:12px; border:2px solid rgba(255,255,255,0.12); background:rgba(255,255,255,0.04); color:#9ca3af; cursor:pointer; text-align:left; touch-action:manipulation;">
+        <button type="button" id="lvl1-opt-regular" onclick="selectLevel1VoteOption('regular')" style="display:flex; align-items:center; justify-content:space-between; padding:1rem 1.15rem; min-height:60px; border-radius:12px; border:2px solid ${isRegular ? '#f59e0b' : 'rgba(255,255,255,0.12)'}; background:${isRegular ? 'rgba(245,158,11,0.3)' : 'rgba(255,255,255,0.04)'}; color:${isRegular ? '#ffffff' : '#9ca3af'}; cursor:pointer; text-align:left; touch-action:manipulation;">
           <div>
             <div style="font-size:1.1rem; font-weight:800;">🟡 Regular (2.0 Pontos)</div>
             <div style="font-size:0.78rem; font-weight:400; color:#fde68a; margin-top:0.15rem;">Encontradas pequenas oportunidades de melhoria</div>
           </div>
-          <span id="lvl1-chk-regular" style="font-size:1.5rem; display:none;">✅</span>
+          <span id="lvl1-chk-regular" style="font-size:1.5rem; display:${isRegular ? 'inline' : 'none'};">✅</span>
         </button>
 
-        <button type="button" id="lvl1-opt-ruim" onclick="selectLevel1VoteOption('ruim')" style="display:flex; align-items:center; justify-content:space-between; padding:1rem 1.15rem; min-height:60px; border-radius:12px; border:2px solid rgba(255,255,255,0.12); background:rgba(255,255,255,0.04); color:#9ca3af; cursor:pointer; text-align:left; touch-action:manipulation;">
+        <button type="button" id="lvl1-opt-ruim" onclick="selectLevel1VoteOption('ruim')" style="display:flex; align-items:center; justify-content:space-between; padding:1rem 1.15rem; min-height:60px; border-radius:12px; border:2px solid ${isRuim ? '#ef4444' : 'rgba(255,255,255,0.12)'}; background:${isRuim ? 'rgba(239,68,68,0.3)' : 'rgba(239,68,68,0.15)'}; color:${isRuim ? '#ffffff' : '#9ca3af'}; cursor:pointer; text-align:left; touch-action:manipulation;">
           <div>
             <div style="font-size:1.1rem; font-weight:800;">🔴 Ruim (1.0 Ponto)</div>
             <div style="font-size:0.78rem; font-weight:400; color:#fca5a5; margin-top:0.15rem;">Não conformidade ou desordem identificada</div>
           </div>
-          <span id="lvl1-chk-ruim" style="font-size:1.5rem; display:none;">✅</span>
+          <span id="lvl1-chk-ruim" style="font-size:1.5rem; display:${isRuim ? 'inline' : 'none'};">✅</span>
         </button>
       </div>
 
@@ -640,6 +647,7 @@ window.submitLevel1DirectVote = async function() {
   logActivity(`Marcou ${sensoName} na ${currentDayCode} como ${labelMap[scoreChoice]} no Setor ${sectorName} (Rodízio por ${auditorName} - Origem: ${originSector} ➔ Destino: ${sectorName})${commentSuffix}`);
 
   await pushDataToServer();
+  level1SelectedOption = 'bom';
   renderLevel1DirectVotingScreen();
 };
 
