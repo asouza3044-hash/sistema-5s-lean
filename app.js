@@ -393,13 +393,18 @@ window.resetCurrentMyVoteForTesting = function() {
 
 // RENDERIZAÇÃO UNIVERSAL DA TELA ÚNICA DIRETA DE VOTAÇÃO (PADRÃO MESTRE DE ABERTURA PARA TODOS OS NÍVEIS 1, 2 E 3)
 function renderLevel1DirectVotingScreen() {
-  let container = document.getElementById('universal-voting-container');
-  if (!container) container = document.getElementById('factory-board-container');
-  if (!container) return;
-
   const level = currentUser ? (currentUser.level || 'colaborador') : 'colaborador';
   const role = currentUser ? (currentUser.role || 'colaborador') : 'colaborador';
   const isLevel1 = (level === 'diario' || level === 'colaborador' || role === 'colaborador' || role === 'lider_diario');
+
+  let container;
+  if (isLevel1) {
+    container = document.getElementById('factory-board-container');
+  } else {
+    container = document.getElementById('universal-voting-container');
+  }
+  if (!container) container = document.getElementById('factory-board-container');
+  if (!container) return;
 
   const titleEl = document.getElementById('factory-board-title');
   const subtitleEl = document.getElementById('factory-board-subtitle');
