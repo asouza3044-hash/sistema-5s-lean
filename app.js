@@ -400,18 +400,12 @@ window.resetCurrentMyVoteForTesting = function() {
 
 // RENDERIZAÇÃO UNIVERSAL DA TELA ÚNICA DIRETA DE VOTAÇÃO (PADRÃO MESTRE DE ABERTURA PARA TODOS OS NÍVEIS 1, 2 E 3)
 function renderLevel1DirectVotingScreen() {
+  const container = document.getElementById('universal-voting-container') || document.getElementById('factory-board-container');
+  if (!container) return;
+
   const level = currentUser ? (currentUser.level || 'colaborador') : 'colaborador';
   const role = currentUser ? (currentUser.role || 'colaborador') : 'colaborador';
   const isLevel1 = (level === 'diario' || level === 'colaborador' || role === 'colaborador' || role === 'lider_diario');
-
-  let container;
-  if (isLevel1) {
-    container = document.getElementById('factory-board-container');
-  } else {
-    container = document.getElementById('universal-voting-container');
-  }
-  if (!container) container = document.getElementById('factory-board-container');
-  if (!container) return;
 
   const titleEl = document.getElementById('factory-board-title');
   const subtitleEl = document.getElementById('factory-board-subtitle');
@@ -1068,9 +1062,9 @@ function checkAuthSession() {
     document.body.classList.remove('monitor-mode');
 
     if (isLider || isColaborador) {
-      // NÍVEL 1: EXIBE TENSAMENTE A TELA ÚNICA DE VOTAÇÃO DIRETA (ZERO POLUIÇÃO DE TABELAS)
-      if (cardUniversalVoting) cardUniversalVoting.style.display = 'none';
-      if (cardFactoryBoard) cardFactoryBoard.style.display = 'block';
+      // NÍVEL 1: EXIBE EXCLUSIVAMENTE A TELA ÚNICA DE VOTAÇÃO DIRETA (EXATAMENTE COMO NA FOTO DO XANDINHO)
+      if (cardUniversalVoting) cardUniversalVoting.style.display = 'block';
+      if (cardFactoryBoard) cardFactoryBoard.style.display = 'none';
       if (cardMaturity) cardMaturity.style.display = 'none';
       if (cardActivityFeed) cardActivityFeed.style.display = 'none';
       if (cardAuditChecklist) cardAuditChecklist.style.display = 'none';
