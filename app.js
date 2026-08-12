@@ -130,9 +130,6 @@ const DEFAULT_USERS = {
   elton: { username: 'elton.portas', password: '5s2026', name: 'Elton', role: 'lider_diario', level: 'diario', sector: 'Portas / Cortinas', title: 'Grupo 1: Líder de Portas / Cortinas' },
   giovanna: { username: 'giovanna.acabamento', password: '5s2026', name: 'Giovanna', role: 'lider_diario', level: 'diario', sector: 'Acabamento', title: 'Grupo 1: Líder de Acabamento' },
 
-  xando: { username: 'xando', password: '5s2026', name: 'Xando Souza', role: 'lider_diario', level: 'diario', sector: 'Usinagem', title: 'Grupo 1: Líder de Usinagem' },
-  xandinho: { username: 'xandinho', password: '5s2026', name: 'Xandinho (Teste)', role: 'colaborador', level: 'colaborador', sector: 'Acabamento', title: 'Grupo 1: Colaborador de Acabamento' },
-
   monitor: { username: 'monitor', password: '5s2026', name: 'Gestão Visual TV Fábrica & Escritório', role: 'monitor', level: 'monitor', title: '📺 Gestão Visual 5S (TV 16:9)' }
 };
 
@@ -168,8 +165,18 @@ const DEFAULT_ACTIVITY_LOGS_SEED = [
   { id: 1786450400000, userName: 'Elton', action: 'Marcou PADRONIZAÇÃO (SEIKETSU) na TER como 🟢 BOM no Setor Portas / Cortinas', timestamp: '11/08/2026, 19:00:00' }
 ];
 
+// HELPER DE EXPURGO DE INTEGRANTES DELETADOS (IMPEDE QUE POLLING DA NUVEM RE-CRIE USUÁRIOS EXCLUÍDOS)
+function purgeDeletedUsers(usersObj) {
+  if (!usersObj || typeof usersObj !== 'object') return {};
+  const deletedList = JSON.parse(localStorage.getItem('5s_impaktto_deleted_users')) || [];
+  deletedList.forEach(uKey => {
+    delete usersObj[uKey];
+  });
+  return usersObj;
+}
+
 // Estado Global
-let userDatabase = { ...DEFAULT_USERS, ...(JSON.parse(localStorage.getItem('5s_impaktto_users')) || {}) };
+let userDatabase = purgeDeletedUsers({ ...DEFAULT_USERS, ...(JSON.parse(localStorage.getItem('5s_impaktto_users')) || {}) });
 userDatabase.admin = DEFAULT_USERS.admin;
 userDatabase.clayton = DEFAULT_USERS.clayton;
 userDatabase.monitor = DEFAULT_USERS.monitor;
@@ -330,7 +337,7 @@ async function pullDataFromServer() {
         let needsReRender = false;
 
         if (d.users && typeof d.users === 'object') {
-          userDatabase = d.users;
+          userDatabase = purgeDeletedUsers(d.users);
           localStorage.setItem('5s_impaktto_users', JSON.stringify(userDatabase));
           needsReRender = true;
         }
@@ -1397,6 +1404,12 @@ window.deleteUserAccount = async function(username) {
 
   if (confirm(`🗑️ Tem certeza que deseja EXCLUIR o acesso de "${targetName}" (${username})?`)) {
     delete userDatabase[username];
+    
+    let deletedList = JSON.parse(localStorage.getItem('5s_impaktto_deleted_users')) || [];
+    if (!deletedList.includes(username)) {
+      deletedList.push(username);
+    }
+    localStorage.setItem('5s_impaktto_deleted_users', JSON.stringify(deletedList));
     localStorage.setItem('5s_impaktto_users', JSON.stringify(userDatabase));
 
     logActivity(`🗑️ Excluiu o acesso do colaborador "${targetName}" (${username})`);

@@ -1,13 +1,13 @@
 const CLOUD_MASTER_API = 'https://jsonblob.com/api/jsonBlob/019ff2fe-dc89-756e-bec9-d891b4f8ee03';
 
-async function syncCleanUsersWithXando() {
+async function purgeCloudMaster() {
   try {
     const res = await fetch(CLOUD_MASTER_API, { headers: { 'Accept': 'application/json' } });
     let data = await res.json();
     
     if (!data) data = {};
 
-    const CLEAN_IMPAK_USERS_MAP = {
+    const OFFICIAL_IMPAK_USERS = {
       admin: { username: 'admin', password: 'mestre5s', name: 'Alexandre Souza', role: 'administrador', level: 'senior', sector: 'Acabamento', title: 'Grupo 3: Gerente de Projeto / Líder Mestre' },
       kaio: { username: 'kaio.diretor', password: '5s2026', name: 'Kaio', role: 'administrador', level: 'senior', sector: 'Usinagem', title: 'Grupo 3: Diretor' },
       diego: { username: 'diego.fabrica', password: '5s2026', name: 'Diego', role: 'auditor_semanal', level: 'semanal', sector: 'Holter', title: 'Grupo 2: Encarregado de Fábrica' },
@@ -20,13 +20,10 @@ async function syncCleanUsersWithXando() {
       elton: { username: 'elton.portas', password: '5s2026', name: 'Elton', role: 'lider_diario', level: 'diario', sector: 'Portas / Cortinas', title: 'Grupo 1: Líder de Portas / Cortinas' },
       giovanna: { username: 'giovanna.acabamento', password: '5s2026', name: 'Giovanna', role: 'lider_diario', level: 'diario', sector: 'Acabamento', title: 'Grupo 1: Líder de Acabamento' },
 
-      xando: { username: 'xando', password: '5s2026', name: 'Xando Souza', role: 'lider_diario', level: 'diario', sector: 'Usinagem', title: 'Grupo 1: Líder de Usinagem' },
-      xandinho: { username: 'xandinho', password: '5s2026', name: 'Xandinho (Teste)', role: 'colaborador', level: 'colaborador', sector: 'Acabamento', title: 'Grupo 1: Colaborador de Acabamento' },
-
       monitor: { username: 'monitor', password: '5s2026', name: 'Gestão Visual TV Fábrica & Escritório', role: 'monitor', level: 'monitor', title: '📺 Gestão Visual 5S (TV 16:9)' }
     };
 
-    data.users = CLEAN_IMPAK_USERS_MAP;
+    data.users = OFFICIAL_IMPAK_USERS;
 
     const putRes = await fetch(CLOUD_MASTER_API, {
       method: 'PUT',
@@ -38,13 +35,13 @@ async function syncCleanUsersWithXando() {
     });
 
     if (putRes.ok) {
-      console.log('🎉 XANDO E XANDINHO INCLUÍDOS COM SUCESSO NO BANCO DA NUVEM!');
+      console.log('🎉 BANCO DE DADOS MASTER DA NUVEM REESTRUTURADO APENAS COM INTEGRANTES OFICIAIS!');
     } else {
       console.error('Erro ao atualizar a nuvem:', putRes.status);
     }
   } catch (err) {
-    console.error('Erro ao sincronizar usuários:', err);
+    console.error('Erro ao purgar nuvem:', err);
   }
 }
 
-syncCleanUsersWithXando();
+purgeCloudMaster();
