@@ -13,10 +13,10 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
-  <!-- Local Styles com Cache Busting v48.0 -->
-  <link rel="stylesheet" href="styles.css?v=48.0">
+  <!-- Local Styles com Cache Busting v49.0 -->
+  <link rel="stylesheet" href="styles.css?v=49.0">
   <!-- JavaScript Principal Carregado no Head -->
-  <script src="app.js?v=48.0"></script>
+  <script src="app.js?v=49.0"></script>
 </head>
 <body>
 
@@ -182,6 +182,52 @@
   </header>
 
 
+  <!-- PAINEL DEDICADO DE TV/MONITOR (GESTÃO VISUAL 16:9) — layout próprio, não os cards padrão
+       empilhados (era por isso que informação sumia: os cards normais empilhados verticalmente
+       estouravam a altura da tela e ficavam cortados pelo overflow:hidden do modo TV). -->
+  <div id="monitor-tv-dashboard" class="monitor-tv" style="display:none;">
+    <div class="monitor-tv-header">
+      <img src="logo_impaktto.png" alt="Impaktto" class="monitor-tv-logo">
+      <div class="monitor-tv-title">
+        <h1>IMPAK TTO — Qualidade &amp; 5S</h1>
+        <p id="monitor-tv-date">--</p>
+      </div>
+      <div class="monitor-tv-score-badge">
+        <span class="monitor-tv-score-label">Maturidade Global</span>
+        <span class="monitor-tv-score-value" id="monitor-tv-global-score">--%</span>
+      </div>
+
+      <button type="button" class="monitor-tv-exit-btn" onclick="handleLogout()" title="Sair da conta Monitor">
+        🚪 Sair
+      </button>
+    </div>
+
+    <div class="monitor-tv-grid">
+      <div class="monitor-tv-col">
+        <div class="monitor-tv-panel monitor-tv-radar-panel">
+          <h2>Radar dos 5 Sensos</h2>
+          <div class="monitor-tv-radar-wrap">
+            <canvas id="radarChart5S-monitor"></canvas>
+          </div>
+        </div>
+        <div class="monitor-tv-panel monitor-tv-coverage">
+          <h2>Rodízio de Hoje</h2>
+          <div class="monitor-tv-coverage-bar-track">
+            <div class="monitor-tv-coverage-bar-fill" id="monitor-tv-coverage-fill"></div>
+          </div>
+          <p id="monitor-tv-coverage-label">-- / 15 células fechadas</p>
+        </div>
+      </div>
+
+      <div class="monitor-tv-col">
+        <div class="monitor-tv-panel monitor-tv-matrix-panel">
+          <h2>Situação dos 5S por Departamento (Hoje)</h2>
+          <div id="monitor-tv-matrix" class="monitor-tv-matrix"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- MAIN CONTAINER -->
   <main class="main-container">
 
@@ -214,7 +260,7 @@
       <div id="card-maturity-dashboard" class="card">
         <div class="card-header">
           <h2 class="card-title">🏆 Nível de Maturidade 5S - IMPAK TTO</h2>
-          <button class="btn btn-secondary" onclick="window.print()">🖨️ Exportar Relatório Executivo</button>
+          <button class="btn btn-secondary" onclick="printExecutiveReport()">🖨️ Exportar Relatório Executivo</button>
         </div>
 
         <!-- GRÁFICO RADAR DOS 5 SENSOS -->
@@ -544,7 +590,7 @@
             <li><strong>Nível 1 (Grupo 1 - Líderes Diários):</strong> Avaliação rápida diária no rodízio de auditoria cruzada. Ao virar a semana, limpa o quadro para o novo ciclo.</li>
             <li><strong>Nível 2 e 3 (Auditores Mensais):</strong> Auditoria Oficial realizada 1 vez ao mês pelos Grupos 2 e 3 via Checklist de 50 Perguntas. Clayton atua como Auditor Volante (Grupo 2).</li>
             <li><strong>Prêmio em Dinheiro (Meta ≥ 90%):</strong> O setor/empresa que atingir 90% de conformidade na auditoria mensal conquista o Prêmio em Dinheiro 5S Impaktto!</li>
-            <li><strong>Perfil Especial TV / Monitor:</strong> <code>monitor</code> / <code>5s2026</code> (Painel de Gestão Visual 16:9 sem Rolagem).</li>
+            <li><strong>Perfil Especial TV / Monitor:</strong> usuário <code>monitor</code> (Painel de Gestão Visual 16:9 sem Rolagem) — senha cadastrada no painel de Gestão de Colaboradores, não exibida aqui por segurança.</li>
           </ul>
         </div>
       </div>

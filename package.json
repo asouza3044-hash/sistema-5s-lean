@@ -1,0 +1,15 @@
+{
+  "name": "sistema-5s-lean",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Portal 5S IMPAK TTO - backend de Netlify Functions + Neon Postgres",
+  "scripts": {
+    "dev": "netlify dev",
+    "migrate": "node scripts/migrate-jsonblob-to-neon.mjs"
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "^0.10.4",
+    "bcryptjs": "^2.4.3",
+    "jsonwebtoken": "^9.0.2"
+  }
+}

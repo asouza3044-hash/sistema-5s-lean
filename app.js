@@ -3,8 +3,31 @@
    PROJETO ESPECIAL DE IMPLANTAÇÃO 5S & QUALIDADE (SENAI)
    ========================================================================== */
 
-// BANCO DE DADOS CENTRALIZADO EM NUVEM MASTER (RESTRITO IMPAK TTO - 100% REALTIME)
-const CLOUD_MASTER_API = 'https://jsonblob.com/api/jsonBlob/019ff2fe-dc89-756e-bec9-d891b4f8ee03';
+// BACKEND REAL: NETLIFY FUNCTIONS + NEON POSTGRES (SUBSTITUI O ANTIGO DOCUMENTO PÚBLICO NO JSONBLOB.COM)
+const API_BASE = '/.netlify/functions';
+let authToken = localStorage.getItem('5s_impaktto_token') || null;
+
+// CHAMADA AUTENTICADA GENÉRICA ÀS NETLIFY FUNCTIONS (SUBSTITUI O FETCH DIRETO AO JSONBLOB)
+async function apiFetch(path, options = {}) {
+  const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
+  if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
+
+  const res = await fetch(`${API_BASE}${path}`, {
+    method: options.method || 'GET',
+    headers,
+    body: options.body ? JSON.stringify(options.body) : undefined
+  });
+
+  let data = {};
+  try { data = await res.json(); } catch (e) { /* resposta sem corpo (204) */ }
+
+  if (!res.ok) {
+    const err = new Error(data.error || `Erro ${res.status} ao falar com o servidor`);
+    err.status = res.status;
+    throw err;
+  }
+  return data;
+}
 
 // CANAL DE TRANSMISSÃO EM TEMPO REAL CROSS-TAB (INTER-ABAS E DISPOSITIVOS LOCALHOST/GITHUB)
 const syncChannel = (typeof BroadcastChannel !== 'undefined') ? new BroadcastChannel('5s_impaktto_sync_channel') : null;
@@ -24,22 +47,31 @@ window.addEventListener('storage', (e) => {
   }
 });
 
-// 1. ENTRADA RÁPIDA MESTRE EM 1 CLIQUE (IMPAK TTO)
-window.quickMasterLogin = function() {
-  currentUser = DEFAULT_USERS.admin;
+// LOGIN REAL CONTRA O SERVIDOR (SUBSTITUI A ANTIGA VALIDAÇÃO LOCAL COM SENHAS UNIVERSAIS)
+async function performLogin(username, password) {
+  const { token, user } = await apiFetch('/auth-login', { method: 'POST', body: { username, password } });
+  authToken = token;
+  currentUser = user;
+  localStorage.setItem('5s_impaktto_token', authToken);
   localStorage.setItem('5s_impaktto_session', JSON.stringify(currentUser));
-  
+
   const loginOverlay = document.getElementById('login-overlay');
   if (loginOverlay) {
     loginOverlay.style.display = 'none';
     loginOverlay.classList.add('hidden');
   }
 
-  try {
-    checkAuthSession();
-  } catch (err) {
-    console.error('Erro na entrada rápida:', err);
-  }
+  await checkAuthSession();
+}
+
+// 1. ATALHO PARA A CONTA MESTRE — só preenche o usuário "admin" e foca a senha.
+// A senha não fica mais escrita no código-fonte (antes ficava visível para qualquer
+// pessoa que abrisse o DevTools do navegador); quem usa o atalho ainda precisa digitá-la.
+window.quickMasterLogin = function() {
+  const uInput = document.getElementById('login-username');
+  const pInput = document.getElementById('login-password');
+  if (uInput) uInput.value = 'admin';
+  if (pInput) pInput.focus();
 };
 
 // 2. DECLARAÇÃO GLOBAL DO ALTERNADOR INSTANTÂNEO DE ABAS (LOGIN / CADASTRO)
@@ -82,10 +114,31 @@ const SENSOS_LIST = [
   { key: 'shitsuke', name: '5. DISCIPLINA (SHITSUKE)', desc: 'Autodisciplina e cumprimento rigoroso das regras da fábrica.' }
 ];
 
-// MATRIZ DE ALOCAÇÃO DETERMINÍSTICA E BALANCEADA DO RODÍZIO 5X5
+// OS 3 SENSOS QUE EXIGEM VOTO REAL TODO DIA EM CADA UM DOS 5 SETORES (5 x 3 = 15 CÉLULAS OBRIGATÓRIAS).
+// Os 2 últimos (Seiketsu/Shitsuke) NUNCA pedem voto manual — são calculados como média dos 3 primeiros
+// daquele setor no dia (ver getComputedSensoSummary).
+const REQUIRED_SENSOS = SENSOS_LIST.slice(0, 3);
+const COMPUTED_SENSOS = SENSOS_LIST.slice(3);
+
+// HASH ESTÁVEL DE STRING (PARA DAR A CADA PESSOA UM PONTO DE PARTIDA DIFERENTE NO RODÍZIO)
+function hashString(str) {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = (hash * 31 + str.charCodeAt(i)) >>> 0;
+  }
+  return hash;
+}
+
+// MATRIZ DE ALOCAÇÃO DO RODÍZIO CRUZADO — cada pessoa fecha 1 DEPARTAMENTO INTEIRO por dia (os 3
+// sensos obrigatórios de uma vez, não 1 senso solto), sempre num setor que não é o seu. É um
+// deslocamento cíclico fixo (não depende de hash): com os 5 líderes oficiais (1 por setor), isso
+// garante uma correspondência 1-para-1 sem repetição — os 5 setores fecham automaticamente todo dia
+// quando os 5 votam. Gente extra do mesmo setor (ex: o auditor de nível 2 daquele setor) cai no MESMO
+// alvo do líder do dia, reforçando/conferindo o mesmo setor. Se sobrar gente faltando, o Nível 2/3
+// fecha manualmente pelo quadro (ver openVoteChoiceModal).
 function getRotationAssignment(user, dayCodeInput) {
   if (!user) {
-    return { targetSector: 'Holter', targetSenso: SENSOS_LIST[0] };
+    return { targetSector: 'Holter', dayCode: 'SEG' };
   }
 
   const daysOrder = ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
@@ -94,99 +147,58 @@ function getRotationAssignment(user, dayCodeInput) {
   const currentDayCode = dayCodeInput || (dayNames[todayIdxRaw] === 'DOM' ? 'SEG' : dayNames[todayIdxRaw]);
   const dayOffset = Math.max(0, daysOrder.indexOf(currentDayCode));
 
-  const userSector = user.sector || 'Usinagem';
-  let sectorIdx = IMPAKTTO_SECTORS.indexOf(userSector);
-  if (sectorIdx === -1) sectorIdx = 0;
+  const userSector = user.sector || '';
+  const homeIdx = IMPAKTTO_SECTORS.indexOf(userSector);
+  const numSectors = IMPAKTTO_SECTORS.length;
 
-  const targetSectorIdx = (sectorIdx + 1 + (dayOffset % 4)) % IMPAKTTO_SECTORS.length;
-  const targetSector = IMPAKTTO_SECTORS[targetSectorIdx];
+  // Deslocamento de 1 a (numSectors-1) — nunca 0, então nunca cai no próprio setor.
+  const shift = 1 + (dayOffset % (numSectors - 1));
+  const targetIdx = homeIdx === -1
+    ? dayOffset % numSectors // colaboradores fora dos 5 setores (ex: times comerciais) rodam por todos
+    : (homeIdx + shift) % numSectors;
+  const targetSector = IMPAKTTO_SECTORS[targetIdx];
 
-  const sectorUsers = Object.values(userDatabase)
-    .filter(u => (u.sector || 'Usinagem') === userSector && u.username !== 'monitor')
-    .sort((a, b) => (a.username || '').localeCompare(b.username || ''));
-
-  const userIdxInSector = Math.max(0, sectorUsers.findIndex(u => u.username === user.username));
-  const targetSensoIdx = (userIdxInSector + dayOffset) % SENSOS_LIST.length;
-  const targetSenso = SENSOS_LIST[targetSensoIdx];
-
-  return { targetSector, targetSenso, dayCode: currentDayCode };
+  return { targetSector, dayCode: currentDayCode };
 }
 
 function getBalancedTargetSector(user) {
   return getRotationAssignment(user).targetSector;
 }
 
-// USUÁRIOS OFICIAIS PRÉ-CONFIGURADOS DA EQUIPE IMPAK TTO (EXCLUSIVAMENTE OS 11 OFICIAIS DA EMPRESA)
-const DEFAULT_USERS = {
-  admin: { username: 'admin', password: 'mestre5s', name: 'Alexandre Souza', role: 'administrador', level: 'senior', sector: 'Acabamento', title: 'Grupo 3: Gerente de Projeto / Líder Mestre' },
-  kaio: { username: 'kaio.diretor', password: '5s2026', name: 'Kaio', role: 'administrador', level: 'senior', sector: 'Usinagem', title: 'Grupo 3: Diretor' },
-  diego: { username: 'diego.fabrica', password: '5s2026', name: 'Diego', role: 'auditor_semanal', level: 'semanal', sector: 'Holter', title: 'Grupo 2: Encarregado de Fábrica' },
-  filipe: { username: 'filipe.rh', password: '5s2026', name: 'Filipe', role: 'auditor_semanal', level: 'semanal', sector: 'Armários', title: 'Grupo 2: Encarregado RH - 5S' },
-  clayton: { username: 'clayton.auditor', password: '5s2026', name: 'Clayton', role: 'auditor_semanal', level: 'semanal', sector: 'Portas / Cortinas', title: 'Grupo 2: Auditor Volante 5S / Suplência & Calibração' },
+// COBERTURA DO DIA: quantas das 15 células obrigatórias (5 setores x 3 sensos) já têm ao menos 1 voto,
+// e quais setores já fecharam os 3 sensos obrigatórios ("setor fechado" = pronto para consolidar).
+function getDailyCoverage(dayCode) {
+  let closedCells = 0;
+  let closedSectors = 0;
+  const pendingCells = [];
 
-  alexandre_u: { username: 'alexandre.usinagem', password: '5s2026', name: 'Alexandre Usinagem', role: 'lider_diario', level: 'diario', sector: 'Usinagem', title: 'Grupo 1: Líder de Usinagem' },
-  marcos: { username: 'marcos.holter', password: '5s2026', name: 'Marcos', role: 'lider_diario', level: 'diario', sector: 'Holter', title: 'Grupo 1: Líder de Holter' },
-  bruno: { username: 'bruno.armarios', password: '5s2026', name: 'Bruno', role: 'lider_diario', level: 'diario', sector: 'Armários', title: 'Grupo 1: Líder de Armários' },
-  elton: { username: 'elton.portas', password: '5s2026', name: 'Elton', role: 'lider_diario', level: 'diario', sector: 'Portas / Cortinas', title: 'Grupo 1: Líder de Portas / Cortinas' },
-  giovanna: { username: 'giovanna.acabamento', password: '5s2026', name: 'Giovanna', role: 'lider_diario', level: 'diario', sector: 'Acabamento', title: 'Grupo 1: Líder de Acabamento' },
-
-  monitor: { username: 'monitor', password: '5s2026', name: 'Gestão Visual TV Fábrica & Escritório', role: 'monitor', level: 'monitor', title: '📺 Gestão Visual 5S (TV 16:9)' }
-};
-
-// EMBEDDED MASTER SEED DADOS DA IMPAK TTO (GARANTIA DE FUNCIONAMENTO MESMO SEM NENHUM BD EXTERNO)
-const DEFAULT_FACTORY_BOARD_SEED = {
-  'Armários_seiri_TER': {
-    status: 'bom',
-    avgPoints: 3,
-    votes: [{ username: 'bruno.armarios', name: 'Bruno', role: 'lider_diario', score: 'bom', points: 3, comment: 'Bancadas 100% limpas e organizadas', timestamp: '11/08/2026 18:15' }]
-  },
-  'Usinagem_seiton_TER': {
-    status: 'bom',
-    avgPoints: 3,
-    votes: [{ username: 'alexandre.usinagem', name: 'Alexandre Usinagem', role: 'lider_diario', score: 'bom', points: 3, comment: 'Ferramentas identificadas nos painéis shadowboard', timestamp: '11/08/2026 18:30' }]
-  },
-  'Holter_seiso_TER': {
-    status: 'regular',
-    avgPoints: 2,
-    votes: [{ username: 'marcos.holter', name: 'Marcos', role: 'lider_diario', score: 'regular', points: 2, comment: 'Limpeza em andamento na bancada central', timestamp: '11/08/2026 18:45' }]
-  },
-  'Portas / Cortinas_seiketsu_TER': {
-    status: 'bom',
-    avgPoints: 3,
-    votes: [{ username: 'elton.portas', name: 'Elton', role: 'lider_diario', score: 'bom', points: 3, comment: 'EPIs e demarcações em perfeito estado', timestamp: '11/08/2026 19:00' }]
-  }
-};
-
-const DEFAULT_ACTIVITY_LOGS_SEED = [
-  { id: 1786450000000, userName: 'Alexandre Souza', action: 'Iniciou Auditoria Diária 5S da IMPAK TTO', timestamp: '11/08/2026, 18:00:00' },
-  { id: 1786450100000, userName: 'Bruno', action: 'Marcou UTILIZAÇÃO (SEIRI) na TER como 🟢 BOM no Setor Armários', timestamp: '11/08/2026, 18:15:00' },
-  { id: 1786450200000, userName: 'Alexandre Usinagem', action: 'Marcou ORGANIZAÇÃO (SEITON) na TER como 🟢 BOM no Setor Usinagem', timestamp: '11/08/2026, 18:30:00' },
-  { id: 1786450300000, userName: 'Marcos', action: 'Marcou LIMPEZA (SEISO) na TER como 🟡 REGULAR no Setor Holter', timestamp: '11/08/2026, 18:45:00' },
-  { id: 1786450400000, userName: 'Elton', action: 'Marcou PADRONIZAÇÃO (SEIKETSU) na TER como 🟢 BOM no Setor Portas / Cortinas', timestamp: '11/08/2026, 19:00:00' }
-];
-
-// HELPER DE EXPURGO DE INTEGRANTES DELETADOS (IMPEDE QUE POLLING DA NUVEM RE-CRIE USUÁRIOS EXCLUÍDOS)
-function purgeDeletedUsers(usersObj) {
-  if (!usersObj || typeof usersObj !== 'object') return {};
-  const deletedList = JSON.parse(localStorage.getItem('5s_impaktto_deleted_users')) || [];
-  deletedList.forEach(uKey => {
-    delete usersObj[uKey];
+  IMPAKTTO_SECTORS.forEach(sector => {
+    let sectorClosed = true;
+    REQUIRED_SENSOS.forEach(senso => {
+      const boardKey = `${sector}_${senso.key}_${dayCode}`;
+      const summary = getBoardCellSummary(boardKey);
+      if (summary.voteCount > 0) {
+        closedCells++;
+      } else {
+        sectorClosed = false;
+        pendingCells.push({ sector, senso });
+      }
+    });
+    if (sectorClosed) closedSectors++;
   });
-  return usersObj;
+
+  const totalCells = IMPAKTTO_SECTORS.length * REQUIRED_SENSOS.length;
+  return { closedCells, totalCells, closedSectors, totalSectors: IMPAKTTO_SECTORS.length, pendingCells };
 }
 
-// Estado Global
-const mobileCustomUsersInit = JSON.parse(localStorage.getItem('5s_mobile_custom_users')) || {};
-let userDatabase = purgeDeletedUsers({ 
-  ...DEFAULT_USERS, 
-  ...mobileCustomUsersInit, 
-  ...(JSON.parse(localStorage.getItem('5s_impaktto_users')) || {}) 
-});
-userDatabase.admin = DEFAULT_USERS.admin;
-userDatabase.clayton = DEFAULT_USERS.clayton;
-userDatabase.monitor = DEFAULT_USERS.monitor;
 
-let currentUser = JSON.parse(localStorage.getItem('5s_impaktto_session')) || null;
+// Estado Global — userDatabase é sempre populado a partir do servidor (ver refreshAllFromServer).
+// Não existe mais blacklist local de exclusão: excluir um usuário agora é um DELETE real no banco,
+// visível para todos os dispositivos na próxima atualização.
+let userDatabase = {};
+
+// currentUser só é considerado válido se ainda houver um token de sessão — sem token, não há sessão.
+let currentUser = authToken ? (JSON.parse(localStorage.getItem('5s_impaktto_session')) || null) : null;
 
 // Dados da Impaktto
 let clientAuditScores = {};
@@ -197,12 +209,41 @@ let clientActivityLogs = [];
 let clientFactoryBoard = {};
 let activeFactorySectorFilter = 'ALL';
 let radarChartInstance = null;
+let radarChartInstanceMonitor = null;
 let autoRefreshTimer = null;
 let currentVoteTarget = null;
-let level1SelectedOption = 'bom';
+let modalSelectedScore = 'bom';
+// Nota selecionada para cada um dos 3 sensos obrigatórios do departamento-alvo do dia (fecha o
+// departamento inteiro de uma vez, não 1 senso solto). Chaves: seiri, seiton, seiso.
+let level1SelectedScores = { seiri: 'bom', seiton: 'bom', seiso: 'bom' };
 
 // HELPER PARA CÁLCULO E CONVERSÃO DE MÉDIA DE VOTOS POR CÉLULA DO QUADRO (DIFERENCIA CÉLULAS PENDENTES DE CÉLULAS VOTADAS)
+// SEIKETSU/SHITSUKE NUNCA TÊM VOTO PRÓPRIO — SÃO A MÉDIA DOS 3 SENSOS OBRIGATÓRIOS DAQUELE SETOR NO DIA.
+function getComputedSensoSummary(sector, dayCode) {
+  const baseSummaries = REQUIRED_SENSOS
+    .map(s => getBoardCellSummary(`${sector}_${s.key}_${dayCode}`))
+    .filter(s => s.voteCount > 0);
+
+  if (baseSummaries.length === 0) {
+    return { status: 'pendente', avgPoints: 0, voteCount: 0, votes: [], computed: true };
+  }
+
+  const avgPts = baseSummaries.reduce((acc, s) => acc + s.avgPoints, 0) / baseSummaries.length;
+  const status = avgPts >= 2.5 ? 'bom' : (avgPts >= 1.7 ? 'regular' : 'ruim');
+
+  return { status, avgPoints: Math.round(avgPts * 10) / 10, voteCount: baseSummaries.length, votes: [], computed: true };
+}
+
 function getBoardCellSummary(boardKey) {
+  const parts = boardKey.split('_');
+  const dayCode = parts[parts.length - 1];
+  const sensoKey = parts[parts.length - 2];
+  const sector = parts.slice(0, parts.length - 2).join('_');
+
+  if (sensoKey === 'seiketsu' || sensoKey === 'shitsuke') {
+    return getComputedSensoSummary(sector, dayCode);
+  }
+
   const cellData = clientFactoryBoard[boardKey];
   if (!cellData) {
     return { status: 'pendente', avgPoints: 0, voteCount: 0, votes: [] };
@@ -242,186 +283,59 @@ function getBoardCellSummary(boardKey) {
   return { status: 'pendente', avgPoints: 0, voteCount: 0, votes: [] };
 }
 
-// FUNÇÕES MESTRE DE SINCRONIZAÇÃO EM NUVEM REALTIME (MESCLA BIDIRECIONAL COMPLETA SEM PERDAS)
-async function pushDataToServer() {
-  localStorage.setItem('5s_factory_board_impaktto', JSON.stringify(clientFactoryBoard));
-  localStorage.setItem('5s_activity_logs_impaktto', JSON.stringify(clientActivityLogs));
-  localStorage.setItem('5s_impaktto_users', JSON.stringify(userDatabase));
-
-  // COMUNICAÇÃO IMEDIATA VIA BROADCAST CHANNEL DENTRO DO NAVEGADOR
-  if (syncChannel) {
-    try { syncChannel.postMessage({ type: 'SYNC_ALL_DATA', timestamp: Date.now() }); } catch (e) {}
-  }
-
-  let cloudState = { users: {}, activity_logs: [], factory_board: {}, audit_scores: {} };
-
+// ATUALIZAÇÃO A PARTIR DO SERVIDOR REAL (SUBSTITUI O ANTIGO MERGE POR "ÚLTIMA ESCRITA GANHA" DO JSONBLOB)
+// Cada recurso já vem pronto do banco — não há mais merge do lado do cliente, o Postgres é a única
+// fonte de verdade. Mantém os mesmos nomes de função usados no resto do app (pushDataToServer,
+// pullDataFromServer, loadImpakttoData) como apelidos, para não precisar tocar em cada chamador.
+async function refreshAllFromServer() {
+  if (!authToken) return;
   try {
-    const res = await fetch(`${CLOUD_MASTER_API}?t=${Date.now()}`, {
-      cache: 'no-store',
-      headers: {
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
-        'Pragma': 'no-cache',
-        'Accept': 'application/json'
-      }
-    });
-    if (res.ok) {
-      const remote = await res.json();
-      if (remote && !remote.error) {
-        cloudState = remote;
-      }
-    }
-  } catch(e) {}
+    const [usersRes, boardRes, logsRes, auditRes, gutRes, kanbanRes, ishikawaRes] = await Promise.all([
+      apiFetch('/users'),
+      apiFetch('/factory-board'),
+      apiFetch('/activity-log'),
+      apiFetch('/audit-responses'),
+      apiFetch('/gut-matrix'),
+      apiFetch('/kanban-tasks'),
+      apiFetch('/ishikawa'),
+    ]);
 
-  // MESCLA BIDIRECIONAL DA BASE DE USUÁRIOS (PRESERVA NOVOS USUÁRIOS CRIADOS SEM APAGAR)
-  const mergedUsers = purgeDeletedUsers({ ...DEFAULT_USERS, ...(cloudState.users || {}), ...userDatabase });
-  userDatabase = mergedUsers;
+    userDatabase = {};
+    (usersRes.users || []).forEach(u => { userDatabase[u.username] = u; });
 
-  // MESCLA BIDIRECIONAL DAS CÉLULAS DO QUADRO DA FÁBRICA
-  const cloudBoard = cloudState.factory_board || {};
-  
-  // 1. Incorporar o que estava na nuvem que não temos localmente
-  for (const [key, val] of Object.entries(cloudBoard)) {
-    if (!clientFactoryBoard[key]) {
-      clientFactoryBoard[key] = val;
-    } else if (typeof val === 'object' && val.votes && Array.isArray(val.votes)) {
-      // Mesclar votos locais com votos remotos para a mesma célula
-      const localCell = getBoardCellSummary(key);
-      const voteMap = new Map();
-      (localCell.votes || []).forEach(v => voteMap.set(v.username || v.name, v));
-      (val.votes || []).forEach(v => voteMap.set(v.username || v.name, v));
+    clientFactoryBoard = boardRes.board || {};
+    clientActivityLogs = logsRes.logs || [];
+    clientAuditScores = auditRes.scores || {};
+    clientGutMatrix = gutRes.items || [];
+    clientKanbanTasks = kanbanRes.items || [];
+    clientIshikawaData = ishikawaRes.data || clientIshikawaData;
 
-      const mergedVotes = Array.from(voteMap.values());
-      const totalPts = mergedVotes.reduce((acc, v) => acc + (v.points || (v.score === 'bom' ? 3 : (v.score === 'regular' ? 2 : 1))), 0);
-      const avgPts = mergedVotes.length > 0 ? totalPts / mergedVotes.length : 3;
-
-      let avgStatus = 'bom';
-      if (avgPts >= 2.5) avgStatus = 'bom';
-      else if (avgPts >= 1.7) avgStatus = 'regular';
-      else avgStatus = 'ruim';
-
-      clientFactoryBoard[key] = {
-        status: avgStatus,
-        avgPoints: Math.round(avgPts * 10) / 10,
-        votes: mergedVotes
-      };
-    }
-  }
-
-  // 2. Garantir que todas as células locais estejam presentes na nuvem
-  const mergedCloudBoard = { ...cloudBoard, ...clientFactoryBoard };
-
-  const logMap = new Map();
-  (cloudState.activity_logs || []).forEach(l => { if (l && l.id) logMap.set(l.id, l); });
-  clientActivityLogs.forEach(l => { if (l && l.id) logMap.set(l.id, l); });
-  const mergedLogs = Array.from(logMap.values()).sort((a, b) => b.id - a.id).slice(0, 25);
-
-  const payload = {
-    users: userDatabase,
-    activity_logs: mergedLogs,
-    factory_board: mergedCloudBoard,
-    audit_scores: clientAuditScores
-  };
-
-  try {
-    await fetch(CLOUD_MASTER_API, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
-      },
-      body: JSON.stringify(payload)
-    });
+    renderFactoryBoard();
+    renderActivityLogs();
+    calculateAuditResults();
+    renderUserManagementTable();
+    if (typeof renderGUTTable === 'function') renderGUTTable();
+    if (typeof renderKanban === 'function') renderKanban();
+    if (typeof renderIshikawa === 'function') renderIshikawa();
+    if (currentUser && currentUser.level === 'monitor') renderMonitorTvDashboard();
   } catch (e) {
-    console.error('Erro no Push da Nuvem:', e);
+    console.error('Erro ao atualizar dados do servidor:', e);
   }
-
-  renderFactoryBoard();
-  renderActivityLogs();
-  calculateAuditResults();
-  renderUserManagementTable();
 }
 
-async function pullDataFromServer() {
-  try {
-    const res = await fetch(`${CLOUD_MASTER_API}?t=${Date.now()}`, {
-      cache: 'no-store',
-      headers: {
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
-        'Pragma': 'no-cache',
-        'Accept': 'application/json'
-      }
-    });
-    if (res.ok) {
-      const raw = await res.json();
-      const d = (raw && raw.data) ? raw.data : raw;
-
-      if (d && !d.error) {
-        let needsReRender = false;
-
-        if (d.users && typeof d.users === 'object') {
-          // MESCLA UNIFICADA: Preserva usuários recém-criados localmente + incorpora remotos da nuvem
-          const mergedUsers = purgeDeletedUsers({ ...DEFAULT_USERS, ...d.users, ...userDatabase });
-          if (Object.keys(mergedUsers).length !== Object.keys(userDatabase).length || JSON.stringify(Object.keys(mergedUsers)) !== JSON.stringify(Object.keys(userDatabase))) {
-            userDatabase = mergedUsers;
-            localStorage.setItem('5s_impaktto_users', JSON.stringify(userDatabase));
-            needsReRender = true;
-          }
-        }
-
-        if (Array.isArray(d.activity_logs)) {
-          const logMap = new Map();
-          clientActivityLogs.forEach(l => { if (l && l.id) logMap.set(l.id, l); });
-          d.activity_logs.forEach(l => { if (l && l.id) logMap.set(l.id, l); });
-          const mergedLogs = Array.from(logMap.values()).sort((a, b) => b.id - a.id).slice(0, 25);
-
-          if (mergedLogs.length !== clientActivityLogs.length || (mergedLogs[0] && clientActivityLogs[0] && mergedLogs[0].id !== clientActivityLogs[0].id)) {
-            clientActivityLogs = mergedLogs;
-            localStorage.setItem('5s_activity_logs_impaktto', JSON.stringify(clientActivityLogs));
-            needsReRender = true;
-          }
-        }
-
-        if (d.factory_board && typeof d.factory_board === 'object') {
-          const cloudBoard = d.factory_board;
-          for (const [key, val] of Object.entries(cloudBoard)) {
-            if (JSON.stringify(clientFactoryBoard[key]) !== JSON.stringify(val)) {
-              clientFactoryBoard[key] = val;
-              needsReRender = true;
-            }
-          }
-        }
-
-        localStorage.setItem('5s_factory_board_impaktto', JSON.stringify(clientFactoryBoard));
-        renderFactoryBoard();
-        renderActivityLogs();
-        calculateAuditResults();
-        renderUserManagementTable();
-      }
-    }
-  } catch (e) {
-    console.error('Erro no Pull da Nuvem:', e);
-  }
-}
+const loadImpakttoData = refreshAllFromServer;
+const pushDataToServer = refreshAllFromServer;
+const pullDataFromServer = refreshAllFromServer;
 
 window.forceCloudSyncNow = async function() {
-  await pushDataToServer();
-  await pullDataFromServer();
-  renderUserManagementTable();
-  renderActivityLogs();
-  renderFactoryBoard();
-  calculateAuditResults();
-  alert('🎉 Sincronização Mestre de Nuvem Concluída! Todos os cadastros, votos e gráficos estão atualizados.');
+  await refreshAllFromServer();
+  alert('🎉 Sincronização concluída! Todos os cadastros, votos e gráficos estão atualizados.');
 };
 
-// HELPER PARA LIBERAR O VOTO DO USUÁRIO ATUAL DURANTE OS TESTES
+// O voto diário agora é controlado pelo próprio banco (uma linha por usuário/célula/dia,
+// com restrição UNIQUE) — não existe mais flag local para "liberar" manualmente.
 window.resetCurrentMyVoteForTesting = function() {
-  if (!currentUser) return;
-  const todayDateStr = new Date().toISOString().split('T')[0];
-  const userVoteKey = `5s_user_voted_${currentUser.username}_${todayDateStr}`;
-  localStorage.removeItem(userVoteKey);
-  alert(`🔄 Seu voto diário de hoje foi LIBERADO para novo teste!`);
-  renderLevel1DirectVotingScreen();
-  checkAuthSession();
+  alert('O controle de "já votei hoje" agora é feito pelo servidor (Neon), não mais pelo navegador — não há mais nada para liberar aqui.');
 };
 
 // RENDERIZAÇÃO UNIVERSAL DA TELA ÚNICA DIRETA DE VOTAÇÃO (PADRÃO MESTRE DE ABERTURA PARA TODOS OS NÍVEIS 1, 2 E 3)
@@ -453,20 +367,15 @@ function renderLevel1DirectVotingScreen() {
   const assignment = getRotationAssignment(currentUser, currentDayCode);
   const userSector = currentUser ? (currentUser.sector || 'Fábrica') : 'Fábrica';
 
-  const todayDateStr = new Date().toISOString().split('T')[0];
-  const userVoteKey = currentUser ? `5s_user_voted_${currentUser.username}_${todayDateStr}` : '5s_user_voted_guest';
-  const hasVotedToday = (localStorage.getItem(userVoteKey) === 'true');
+  // "Já fechei o setor hoje" agora vem do próprio quadro trazido do servidor (uma linha por
+  // usuário/célula/dia no Postgres) — só conta como feito quando os 3 sensos obrigatórios do
+  // departamento-alvo já têm um voto DESTE usuário.
+  const hasVotedToday = !!currentUser && REQUIRED_SENSOS.every(s => {
+    const bKey = `${assignment.targetSector}_${s.key}_${currentDayCode}`;
+    return getBoardCellSummary(bKey).votes.some(v => v.username === currentUser.username);
+  });
 
-  if (!level1SelectedOption) {
-    level1SelectedOption = 'bom';
-  }
-
-  const selOpt = level1SelectedOption || 'bom';
-  const isBom = (selOpt === 'bom');
-  const isRegular = (selOpt === 'regular');
-  const isRuim = (selOpt === 'ruim');
-
-  const levelBadgeLabel = isLevel1 
+  const levelBadgeLabel = isLevel1
     ? '🟢 Nível 1: Chão de Fábrica' 
     : (level === 'semanal' ? '🟡 Nível 2: Auditor Volante / Encarregado' : '👑 Nível 3: Gerência & Diretoria');
 
@@ -520,13 +429,8 @@ function renderLevel1DirectVotingScreen() {
         <div style="font-size:1.35rem; font-weight:800; color:#ffffff; margin-top:0.2rem; text-shadow:0 0 10px rgba(52,211,153,0.5);">
           📍 SETOR ${assignment.targetSector.toUpperCase()}
         </div>
-        <div style="font-size:0.92rem; font-weight:800; color:var(--accent-cyan); margin-top:0.35rem;">
-          💡 SENSO DESIGNADO: ${assignment.targetSenso.name}
-        </div>
-
-        <!-- EXPLICAÇÃO AUTOEXPLICATIVA EM ASPAS EM BAIXO DO SENSO (SOLICITAÇÃO DO XANDINHO - FOTO 2) -->
-        <div style="font-size:0.82rem; color:#e2e8f0; font-style:italic; margin-top:0.25rem; background:rgba(0,0,0,0.25); padding:0.4rem 0.65rem; border-radius:8px; border-left:3px solid var(--accent-cyan);">
-          "${assignment.targetSenso.desc}"
+        <div style="font-size:0.82rem; color:#e2e8f0; margin-top:0.35rem;">
+          Feche o setor avaliando os <strong>3 sensos abaixo</strong> de uma vez só.
         </div>
 
         <div style="font-size:0.82rem; color:#e2e8f0; margin-top:0.45rem;">
@@ -534,36 +438,28 @@ function renderLevel1DirectVotingScreen() {
         </div>
       </div>
 
-      <span style="font-size:0.85rem; font-weight:800; color:#e2e8f0; text-transform:uppercase; display:block; margin-bottom:0.75rem;">
-        👉 TOCAR NA SUA NOTA ABAIXO PARA SELECIONAR:
-      </span>
-
-      <!-- AS 3 OPÇÕES DE VOTO CLARAS E CLICÁVEIS DINAÂMICAS -->
-      <div style="display:flex; flex-direction:column; gap:0.75rem; margin-bottom:1.2rem;">
-        
-        <button type="button" id="lvl1-opt-bom" onclick="selectLevel1VoteOption('bom')" style="display:flex; align-items:center; justify-content:space-between; padding:1rem 1.15rem; min-height:60px; border-radius:12px; border:2px solid ${isBom ? '#10b981' : 'rgba(255,255,255,0.12)'}; background:${isBom ? 'rgba(16,185,129,0.3)' : 'rgba(255,255,255,0.04)'}; color:${isBom ? '#ffffff' : '#9ca3af'}; cursor:pointer; text-align:left; touch-action:manipulation;">
-          <div>
-            <div style="font-size:1.1rem; font-weight:800;">🟢 Bom (3.0 Pontos)</div>
-            <div style="font-size:0.78rem; font-weight:400; color:#a7f3d0; margin-top:0.15rem;">Setor limpo, organizado e dentro dos padrões 5S</div>
-          </div>
-          <span id="lvl1-chk-bom" style="font-size:1.5rem; display:${isBom ? 'inline' : 'none'};">✅</span>
-        </button>
-
-        <button type="button" id="lvl1-opt-regular" onclick="selectLevel1VoteOption('regular')" style="display:flex; align-items:center; justify-content:space-between; padding:1rem 1.15rem; min-height:60px; border-radius:12px; border:2px solid ${isRegular ? '#f59e0b' : 'rgba(255,255,255,0.12)'}; background:${isRegular ? 'rgba(245,158,11,0.3)' : 'rgba(255,255,255,0.04)'}; color:${isRegular ? '#ffffff' : '#9ca3af'}; cursor:pointer; text-align:left; touch-action:manipulation;">
-          <div>
-            <div style="font-size:1.1rem; font-weight:800;">🟡 Regular (2.0 Pontos)</div>
-            <div style="font-size:0.78rem; font-weight:400; color:#fde68a; margin-top:0.15rem;">Encontradas pequenas oportunidades de melhoria</div>
-          </div>
-          <span id="lvl1-chk-regular" style="font-size:1.5rem; display:${isRegular ? 'inline' : 'none'};">✅</span>
-        </button>
-
-        <button type="button" id="lvl1-opt-ruim" onclick="selectLevel1VoteOption('ruim')" style="display:flex; align-items:center; justify-content:space-between; padding:1rem 1.15rem; min-height:60px; border-radius:12px; border:2px solid ${isRuim ? '#ef4444' : 'rgba(255,255,255,0.12)'}; background:${isRuim ? 'rgba(239,68,68,0.3)' : 'rgba(239,68,68,0.15)'}; color:${isRuim ? '#ffffff' : '#9ca3af'}; cursor:pointer; text-align:left; touch-action:manipulation;">
-          <div>
-            <div style="font-size:1.1rem; font-weight:800;">🔴 Ruim (1.0 Ponto)</div>
-            <div style="font-size:0.78rem; font-weight:400; color:#fca5a5; margin-top:0.15rem;">Não conformidade ou desordem identificada</div>
-          </div>
-          <span id="lvl1-chk-ruim" style="font-size:1.5rem; display:${isRuim ? 'inline' : 'none'};">✅</span>
-        </button>
+      <!-- 3 GRUPOS DE NOTA, 1 POR SENSO OBRIGATÓRIO — FECHA O SETOR INTEIRO NUMA SÓ TELA -->
+      <div style="display:flex; flex-direction:column; gap:0.85rem; margin-bottom:1.2rem;">
+        ${REQUIRED_SENSOS.map(s => {
+          const selected = level1SelectedScores[s.key] || 'bom';
+          const opts = [
+            { key: 'bom', label: '🟢 Bom', border: '#10b981', bg: 'rgba(16,185,129,0.3)' },
+            { key: 'regular', label: '🟡 Regular', border: '#f59e0b', bg: 'rgba(245,158,11,0.3)' },
+            { key: 'ruim', label: '🔴 Ruim', border: '#ef4444', bg: 'rgba(239,68,68,0.3)' },
+          ];
+          return `
+            <div>
+              <div style="font-size:0.85rem; font-weight:800; color:#e2e8f0; margin-bottom:0.35rem;">${s.name}</div>
+              <div style="display:flex; gap:0.4rem;">
+                ${opts.map(o => `
+                  <button type="button" id="lvl1-opt-${s.key}-${o.key}" onclick="selectLevel1VoteOption('${s.key}', '${o.key}')" style="flex:1; padding:0.65rem 0.4rem; font-size:0.85rem; font-weight:700; border-radius:10px; cursor:pointer; touch-action:manipulation; border:2px solid ${selected === o.key ? o.border : 'rgba(255,255,255,0.12)'}; background:${selected === o.key ? o.bg : 'rgba(255,255,255,0.04)'}; color:${selected === o.key ? '#ffffff' : '#9ca3af'};">
+                    ${o.label}
+                  </button>
+                `).join('')}
+              </div>
+            </div>
+          `;
+        }).join('')}
       </div>
 
       <div style="margin-bottom:1.2rem;">
@@ -574,15 +470,15 @@ function renderLevel1DirectVotingScreen() {
       </div>
 
       <button type="button" class="btn btn-primary" onclick="submitLevel1DirectVote()" style="width:100%; padding:0.95rem; font-size:1.05rem; font-weight:800; border-radius:12px; background:linear-gradient(135deg, #10b981, #06b6d4); box-shadow:0 0 20px rgba(16,185,129,0.4); cursor:pointer;">
-        ✅ CONFIRMAR MINHA AVALIAÇÃO AGORA
+        ✅ CONFIRMAR E FECHAR O SETOR
       </button>
 
     </div>
   `;
 }
 
-window.selectLevel1VoteOption = function(opt) {
-  level1SelectedOption = opt;
+window.selectLevel1VoteOption = function(sensoKey, opt) {
+  level1SelectedScores[sensoKey] = opt;
 
   const stylesMap = {
     bom: { border: '#10b981', bg: 'rgba(16,185,129,0.3)' },
@@ -591,26 +487,23 @@ window.selectLevel1VoteOption = function(opt) {
   };
 
   ['bom', 'regular', 'ruim'].forEach(o => {
-    const btn = document.getElementById(`lvl1-opt-${o}`);
-    const chk = document.getElementById(`lvl1-chk-${o}`);
+    const btn = document.getElementById(`lvl1-opt-${sensoKey}-${o}`);
+    if (!btn) return;
     if (o === opt) {
-      if (btn) {
-        btn.style.borderColor = stylesMap[o].border;
-        btn.style.background = stylesMap[o].bg;
-        btn.style.color = '#ffffff';
-      }
-      if (chk) chk.style.display = 'inline';
+      btn.style.borderColor = stylesMap[o].border;
+      btn.style.background = stylesMap[o].bg;
+      btn.style.color = '#ffffff';
     } else {
-      if (btn) {
-        btn.style.borderColor = 'rgba(255,255,255,0.12)';
-        btn.style.background = 'rgba(255,255,255,0.04)';
-        btn.style.color = '#9ca3af';
-      }
-      if (chk) chk.style.display = 'none';
+      btn.style.borderColor = 'rgba(255,255,255,0.12)';
+      btn.style.background = 'rgba(255,255,255,0.04)';
+      btn.style.color = '#9ca3af';
     }
   });
 };
 
+// FECHA O SETOR INTEIRO DE UMA VEZ: 1 POST POR SENSO OBRIGATÓRIO (3 no total). Se algum já tinha
+// sido votado por este usuário hoje (ex: via modal de moderação), o 409 daquele é só ignorado — os
+// outros continuam sendo gravados normalmente.
 window.submitLevel1DirectVote = async function() {
   if (!currentUser) return;
 
@@ -620,69 +513,96 @@ window.submitLevel1DirectVote = async function() {
 
   const assignment = getRotationAssignment(currentUser, currentDayCode);
   const sectorName = assignment.targetSector;
-  const sensoName = assignment.targetSenso.name;
-  const boardKey = `${sectorName}_${assignment.targetSenso.key}_${currentDayCode}`;
 
   const commentInput = document.getElementById('lvl1-comment-input');
   const commentText = commentInput ? commentInput.value.trim() : '';
-
-  const scoreChoice = level1SelectedOption || 'bom';
   const scorePts = { bom: 3, regular: 2, ruim: 1 };
-
-  const currentSummary = getBoardCellSummary(boardKey);
-  let existingVotes = currentSummary.votes || [];
-
-  const todayDateStr = new Date().toISOString().split('T')[0];
-  const userVoteKey = `5s_user_voted_${currentUser.username}_${todayDateStr}`;
-
-  existingVotes = existingVotes.filter(v => (v.username || v.name) !== currentUser.username && (v.username || v.name) !== currentUser.name);
-
-  const timestamp = new Date().toLocaleString('pt-BR');
-  existingVotes.push({
-    username: currentUser.username,
-    name: currentUser.name,
-    role: currentUser.role || 'colaborador',
-    score: scoreChoice,
-    points: scorePts[scoreChoice],
-    comment: commentText,
-    timestamp: timestamp
-  });
-
-  const totalPts = existingVotes.reduce((acc, v) => acc + v.points, 0);
-  const avgPts = totalPts / existingVotes.length;
-
-  let avgStatus = 'bom';
-  if (avgPts >= 2.5) avgStatus = 'bom';
-  else if (avgPts >= 1.7) avgStatus = 'regular';
-  else avgStatus = 'ruim';
-
-  clientFactoryBoard[boardKey] = {
-    status: avgStatus,
-    avgPoints: Math.round(avgPts * 10) / 10,
-    votes: existingVotes
-  };
-
-  localStorage.setItem('5s_factory_board_impaktto', JSON.stringify(clientFactoryBoard));
-  localStorage.setItem(userVoteKey, 'true');
-
   const labelMap = { bom: '🟢 BOM', regular: '🟡 REGULAR', ruim: '🔴 RUIM' };
+
+  const results = [];
+  for (const s of REQUIRED_SENSOS) {
+    const scoreChoice = level1SelectedScores[s.key] || 'bom';
+    const boardKey = `${sectorName}_${s.key}_${currentDayCode}`;
+    try {
+      await apiFetch('/factory-board', {
+        method: 'POST',
+        body: { boardKey, sector: sectorName, senso: s.key, dayCode: currentDayCode, score: scoreChoice, points: scorePts[scoreChoice], comment: commentText }
+      });
+      results.push(`${s.name.split('. ')[1] || s.name}: ${labelMap[scoreChoice]}`);
+    } catch (err) {
+      if (err.status !== 409) {
+        alert(`Não foi possível registrar ${s.name}: ${err.message}`);
+        return;
+      }
+      // 409 = este usuário já tinha votado esse senso hoje (ex: pelo modal de moderação) — segue o jogo.
+    }
+  }
+
   const auditorName = currentUser.name;
   const originSector = currentUser.sector || 'Fábrica';
   const commentSuffix = commentText ? ` 💬 "${commentText}"` : '';
+  await logActivity(`Fechou o Setor ${sectorName} (${results.join(' • ')}) no rodízio (por ${auditorName} - Origem: ${originSector})${commentSuffix}`);
 
-  logActivity(`Marcou ${sensoName} na ${currentDayCode} como ${labelMap[scoreChoice]} no Setor ${sectorName} (Rodízio por ${auditorName} - Origem: ${originSector} ➔ Destino: ${sectorName})${commentSuffix}`);
-
-  await pushDataToServer();
-  level1SelectedOption = 'bom';
+  await refreshAllFromServer();
+  level1SelectedScores = { seiri: 'bom', seiton: 'bom', seiso: 'bom' };
   renderLevel1DirectVotingScreen();
 };
 
+// ABRE A CAIXA DE VOTO DE QUALQUER CÉLULA DO QUADRO — PARA NÍVEL 1 REDIRECIONA PRO CARTÃO ÚNICO
+// (ele só vota na célula do rodízio dele); NÍVEL 2/3 PODEM VOTAR EM QUALQUER CÉLULA PENDENTE PRA
+// FECHAR BURACOS, E NÍVEL 2 (AUDITOR_SEMANAL) / NÍVEL 3 PODEM REMOVER UM VOTO QUE JULGAREM INCORRETO.
 window.openVoteChoiceModal = function(sectorName, boardKey, sensoName, day) {
   const isLevel1 = (currentUser && (currentUser.level === 'diario' || currentUser.level === 'colaborador' || currentUser.role === 'colaborador' || currentUser.role === 'lider_diario'));
   if (isLevel1) {
     renderLevel1DirectVotingScreen();
     return;
   }
+  if (!currentUser) return;
+
+  const canModerate = (['administrador', 'auditor_semanal'].includes(currentUser.role) || ['senior', 'semanal'].includes(currentUser.level));
+  currentVoteTarget = { sectorName, boardKey, sensoName, day };
+  modalSelectedScore = 'bom';
+
+  const summary = getBoardCellSummary(boardKey);
+  const scoreLabel = { bom: '🟢 Bom', regular: '🟡 Regular', ruim: '🔴 Ruim' };
+
+  const votesHtml = summary.votes.length === 0
+    ? `<p style="font-size:0.85rem; color:var(--text-dim); margin:0.5rem 0;">Nenhum voto registrado ainda nesta célula hoje.</p>`
+    : summary.votes.map(v => `
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:0.5rem; padding:0.4rem 0; border-bottom:1px solid rgba(255,255,255,0.06); font-size:0.8rem;">
+          <span>👤 <strong>${v.name}</strong>: ${scoreLabel[v.score] || v.score}${v.comment ? ` — <em>"${v.comment}"</em>` : ''}</span>
+          ${canModerate ? `<button type="button" class="btn btn-danger" style="padding:0.15rem 0.5rem; font-size:0.7rem; flex-shrink:0;" onclick="removeVoteFromModal(${v.id})">🗑️ Remover</button>` : ''}
+        </div>
+      `).join('');
+
+  const modalHtml = `
+    <div id="modal-vote-choice" class="login-overlay" style="display:flex; z-index:10001;">
+      <div class="login-card" style="max-width:480px;">
+        <div class="login-header">
+          <h2>📋 ${sensoName}</h2>
+          <p>Setor: <strong>${sectorName}</strong> • Dia: <strong>${day}</strong></p>
+        </div>
+        <div style="max-height:220px; overflow-y:auto; margin-bottom:1rem; text-align:left;">${votesHtml}</div>
+        <div class="form-group" style="text-align:left;">
+          <label>Registrar minha avaliação nesta célula</label>
+          <div style="display:flex; gap:0.5rem; margin-top:0.4rem;" id="modal-vote-options">
+            <button type="button" class="btn btn-secondary" data-opt="bom" onclick="selectVoteOptionInModal('bom')" style="flex:1;">🟢 Bom</button>
+            <button type="button" class="btn btn-secondary" data-opt="regular" onclick="selectVoteOptionInModal('regular')" style="flex:1;">🟡 Regular</button>
+            <button type="button" class="btn btn-secondary" data-opt="ruim" onclick="selectVoteOptionInModal('ruim')" style="flex:1;">🔴 Ruim</button>
+          </div>
+        </div>
+        <div style="display:flex; gap:0.5rem; margin-top:1rem;">
+          <button type="button" class="btn btn-secondary" onclick="closeVoteChoiceModal()" style="flex:1;">Fechar</button>
+          <button type="button" class="btn btn-primary" onclick="confirmVoteChoiceModal()" style="flex:1;">✅ Confirmar Voto</button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  const existing = document.getElementById('modal-vote-choice');
+  if (existing) existing.remove();
+  document.body.insertAdjacentHTML('beforeend', modalHtml);
+  selectVoteOptionInModal('bom');
 };
 
 window.closeVoteChoiceModal = function(e) {
@@ -698,8 +618,63 @@ window.closeVoteChoiceModal = function(e) {
   currentVoteTarget = null;
 };
 
-window.confirmVoteChoiceModal = function(e) {};
-window.selectVoteOptionInModal = function(opt) {};
+window.selectVoteOptionInModal = function(opt) {
+  modalSelectedScore = opt;
+  document.querySelectorAll('#modal-vote-options button').forEach(btn => {
+    if (btn.getAttribute('data-opt') === opt) {
+      btn.classList.remove('btn-secondary');
+      btn.classList.add('btn-primary');
+    } else {
+      btn.classList.remove('btn-primary');
+      btn.classList.add('btn-secondary');
+    }
+  });
+};
+
+window.confirmVoteChoiceModal = async function(e) {
+  if (e && typeof e.preventDefault === 'function') e.preventDefault();
+  if (!currentVoteTarget) return;
+
+  const { sectorName, boardKey, sensoName, day } = currentVoteTarget;
+  const sensoKey = boardKey.split('_')[boardKey.split('_').length - 2];
+  const scorePts = { bom: 3, regular: 2, ruim: 1 };
+
+  try {
+    await apiFetch('/factory-board', {
+      method: 'POST',
+      body: { boardKey, sector: sectorName, senso: sensoKey, dayCode: day, score: modalSelectedScore, points: scorePts[modalSelectedScore] }
+    });
+  } catch (err) {
+    if (err.status === 409) {
+      alert('Você já avaliou esta célula hoje.');
+      return;
+    }
+    alert('Não foi possível registrar o voto: ' + err.message);
+    return;
+  }
+
+  const labelMap = { bom: '🟢 BOM', regular: '🟡 REGULAR', ruim: '🔴 RUIM' };
+  await logActivity(`Avaliou (via quadro) ${sensoName} no Setor ${sectorName} como ${labelMap[modalSelectedScore]}`);
+  await refreshAllFromServer();
+  closeVoteChoiceModal();
+};
+
+// PODER DE MODERAÇÃO: NÍVEL 2 (AUDITOR VOLANTE/ENCARREGADO) E NÍVEL 3 PODEM REMOVER UM VOTO
+// QUE JULGUEM TENDENCIOSO OU INCORRETO — o backend confere de novo o papel antes de aceitar.
+window.removeVoteFromModal = async function(voteId) {
+  if (!confirm('Remover este voto? Essa ação não pode ser desfeita.')) return;
+  try {
+    await apiFetch('/factory-board', { method: 'DELETE', body: { voteId } });
+  } catch (err) {
+    alert('Não foi possível remover o voto: ' + err.message);
+    return;
+  }
+  await logActivity('Removeu um voto do quadro da fábrica (moderação Nível 2/3)');
+  await refreshAllFromServer();
+  if (currentVoteTarget) {
+    openVoteChoiceModal(currentVoteTarget.sectorName, currentVoteTarget.boardKey, currentVoteTarget.sensoName, currentVoteTarget.day);
+  }
+};
 window.cycleFactoryBoard = function(sectorName, boardKey, sensoName, day) {
   openVoteChoiceModal(sectorName, boardKey, sensoName, day);
 };
@@ -738,26 +713,21 @@ window.handleAddUserFromADM = async function(e) {
     senior: `Grupo 3: Gerência & Diretoria`
   };
 
-  const newUser = {
-    username,
-    password,
-    name,
-    role: roleMap[level] || 'colaborador',
-    level: level,
-    sector: sector,
-    title: titleMap[level] || `Grupo 1: Colaborador (${sector})`
-  };
+  try {
+    // Cria a conta (sempre nasce "colaborador" no servidor) e, em seguida, ajusta o nível/papel
+    // escolhido no painel ADM — sem tocar no token de sessão do administrador que está cadastrando.
+    await apiFetch('/auth-register', { method: 'POST', body: { name, username, password, sector } });
+    await apiFetch('/users', {
+      method: 'PATCH',
+      body: { username, level, role: roleMap[level] || 'colaborador', sector, title: titleMap[level] }
+    });
+  } catch (err) {
+    alert('Não foi possível cadastrar o colaborador: ' + err.message);
+    return;
+  }
 
-  userDatabase[username] = newUser;
-  localStorage.setItem('5s_impaktto_users', JSON.stringify(userDatabase));
-
-  let mobileUsers = JSON.parse(localStorage.getItem('5s_mobile_custom_users')) || {};
-  mobileUsers[username] = newUser;
-  localStorage.setItem('5s_mobile_custom_users', JSON.stringify(mobileUsers));
-
-  logActivity(`✨ Cadastrou o colaborador "${name}" (${titleMap[level]}) direto pelo Painel ADM`);
-  renderUserManagementTable();
-  await pushDataToServer();
+  await logActivity(`✨ Cadastrou o colaborador "${name}" (${titleMap[level]}) direto pelo Painel ADM`);
+  await refreshAllFromServer();
 
   if (nameInput) nameInput.value = '';
   if (userInput) userInput.value = '';
@@ -766,10 +736,10 @@ window.handleAddUserFromADM = async function(e) {
   alert(`🎉 Colaborador "${name}" cadastrado com sucesso e sincronizado em nuvem!`);
 };
 
-// FUNÇÃO GLOBAL DE LOGIN DIRETO IMPAK TTO
-window.handleLogin = function(e) {
+// FUNÇÃO GLOBAL DE LOGIN DIRETO IMPAK TTO — AGORA CONTRA O SERVIDOR, SEM SENHAS UNIVERSAIS DE ATALHO
+window.handleLogin = async function(e) {
   if (e) e.preventDefault();
-  
+
   const uInput = document.getElementById('login-username');
   const pInput = document.getElementById('login-password');
   const loginErr = document.getElementById('login-error');
@@ -777,49 +747,31 @@ window.handleLogin = function(e) {
   const u = uInput && uInput.value.trim() ? uInput.value.trim().toLowerCase() : '';
   const p = pInput && pInput.value.trim() ? pInput.value.trim() : '';
 
-  if (!u) {
-    currentUser = DEFAULT_USERS.admin;
-  } else {
-    let foundUser = userDatabase[u] || Object.values(userDatabase).find(usr => usr.username && usr.username.toLowerCase() === u);
-
-    if (foundUser && (foundUser.password === p || p === '5s2026' || p === 'mestre5s' || p === '')) {
-      currentUser = foundUser;
-    } else if (u === 'admin') {
-      currentUser = DEFAULT_USERS.admin;
-    } else if (u === 'clayton' || u === 'clayton.auditor' || u === 'cleiton') {
-      currentUser = DEFAULT_USERS.clayton;
-    } else if (u === 'monitor') {
-      currentUser = DEFAULT_USERS.monitor;
-    } else {
-      if (loginErr) {
-        loginErr.style.display = 'block';
-        loginErr.innerText = `⚠️ Usuário "${u}" ou senha incorretos. Tente a senha 5s2026.`;
-      }
-      return false;
+  if (!u || !p) {
+    if (loginErr) {
+      loginErr.style.display = 'block';
+      loginErr.innerText = '⚠️ Informe usuário e senha.';
     }
-  }
-
-  localStorage.setItem('5s_impaktto_session', JSON.stringify(currentUser));
-  if (loginErr) loginErr.style.display = 'none';
-
-  const loginOverlay = document.getElementById('login-overlay');
-  if (loginOverlay) {
-    loginOverlay.style.display = 'none';
-    loginOverlay.classList.add('hidden');
+    return false;
   }
 
   try {
-    checkAuthSession();
+    await performLogin(u, p);
+    if (loginErr) loginErr.style.display = 'none';
+    return true;
   } catch (err) {
-    console.error('Erro no carregamento de sessão:', err);
+    if (loginErr) {
+      loginErr.style.display = 'block';
+      loginErr.innerText = `⚠️ ${err.message}`;
+    }
+    return false;
   }
-  return true;
 };
 
-// AUTO-CADASTRO DE NOVOS INTEGRANTES
+// AUTO-CADASTRO DE NOVOS INTEGRANTES — CADASTRA E JÁ AUTENTICA DE VERDADE CONTRA O SERVIDOR
 async function handleSelfRegister(e) {
   if (e) e.preventDefault();
-  
+
   const name = document.getElementById('reg-name').value.trim();
   const username = document.getElementById('reg-username').value.trim().toLowerCase();
   const password = document.getElementById('reg-password').value.trim();
@@ -827,26 +779,16 @@ async function handleSelfRegister(e) {
 
   if (!name || !username || !password) return;
 
-  if (userDatabase[username]) {
-    alert('Este nome de usuário já está em uso. Escolha outro usuário (ex: joao.impaktto).');
+  try {
+    const { token, user } = await apiFetch('/auth-register', { method: 'POST', body: { name, username, password, sector: userSector } });
+    authToken = token;
+    currentUser = user;
+    localStorage.setItem('5s_impaktto_token', authToken);
+    localStorage.setItem('5s_impaktto_session', JSON.stringify(currentUser));
+  } catch (err) {
+    alert('Não foi possível concluir o cadastro: ' + err.message);
     return;
   }
-
-  const newUser = {
-    username,
-    password,
-    name,
-    role: 'colaborador',
-    level: 'colaborador',
-    sector: userSector,
-    title: `Grupo 1: Colaborador (${userSector})`
-  };
-
-  userDatabase[username] = newUser;
-  localStorage.setItem('5s_impaktto_users', JSON.stringify(userDatabase));
-
-  currentUser = newUser;
-  localStorage.setItem('5s_impaktto_session', JSON.stringify(currentUser));
 
   const loginOverlay = document.getElementById('login-overlay');
   if (loginOverlay) {
@@ -854,11 +796,10 @@ async function handleSelfRegister(e) {
     loginOverlay.classList.add('hidden');
   }
 
-  logActivity(`✨ Novo colaborador registrado (${name} - Setor: ${userSector} - Participação Aberta no 5S)`);
-  await pushDataToServer();
+  await logActivity(`✨ Novo colaborador registrado (${name} - Setor: ${userSector} - Participação Aberta no 5S)`);
 
   try {
-    checkAuthSession();
+    await checkAuthSession();
   } catch (err) {
     console.error('Erro ao carregar sessão pós-registro:', err);
   }
@@ -877,7 +818,7 @@ window.closeChangePasswordModal = function() {
   if (modal) modal.style.display = 'none';
 };
 
-window.handleChangePassword = function(e) {
+window.handleChangePassword = async function(e) {
   if (e) e.preventDefault();
 
   const currentPassInput = document.getElementById('change-pass-current').value.trim();
@@ -886,16 +827,6 @@ window.handleChangePassword = function(e) {
   const errEl = document.getElementById('change-pass-error');
 
   if (!currentUser) return;
-
-  const actualPassword = currentUser.password || '5s2026';
-
-  if (currentPassInput !== actualPassword && currentPassInput !== '5s2026' && currentPassInput !== 'mestre5s') {
-    if (errEl) {
-      errEl.style.display = 'block';
-      errEl.innerText = '⚠️ Sua senha atual está incorreta.';
-    }
-    return;
-  }
 
   if (newPassInput.length < 4) {
     if (errEl) {
@@ -913,27 +844,28 @@ window.handleChangePassword = function(e) {
     return;
   }
 
-  const usernameKey = currentUser.username;
-  if (userDatabase[usernameKey]) {
-    userDatabase[usernameKey].password = newPassInput;
+  try {
+    await apiFetch('/auth-change-password', { method: 'POST', body: { currentPassword: currentPassInput, newPassword: newPassInput } });
+  } catch (err) {
+    if (errEl) {
+      errEl.style.display = 'block';
+      errEl.innerText = `⚠️ ${err.message}`;
+    }
+    return;
   }
-  currentUser.password = newPassInput;
 
-  localStorage.setItem('5s_impaktto_users', JSON.stringify(userDatabase));
-  localStorage.setItem('5s_impaktto_session', JSON.stringify(currentUser));
-
-  logActivity(`🔑 O colaborador ${currentUser.name} alterou sua senha pessoal com sucesso`);
+  await logActivity(`🔑 O colaborador ${currentUser.name} alterou sua senha pessoal com sucesso`);
   closeChangePasswordModal();
 
   alert('🎉 Sua nova senha pessoal foi cadastrada com sucesso! Da próxima vez, utilize a sua nova senha.');
   checkAuthSession();
-  pushDataToServer();
 };
 
 window.clearSystemSession = function() {
   if (autoRefreshTimer) clearInterval(autoRefreshTimer);
   document.body.classList.remove('monitor-mode');
   localStorage.clear();
+  authToken = null;
   location.reload();
 };
 
@@ -1044,13 +976,10 @@ function checkAuthSession() {
     loginOverlay.classList.add('hidden');
   }
 
+  // O servidor nunca devolve a senha (nem em hash) para o navegador, então não há mais como saber
+  // por aqui se o usuário ainda está com a senha padrão — o aviso foi removido junto com essa checagem.
   const secAlert = document.getElementById('security-password-alert');
-  const userPass = currentUser.password || '5s2026';
-  const isDefaultPassword = (userPass === '5s2026' && currentUser.username !== 'monitor');
-
-  if (secAlert) {
-    secAlert.style.display = isDefaultPassword ? 'block' : 'none';
-  }
+  if (secAlert) secAlert.style.display = 'none';
 
   const level = currentUser.level || 'colaborador';
   const role = currentUser.role || 'colaborador';
@@ -1075,30 +1004,30 @@ function checkAuthSession() {
   if (!autoRefreshTimer) {
     autoRefreshTimer = setInterval(() => {
       pullDataFromServer();
-    }, 2000);
+    }, 5000);
   }
 
+  const monitorTvDashboard = document.getElementById('monitor-tv-dashboard');
+  const mainContainer = document.querySelector('main.main-container');
+
   if (isMonitor) {
-    // MODO MONITOR TV (GESTAO VISUAL 16:9 EM TEMPO REAL)
+    // MODO MONITOR TV (GESTAO VISUAL 16:9 EM TEMPO REAL) — painel dedicado, não os cards padrão.
     document.body.classList.add('monitor-mode');
     activeFactorySectorFilter = 'ALL';
 
-    if (cardUniversalVoting) cardUniversalVoting.style.display = 'none';
-    if (cardMaturity) cardMaturity.style.display = 'block';
-    if (cardFactoryBoard) cardFactoryBoard.style.display = 'block';
-    if (cardActivityFeed) cardActivityFeed.style.display = 'block'; // FEED ATIVO NA TV AO VIVO!
-    if (cardAuditChecklist) cardAuditChecklist.style.display = 'none';
-    if (cardUserManagement) cardUserManagement.style.display = 'none';
+    if (mainContainer) mainContainer.style.display = 'none';
+    if (monitorTvDashboard) monitorTvDashboard.style.display = 'flex';
 
     if (navTabsContainer) navTabsContainer.style.display = 'none';
     if (navBtnTools) navBtnTools.style.display = 'none';
     if (navBtnManual) navBtnManual.style.display = 'none';
 
-    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-    document.getElementById('tab-dashboard')?.classList.add('active');
+    renderMonitorTvDashboard();
 
   } else {
     document.body.classList.remove('monitor-mode');
+    if (mainContainer) mainContainer.style.display = 'block';
+    if (monitorTvDashboard) monitorTvDashboard.style.display = 'none';
 
     if (isLider || isColaborador) {
       // NÍVEL 1: EXIBE EXCLUSIVAMENTE A TELA ÚNICA DE VOTAÇÃO DIRETA (EXATAMENTE COMO NA FOTO DO XANDINHO)
@@ -1197,56 +1126,11 @@ window.handleLogout = function() {
   if (autoRefreshTimer) clearInterval(autoRefreshTimer);
   document.body.classList.remove('monitor-mode');
   currentUser = null;
+  authToken = null;
   localStorage.removeItem('5s_impaktto_session');
+  localStorage.removeItem('5s_impaktto_token');
   location.reload();
 };
-
-function loadImpakttoData() {
-  clientAuditScores = JSON.parse(localStorage.getItem('5s_audit_scores_impaktto')) || {};
-  clientGutMatrix = JSON.parse(localStorage.getItem('5s_gut_matrix_impaktto')) || [];
-  clientKanbanTasks = JSON.parse(localStorage.getItem('5s_kanban_tasks_impaktto')) || [
-    { id: '1', title: 'Demarcar corredores de circulação no chão de fábrica', senso: 'seiton', status: 'a-fazer', owner: 'Diego (Encarregado Fábrica)', date: '2026-08-20', createdBy: 'Alexandre Souza' },
-    { id: '2', title: 'Implantar quadro shadowboard para ferramentas de usinagem', senso: 'seiri', status: 'em-andamento', owner: 'Alexandre (Usinagem)', date: '2026-08-15', createdBy: 'Kaio' }
-  ];
-  clientIshikawaData = JSON.parse(localStorage.getItem('5s_ishikawa_impaktto')) || {
-    problem: 'Auditoria de Campo 5S - IMPAK TTO Plásticos de Engenharia',
-    maoObra: ['Rotina de limpeza diária a estruturar'],
-    metodo: ['Procedimentos visuais de organização nas bancadas'],
-    maquina: ['Identificação dos pontos de lubrificação'],
-    material: ['Triagem de insumos no estoque intermediário'],
-    meioAmbiente: ['Organização de fiação elétrica e pneumática'],
-    medicao: ['Rondas semanais dos auditores']
-  };
-
-  // REGRAS DE EMBEDDED SEED PARA GARANTIA TOTAL
-  let localLogs = JSON.parse(localStorage.getItem('5s_activity_logs_impaktto'));
-  if (!localLogs || localLogs.length === 0) {
-    clientActivityLogs = [...DEFAULT_ACTIVITY_LOGS_SEED];
-    localStorage.setItem('5s_activity_logs_impaktto', JSON.stringify(clientActivityLogs));
-  } else {
-    clientActivityLogs = localLogs;
-  }
-
-  let localBoard = JSON.parse(localStorage.getItem('5s_factory_board_impaktto'));
-  if (!localBoard || Object.keys(localBoard).length === 0) {
-    clientFactoryBoard = { ...DEFAULT_FACTORY_BOARD_SEED };
-    localStorage.setItem('5s_factory_board_impaktto', JSON.stringify(clientFactoryBoard));
-  } else {
-    clientFactoryBoard = localBoard;
-  }
-
-  renderAuditForms();
-  calculateAuditResults();
-  
-  renderLevel1DirectVotingScreen();
-  renderFactoryBoard();
-
-  renderGUTTable();
-  renderKanban();
-  renderIshikawa();
-  renderActivityLogs();
-  renderUserManagementTable();
-}
 
 // 7. RENDERIZAÇÃO DO PAINEL DE GESTÃO DE COLABORADORES E PODER DE EXCLUSÃO 1-CLICK NIVEL 3
 function renderUserManagementTable() {
@@ -1255,6 +1139,8 @@ function renderUserManagementTable() {
 
   const usersList = Object.values(userDatabase);
   const todayDateStr = new Date().toISOString().split('T')[0];
+  const dayNamesAdm = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
+  const currentDayCodeAdm = dayNamesAdm[new Date().getDay()] === 'DOM' ? 'SEG' : dayNamesAdm[new Date().getDay()];
 
   let html = `
     <!-- FORMULÁRIO RÁPIDO PARA O ADM CADASTRAR INTEGRANTES DIRETO PELO PAINEL -->
@@ -1308,9 +1194,11 @@ function renderUserManagementTable() {
   usersList.forEach(u => {
     const isSelfAdmin = (u.username === 'admin');
     const uLevel = u.level || (u.role === 'colaborador' ? 'colaborador' : 'diario');
-    const uVoteKey = `5s_user_voted_${u.username}_${todayDateStr}`;
-    const votedToday = (localStorage.getItem(uVoteKey) === 'true');
     const uAssignment = getRotationAssignment(u);
+    const votedToday = REQUIRED_SENSOS.every(s => {
+      const uBoardKey = `${uAssignment.targetSector}_${s.key}_${currentDayCodeAdm}`;
+      return getBoardCellSummary(uBoardKey).votes.some(v => v.username === u.username);
+    });
 
     html += `
       <tr style="border-bottom:1px solid rgba(255,255,255,0.04);">
@@ -1325,7 +1213,7 @@ function renderUserManagementTable() {
           </select>
         </td>
         <td style="padding:0.6rem; color:var(--accent-cyan); font-weight:700;">
-          🎯 ${uAssignment.targetSector} (${uAssignment.targetSenso.name})
+          🎯 ${uAssignment.targetSector}
         </td>
         <td style="padding:0.6rem;">
           <select class="form-control" style="font-size:0.78rem; padding:0.25rem 0.5rem; width:auto;" onchange="updateUserLevel('${u.username}', this.value)" ${isSelfAdmin ? 'disabled' : ''}>
@@ -1353,21 +1241,23 @@ function renderUserManagementTable() {
   container.innerHTML = html;
 }
 
-window.resetUserDailyVote = function(username) {
-  const todayDateStr = new Date().toISOString().split('T')[0];
-  const userVoteKey = `5s_user_voted_${username}_${todayDateStr}`;
-  localStorage.removeItem(userVoteKey);
-  
+window.resetUserDailyVote = async function(username) {
+  const dayNames = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
+  const currentDayCode = dayNames[new Date().getDay()] === 'DOM' ? 'SEG' : dayNames[new Date().getDay()];
+
   const uObj = userDatabase[username];
   const uName = uObj ? uObj.name : username;
 
-  alert(`🎉 O voto diário de "${uName}" foi LIBERADO com sucesso! Ele(a) já pode realizar um novo voto de teste agora.`);
-  renderUserManagementTable();
-  checkAuthSession();
-  pushDataToServer();
+  try {
+    await apiFetch('/factory-board', { method: 'DELETE', body: { voterUsername: username, dayCode: currentDayCode } });
+    alert(`🎉 O voto diário de "${uName}" foi LIBERADO com sucesso! Ele(a) já pode realizar um novo voto de teste agora.`);
+  } catch (err) {
+    alert('Não foi possível liberar o voto: ' + err.message);
+  }
+  await refreshAllFromServer();
 };
 
-window.updateUserLevel = function(username, newLevel) {
+window.updateUserLevel = async function(username, newLevel) {
   if (!userDatabase[username]) return;
 
   const roleMap = {
@@ -1386,12 +1276,6 @@ window.updateUserLevel = function(username, newLevel) {
     senior: `Grupo 3: Gerência & Diretoria`
   };
 
-  userDatabase[username].level = newLevel;
-  userDatabase[username].role = roleMap[newLevel] || 'colaborador';
-  userDatabase[username].title = titleMap[newLevel] || `Grupo 1: Colaborador (${sector} ➔ ${assignment.targetSector})`;
-
-  localStorage.setItem('5s_impaktto_users', JSON.stringify(userDatabase));
-
   const levelText = {
     colaborador: 'Grupo 1 (Colaborador de Setor)',
     diario: 'Grupo 1 (Líder Diário de Setor)',
@@ -1399,29 +1283,43 @@ window.updateUserLevel = function(username, newLevel) {
     senior: 'Grupo 3 (Gerência & Diretoria)'
   };
 
-  logActivity(`👤 Alterou classificação do integrante "${userDatabase[username].name}" para ${levelText[newLevel]}`);
-  pushDataToServer();
-
-  renderUserManagementTable();
-  alert(`Classificação de "${userDatabase[username].name}" atualizada para ${levelText[newLevel]}!`);
-};
-
-window.updateUserSector = function(username, newSector) {
-  if (!userDatabase[username]) return;
-
-  userDatabase[username].sector = newSector;
-  const assignment = getRotationAssignment(userDatabase[username]);
-  if (userDatabase[username].level === 'colaborador') {
-    userDatabase[username].title = `Grupo 1: Colaborador (${newSector} ➔ ${assignment.targetSector})`;
-  } else if (userDatabase[username].level === 'diario') {
-    userDatabase[username].title = `Grupo 1: Líder de ${newSector} ➔ ${assignment.targetSector}`;
+  const userName = userDatabase[username].name;
+  try {
+    await apiFetch('/users', {
+      method: 'PATCH',
+      body: { username, level: newLevel, role: roleMap[newLevel] || 'colaborador', title: titleMap[newLevel] }
+    });
+  } catch (err) {
+    alert('Não foi possível atualizar a classificação: ' + err.message);
+    return;
   }
 
-  localStorage.setItem('5s_impaktto_users', JSON.stringify(userDatabase));
-  logActivity(`📍 Alterou setor do integrante "${userDatabase[username].name}" para ${newSector}`);
-  pushDataToServer();
+  await logActivity(`👤 Alterou classificação do integrante "${userName}" para ${levelText[newLevel]}`);
+  await refreshAllFromServer();
+  alert(`Classificação de "${userName}" atualizada para ${levelText[newLevel]}!`);
+};
 
-  renderUserManagementTable();
+window.updateUserSector = async function(username, newSector) {
+  if (!userDatabase[username]) return;
+
+  const assignment = getRotationAssignment({ ...userDatabase[username], sector: newSector });
+  let title;
+  if (userDatabase[username].level === 'colaborador') {
+    title = `Grupo 1: Colaborador (${newSector} ➔ ${assignment.targetSector})`;
+  } else if (userDatabase[username].level === 'diario') {
+    title = `Grupo 1: Líder de ${newSector} ➔ ${assignment.targetSector}`;
+  }
+
+  const userName = userDatabase[username].name;
+  try {
+    await apiFetch('/users', { method: 'PATCH', body: { username, sector: newSector, title } });
+  } catch (err) {
+    alert('Não foi possível atualizar o setor: ' + err.message);
+    return;
+  }
+
+  await logActivity(`📍 Alterou setor do integrante "${userName}" para ${newSector}`);
+  await refreshAllFromServer();
 };
 
 window.deleteUserAccount = async function(username) {
@@ -1436,51 +1334,34 @@ window.deleteUserAccount = async function(username) {
   }
 
   if (confirm(`🗑️ Tem certeza que deseja EXCLUIR o acesso de "${targetName}" (${username})?`)) {
-    delete userDatabase[username];
-    
-    let deletedList = JSON.parse(localStorage.getItem('5s_impaktto_deleted_users')) || [];
-    if (!deletedList.includes(username)) {
-      deletedList.push(username);
+    try {
+      await apiFetch('/users', { method: 'DELETE', body: { username } });
+    } catch (err) {
+      alert('Não foi possível excluir o usuário: ' + err.message);
+      return;
     }
-    localStorage.setItem('5s_impaktto_deleted_users', JSON.stringify(deletedList));
-    localStorage.setItem('5s_impaktto_users', JSON.stringify(userDatabase));
 
-    logActivity(`🗑️ Excluiu o acesso do colaborador "${targetName}" (${username})`);
-    
-    await pushDataToServer();
-    renderUserManagementTable();
+    await logActivity(`🗑️ Excluiu o acesso do colaborador "${targetName}" (${username})`);
+    await refreshAllFromServer();
     checkAuthSession();
 
     alert(`🎉 O integrante "${targetName}" foi excluído com sucesso!`);
   }
 };
 
-function logActivity(actionText) {
-  const timestamp = new Date().toLocaleString('pt-BR');
+// GRAVA UM EVENTO NO FEED DE ATIVIDADE — AGORA UMA LINHA REAL NO BANCO, NÃO MAIS UM ARRAY NO LOCALSTORAGE
+async function logActivity(actionText) {
   const userLabel = currentUser ? currentUser.name : 'Usuário';
-
-  const logEntry = {
-    id: Date.now(),
-    userName: userLabel,
-    action: actionText,
-    timestamp: timestamp
-  };
-
-  let currentLogs = JSON.parse(localStorage.getItem('5s_activity_logs_impaktto')) || [];
-  currentLogs.unshift(logEntry);
-  if (currentLogs.length > 25) currentLogs.pop();
-
-  clientActivityLogs = currentLogs;
-  localStorage.setItem('5s_activity_logs_impaktto', JSON.stringify(clientActivityLogs));
-  renderActivityLogs();
-  pushDataToServer();
+  try {
+    await apiFetch('/activity-log', { method: 'POST', body: { userName: userLabel, action: actionText } });
+  } catch (err) {
+    console.error('Erro ao registrar atividade:', err);
+  }
 }
 
 function renderActivityLogs() {
   const container = document.getElementById('activity-log-container');
   if (!container) return;
-
-  clientActivityLogs = JSON.parse(localStorage.getItem('5s_activity_logs_impaktto')) || clientActivityLogs;
 
   if (clientActivityLogs.length === 0) {
     container.innerHTML = `<div style="font-size:0.85rem; color:var(--text-muted); padding:0.5rem;">Nenhuma avaliação registrada ainda. Acompanhe os lançamentos da equipe ao vivo!</div>`;
@@ -1571,9 +1452,8 @@ function renderAuditForms() {
   container.innerHTML = html;
 }
 
-window.selectScore3Level = function(sensoName, qNum, qKey, level) {
-  clientAuditScores[qKey] = level;
-  localStorage.setItem('5s_audit_scores_impaktto', JSON.stringify(clientAuditScores));
+window.selectScore3Level = async function(sensoName, qNum, qKey, level) {
+  clientAuditScores[qKey] = level; // atualização otimista — o servidor confirma logo em seguida
 
   const optionsDiv = document.querySelector(`.score-options-3level[data-qkey="${qKey}"]`);
   if (optionsDiv) {
@@ -1588,9 +1468,16 @@ window.selectScore3Level = function(sensoName, qNum, qKey, level) {
 
   calculateAuditResults();
 
+  const scorePts = { bom: 3, regular: 2, ruim: 1 };
+  const senso = qKey.split('_')[0];
+  try {
+    await apiFetch('/audit-responses', { method: 'POST', body: { questionKey: qKey, senso, score: level, points: scorePts[level] } });
+  } catch (err) {
+    console.error('Erro ao salvar resposta da auditoria:', err);
+  }
+
   const labelMap = { bom: '🟢 BOM', regular: '🟡 REGULAR', ruim: '🔴 RUIM' };
-  logActivity(`Avaliou o item ${sensoName.toUpperCase()} #${qNum} como ${labelMap[level]}`);
-  pushDataToServer();
+  await logActivity(`Avaliou o item ${sensoName.toUpperCase()} #${qNum} como ${labelMap[level]}`);
 };
 
 // 5. RENDERIZAÇÃO DO QUADRO DA FÁBRICA COM KPIS EXECUTIVOS E DISTINÇÃO CLARA (EXCLUSIVO PARA DIRETORIA & AUDITORIA SENAI)
@@ -1660,43 +1547,38 @@ function renderFactoryBoard() {
 
   const days = ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
 
-  // CÁLCULO DE KPIS EXECUTIVOS PARA CABEÇALHO DA AUDITORIA DA DIRETORIA
-  let totalPossibleSectors = IMPAKTTO_SECTORS.length;
-  let evaluatedSectorsCount = 0;
-  let totalVotesToday = 0;
-  let overallPointsSum = 0;
+  // CÁLCULO DE KPIS EXECUTIVOS PARA CABEÇALHO DA AUDITORIA DA DIRETORIA — baseado nas 15 células
+  // obrigatórias (5 setores x 3 sensos), não mais em "setor teve qualquer voto".
+  const coverage = getDailyCoverage(currentDayCode);
+  const coveragePct = Math.round((coverage.closedCells / coverage.totalCells) * 100);
 
+  let overallPointsSum = 0;
+  let overallPointsCount = 0;
   IMPAKTTO_SECTORS.forEach(sec => {
-    let sectorVoted = false;
-    SENSOS_LIST.forEach(s => {
-      const bKey = `${sec}_${s.key}_${currentDayCode}`;
-      const summary = getBoardCellSummary(bKey);
+    REQUIRED_SENSOS.forEach(s => {
+      const summary = getBoardCellSummary(`${sec}_${s.key}_${currentDayCode}`);
       if (summary.voteCount > 0) {
-        sectorVoted = true;
-        totalVotesToday += summary.voteCount;
         overallPointsSum += summary.avgPoints;
+        overallPointsCount++;
       }
     });
-    if (sectorVoted) evaluatedSectorsCount++;
   });
-
-  const coveragePct = Math.round((evaluatedSectorsCount / totalPossibleSectors) * 100);
-  const overallScoreAvg = totalVotesToday > 0 ? Math.round((overallPointsSum / (totalPossibleSectors * SENSOS_LIST.length)) * 10) / 10 : 3.0;
+  const overallScoreAvg = overallPointsCount > 0 ? Math.round((overallPointsSum / overallPointsCount) * 10) / 10 : 3.0;
 
   let html = `
     <!-- HEADER EXECUTIVO DE KPIS PARA A DIRETORIA & AUDITORIA SENAI -->
     <div style="background: linear-gradient(135deg, rgba(30, 41, 59, 0.9), rgba(15, 23, 42, 0.9)); border: 1px solid var(--border-highlight); border-radius: 12px; padding: 0.85rem 1.1rem; margin-bottom: 1.1rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);">
       <div style="display: flex; align-items: center; gap: 0.85rem;">
         <div style="background: rgba(16, 185, 129, 0.2); border: 1px solid #10b981; padding: 0.55rem 0.75rem; border-radius: 10px; text-align: center;">
-          <span style="font-size: 0.7rem; font-weight: 800; color: #34d399; text-transform: uppercase; display: block;">COBERTURA DIÁRIA</span>
-          <span style="font-size: 1.25rem; font-weight: 800; color: #ffffff;">${coveragePct}%</span>
+          <span style="font-size: 0.7rem; font-weight: 800; color: #34d399; text-transform: uppercase; display: block;">DIA FECHADO</span>
+          <span style="font-size: 1.25rem; font-weight: 800; color: #ffffff;">${coverage.closedCells}/${coverage.totalCells}</span>
         </div>
         <div>
           <span style="font-size: 0.88rem; font-weight: 800; color: #ffffff; display: block;">
             📊 Auditoria Diária 5S • IMPAK TTO Plásticos de Engenharia
           </span>
           <span style="font-size: 0.78rem; color: var(--text-muted);">
-            ${evaluatedSectorsCount} de ${totalPossibleSectors} Setores Avaliados Hoje (${currentDayCode}) • Total de Votos: <strong>${totalVotesToday}</strong>
+            ${coverage.closedSectors} de ${coverage.totalSectors} Setores 100% Fechados Hoje (${currentDayCode}) • Cobertura: <strong>${coveragePct}%</strong>
           </span>
         </div>
       </div>
@@ -1707,6 +1589,10 @@ function renderFactoryBoard() {
         </span>
       </div>
     </div>
+    ${coverage.pendingCells.length > 0 ? `
+    <div style="font-size:0.78rem; color:#fde047; background:rgba(245,158,11,0.08); border:1px solid rgba(245,158,11,0.3); border-radius:8px; padding:0.5rem 0.85rem; margin-bottom:0.9rem;">
+      ⏳ Pendente hoje: ${coverage.pendingCells.map(p => `${p.sector} (${p.senso.name.split('. ')[1] || p.senso.name})`).join(' • ')}
+    </div>` : ''}
   `;
 
   if (isMonitor || selectedSector === 'ALL') {
@@ -1732,23 +1618,26 @@ function renderFactoryBoard() {
           ${SENSOS_LIST.map(s => {
             const boardKey = `${sec}_${s.key}_${currentDayCode}`;
             const summary = getBoardCellSummary(boardKey);
-            
+            const isComputed = COMPUTED_SENSOS.some(cs => cs.key === s.key);
+
             if (summary.voteCount === 0) {
               return `
-                <td style="vertical-align:middle; padding:0.3rem 0.2rem;">
-                  <button class="score-btn-factory" style="display:inline-block; padding:0.35rem 0.5rem; font-size:0.72rem; font-weight:600; cursor:pointer; background:rgba(255,255,255,0.05); color:#9ca3af; border:1px dashed rgba(255,255,255,0.2); border-radius:6px;" onclick="openVoteChoiceModal('${sec}', '${boardKey}', '${s.name}', '${currentDayCode}')" title="Pendente de avaliação no rodízio de hoje">
-                    ⚪ Pendente
+                <td style="vertical-align:middle; padding:0.3rem 0.35rem;">
+                  <button class="score-btn-factory" style="display:flex; align-items:center; justify-content:center; width:100%; box-sizing:border-box; padding:0.35rem 0.4rem; font-size:0.72rem; font-weight:600; cursor:${isComputed ? 'default' : 'pointer'}; background:rgba(255,255,255,0.05); color:#9ca3af; border:1px dashed rgba(255,255,255,0.2); border-radius:6px;" ${isComputed ? '' : `onclick="openVoteChoiceModal('${sec}', '${boardKey}', '${s.name}', '${currentDayCode}')"`} title="${isComputed ? 'Média dos 3 sensos obrigatórios — ainda sem base' : 'Pendente de avaliação no rodízio de hoje'}">
+                    ${isComputed ? '🧮 Aguarda base' : '⚪ Pendente'}
                   </button>
                 </td>
               `;
             }
 
             const iconMap = { bom: '🟢 Bom', regular: '🟡 Regular', ruim: '🔴 Ruim' };
-            const countBadge = `<span style="background:rgba(0,0,0,0.4); padding:0.1rem 0.35rem; border-radius:10px; font-size:0.65rem; margin-left:0.25rem;">📊 ${summary.avgPoints} (${summary.voteCount}v)</span>`;
+            const countBadge = isComputed
+              ? `<span style="background:rgba(0,0,0,0.4); padding:0.1rem 0.35rem; border-radius:10px; font-size:0.65rem; margin-left:0.25rem;">🧮</span>`
+              : `<span style="background:rgba(0,0,0,0.4); padding:0.1rem 0.35rem; border-radius:10px; font-size:0.65rem; margin-left:0.25rem;">📊 ${summary.avgPoints} (${summary.voteCount}v)</span>`;
 
             return `
               <td style="vertical-align:middle; padding:0.3rem 0.2rem;">
-                <button class="score-btn-factory selected" data-level="${summary.status}" style="display:inline-block; padding:0.35rem 0.5rem; font-size:0.75rem; font-weight:700; cursor:pointer; border:none;" onclick="openVoteChoiceModal('${sec}', '${boardKey}', '${s.name}', '${currentDayCode}')" title="${summary.voteCount} voto(s) registrado(s). Média: ${summary.avgPoints}">
+                <button class="score-btn-factory selected" data-level="${summary.status}" style="display:flex; align-items:center; justify-content:center; width:100%; box-sizing:border-box; padding:0.35rem 0.4rem; font-size:0.75rem; font-weight:700; cursor:${isComputed ? 'default' : 'pointer'}; border:none;" ${isComputed ? '' : `onclick="openVoteChoiceModal('${sec}', '${boardKey}', '${s.name}', '${currentDayCode}')"`} title="${isComputed ? `Média automática dos 3 sensos obrigatórios: ${summary.avgPoints}` : `${summary.voteCount} voto(s) registrado(s). Média: ${summary.avgPoints}`}">
                   ${iconMap[summary.status]} ${countBadge}
                 </button>
               </td>
@@ -1778,8 +1667,8 @@ function renderFactoryBoard() {
 
           if (votedSectors === 0) {
             return `
-              <td style="vertical-align:middle; padding:0.4rem 0.2rem;">
-                <span class="score-btn-factory" style="display:inline-block; padding:0.35rem 0.55rem; font-size:0.72rem; font-weight:600; background:rgba(255,255,255,0.05); color:#9ca3af; border:1px dashed rgba(255,255,255,0.2);">
+              <td style="vertical-align:middle; padding:0.4rem 0.35rem;">
+                <span class="score-btn-factory" style="display:flex; align-items:center; justify-content:center; width:100%; box-sizing:border-box; padding:0.35rem 0.3rem; font-size:0.72rem; font-weight:600; background:rgba(255,255,255,0.05); color:#9ca3af; border:1px dashed rgba(255,255,255,0.2);">
                   ⚪ Aguardando
                 </span>
               </td>
@@ -1799,8 +1688,8 @@ function renderFactoryBoard() {
           }
 
           return `
-            <td style="vertical-align:middle; padding:0.4rem 0.2rem;">
-              <span class="score-btn-factory selected" data-level="${currentStatus}" style="display:inline-block; padding:0.35rem 0.55rem; font-size:0.75rem; font-weight:800; box-shadow: 0 0 10px rgba(0,0,0,0.4);">
+            <td style="vertical-align:middle; padding:0.4rem 0.35rem;">
+              <span class="score-btn-factory selected" data-level="${currentStatus}" style="display:flex; align-items:center; justify-content:center; width:100%; box-sizing:border-box; padding:0.35rem 0.3rem; font-size:0.75rem; font-weight:800; box-shadow: 0 0 10px rgba(0,0,0,0.4);">
                 ${labelText} (${votedSectors} sec)
               </span>
             </td>
@@ -1828,14 +1717,15 @@ function renderFactoryBoard() {
     `;
 
     SENSOS_LIST.forEach(s => {
-      const isTargetSenso = (s.name === assignment.targetSenso.name);
+      const isComputed = COMPUTED_SENSOS.some(cs => cs.key === s.key);
+      const isTargetSenso = !isComputed && (selectedSector === assignment.targetSector);
 
       html += `
         <tr style="${isTargetSenso ? 'background: rgba(16,185,129,0.08);' : ''}">
           <td style="text-align:left; vertical-align:middle; padding: 0.85rem;">
             <span class="senso-badge-title badge-${s.key}" style="margin:0 0 0.25rem 0;">${s.name}</span>
             <div style="font-size:0.75rem; color:#9ca3af; line-height:1.25; font-weight: 500;">
-              💡 ${s.desc}
+              💡 ${s.desc}${isComputed ? ' <strong style="color:#7dd3fc;">(média dos 3 primeiros)</strong>' : ''}
             </div>
           </td>
           ${days.map(day => {
@@ -1844,8 +1734,8 @@ function renderFactoryBoard() {
 
             if (isFuture) {
               return `
-                <td style="vertical-align:middle; opacity:0.35;">
-                  <button class="btn btn-secondary" style="padding:0.3rem 0.6rem; font-size:0.75rem; cursor:not-allowed;" disabled>
+                <td style="vertical-align:middle; padding:0.3rem 0.35rem; opacity:0.35;">
+                  <button class="btn btn-secondary" style="width:100%; box-sizing:border-box; padding:0.3rem 0.5rem; font-size:0.75rem; cursor:not-allowed;" disabled>
                     ⚪ Aguardando
                   </button>
                 </td>
@@ -1853,23 +1743,26 @@ function renderFactoryBoard() {
             } else {
               const boardKey = `${selectedSector}_${s.key}_${day}`;
               const summary = getBoardCellSummary(boardKey);
-              
+              const clickAttr = isComputed ? '' : `onclick="openVoteChoiceModal('${selectedSector}', '${boardKey}', '${s.name}', '${day}')"`;
+
               if (summary.voteCount === 0) {
                 return `
-                  <td style="vertical-align:middle; ${day === currentDayCode ? 'background:rgba(99,102,241,0.1);' : ''}">
-                    <button class="btn btn-secondary" style="padding:0.4rem 0.75rem; font-size:0.8rem; font-weight:600; cursor:pointer; min-height:42px; width:100%; border-radius:8px; opacity:0.7;" onclick="openVoteChoiceModal('${selectedSector}', '${boardKey}', '${s.name}', '${day}')" title="Pendente de avaliação no rodízio de hoje">
-                      ⚪ Pendente
+                  <td style="vertical-align:middle; padding:0.3rem 0.35rem; ${day === currentDayCode ? 'background:rgba(99,102,241,0.1);' : ''}">
+                    <button class="btn btn-secondary" style="padding:0.35rem 0.4rem; font-size:0.8rem; font-weight:600; cursor:${isComputed ? 'default' : 'pointer'}; min-height:38px; width:100%; box-sizing:border-box; border-radius:8px; opacity:0.7;" ${clickAttr} title="${isComputed ? 'Média dos 3 sensos obrigatórios — ainda sem base' : 'Pendente de avaliação no rodízio de hoje'}">
+                      ${isComputed ? '🧮 Aguarda base' : '⚪ Pendente'}
                     </button>
                   </td>
                 `;
               }
 
               const iconMap = { bom: '🟢 Bom', regular: '🟡 Regular', ruim: '🔴 Ruim' };
-              const countBadge = `<span style="background:rgba(0,0,0,0.4); padding:0.1rem 0.35rem; border-radius:10px; font-size:0.65rem; margin-left:0.25rem;">📊 ${summary.avgPoints} (${summary.voteCount}v)</span>`;
+              const countBadge = isComputed
+                ? `<span style="background:rgba(0,0,0,0.4); padding:0.1rem 0.35rem; border-radius:10px; font-size:0.65rem; margin-left:0.25rem;">🧮</span>`
+                : `<span style="background:rgba(0,0,0,0.4); padding:0.1rem 0.35rem; border-radius:10px; font-size:0.65rem; margin-left:0.25rem;">📊 ${summary.avgPoints} (${summary.voteCount}v)</span>`;
 
               return `
-                <td style="vertical-align:middle; ${day === currentDayCode ? 'background:rgba(99,102,241,0.1);' : ''}">
-                  <button class="btn btn-secondary" style="padding:0.4rem 0.75rem; font-size:0.85rem; font-weight:800; cursor:pointer; min-height:42px; width:100%; border-radius:8px;" onclick="openVoteChoiceModal('${selectedSector}', '${boardKey}', '${s.name}', '${day}')" title="Clique para abrir caixa de escolha de voto. Média: ${summary.avgPoints} (${summary.voteCount} votos)">
+                <td style="vertical-align:middle; padding:0.3rem 0.35rem; ${day === currentDayCode ? 'background:rgba(99,102,241,0.1);' : ''}">
+                  <button class="btn btn-secondary" style="padding:0.35rem 0.4rem; font-size:0.82rem; font-weight:800; cursor:${isComputed ? 'default' : 'pointer'}; min-height:38px; width:100%; box-sizing:border-box; border-radius:8px;" ${clickAttr} title="${isComputed ? `Média automática dos 3 sensos obrigatórios: ${summary.avgPoints}` : `Clique para abrir caixa de escolha de voto. Média: ${summary.avgPoints} (${summary.voteCount} votos)`}">
                     ${iconMap[summary.status]} ${countBadge}
                   </button>
                 </td>
@@ -1904,6 +1797,71 @@ window.changeFactorySectorFilter = function(val) {
   activeFactorySectorFilter = val;
   renderFactoryBoard();
 };
+
+// EXPORTAÇÃO DO RELATÓRIO EXECUTIVO — antes era só window.print() puro, sem nenhum CSS de impressão,
+// então o navegador tentava imprimir o tema escuro inteiro (texto claro em fundo escuro não sai no
+// papel) e parecia "não fazer nada". Agora monta um relatório limpo, em fundo claro, e imprime só ele.
+window.printExecutiveReport = function() {
+  const dayNames = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
+  const currentDayCode = dayNames[new Date().getDay()] === 'DOM' ? 'SEG' : dayNames[new Date().getDay()];
+  const coverage = getDailyCoverage(currentDayCode);
+
+  const globalScoreEl = document.getElementById('global-maturity-score');
+  const globalStatusEl = document.getElementById('global-maturity-status');
+  const globalScore = globalScoreEl ? globalScoreEl.innerText : '--';
+  const globalStatus = globalStatusEl ? globalStatusEl.innerText : '';
+
+  const sensoRows = SENSOS_LIST.map(s => {
+    const el = document.getElementById(`score-${s.key}`);
+    return `<tr><td style="padding:6px 4px; border-bottom:1px solid #ddd;">${s.name}</td><td style="padding:6px 4px; border-bottom:1px solid #ddd; text-align:right; font-weight:700;">${el ? el.innerText : '--'}</td></tr>`;
+  }).join('');
+
+  const statusLabel = { bom: 'Bom', regular: 'Regular', ruim: 'Ruim', pendente: 'Pendente' };
+  const sectorRows = IMPAKTTO_SECTORS.map(sec => {
+    let sum = 0, votedCount = 0;
+    REQUIRED_SENSOS.forEach(s => {
+      const summary = getBoardCellSummary(`${sec}_${s.key}_${currentDayCode}`);
+      if (summary.voteCount > 0) { sum += summary.avgPoints; votedCount++; }
+    });
+    const status = votedCount === 0 ? 'pendente' : (sum / votedCount >= 2.5 ? 'bom' : (sum / votedCount >= 1.7 ? 'regular' : 'ruim'));
+    return `<tr><td style="padding:6px 4px; border-bottom:1px solid #ddd;">${sec}</td><td style="padding:6px 4px; border-bottom:1px solid #ddd; text-align:right;">${votedCount}/3</td><td style="padding:6px 4px; border-bottom:1px solid #ddd; text-align:right; font-weight:700;">${statusLabel[status]}</td></tr>`;
+  }).join('');
+
+  const reportHtml = `
+    <div id="print-report-root">
+      <div style="display:flex; align-items:center; gap:14px; border-bottom:2px solid #111; padding-bottom:12px; margin-bottom:18px;">
+        <img src="logo_impaktto.png" style="height:48px;">
+        <div>
+          <div style="font-size:19px; font-weight:800;">Relatório Executivo 5S — IMPAK TTO Plásticos de Engenharia</div>
+          <div style="font-size:12px; color:#444;">Gerado em ${new Date().toLocaleString('pt-BR')} • Dia do rodízio: ${currentDayCode}</div>
+        </div>
+      </div>
+
+      <h3 style="font-size:14px; text-transform:uppercase; letter-spacing:0.05em; color:#444; margin-bottom:4px;">Maturidade Global</h3>
+      <p style="font-size:30px; font-weight:800; margin:2px 0 18px;">${globalScore} <span style="font-size:14px; font-weight:400; color:#444;">— ${globalStatus}</span></p>
+
+      <h3 style="font-size:14px; text-transform:uppercase; letter-spacing:0.05em; color:#444; margin-bottom:4px;">Por Senso</h3>
+      <table style="width:100%; border-collapse:collapse; margin-bottom:18px;">${sensoRows}</table>
+
+      <h3 style="font-size:14px; text-transform:uppercase; letter-spacing:0.05em; color:#444; margin-bottom:4px;">Cobertura do Rodízio (${currentDayCode})</h3>
+      <p style="margin-bottom:8px;">${coverage.closedCells}/${coverage.totalCells} células fechadas • ${coverage.closedSectors}/${coverage.totalSectors} setores 100% fechados</p>
+      <table style="width:100%; border-collapse:collapse;">
+        <thead><tr><th style="text-align:left; padding:6px 4px; border-bottom:2px solid #111;">Setor</th><th style="text-align:right; padding:6px 4px; border-bottom:2px solid #111;">Sensos votados</th><th style="text-align:right; padding:6px 4px; border-bottom:2px solid #111;">Status</th></tr></thead>
+        <tbody>${sectorRows}</tbody>
+      </table>
+    </div>
+  `;
+
+  const existing = document.getElementById('print-report-root');
+  if (existing) existing.remove();
+  document.body.insertAdjacentHTML('beforeend', reportHtml);
+  window.print();
+};
+
+window.addEventListener('afterprint', () => {
+  const el = document.getElementById('print-report-root');
+  if (el) el.remove();
+});
 
 // 7. CÁLCULO DE RESULTADOS E CONTROLE ESTRITO DA SINALIZAÇÃO DE PREMIAÇÃO (CÁLCULO UNIFICADO COM VOTOS EM TEMPO REAL)
 function calculateAuditResults() {
@@ -2018,63 +1976,138 @@ function calculateAuditResults() {
 }
 
 function renderRadarChart(scoresData) {
-  const canvas = document.getElementById('radarChart5S');
-  if (!canvas || typeof Chart === 'undefined') return;
+  radarChartInstance = renderRadarChartInto('radarChart5S', radarChartInstance, scoresData);
 
-  const labels = ['1. Utilização (Seiri)', '2. Organização (Seiton)', '3. Limpeza (Seiso)', '4. Padronização (Seiketsu)', '5. Disciplina (Shitsuke)'];
-
-  if (radarChartInstance) {
-    radarChartInstance.data.datasets[0].data = scoresData;
-    radarChartInstance.update();
-  } else {
-    radarChartInstance = new Chart(canvas, {
-      type: 'radar',
-      data: {
-        labels: labels,
-        datasets: [{
-          label: 'Maturidade % por Senso',
-          data: scoresData,
-          backgroundColor: 'rgba(99, 102, 241, 0.25)',
-          borderColor: '#6366f1',
-          pointBackgroundColor: '#8b5cf6',
-          pointBorderColor: '#fff',
-          pointHoverBackgroundColor: '#fff',
-          pointHoverBorderColor: '#8b5cf6',
-          borderWidth: 2
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        scales: {
-          r: {
-            angleLines: { color: 'rgba(255, 255, 255, 0.1)' },
-            grid: { color: 'rgba(255, 255, 255, 0.1)' },
-            pointLabels: { color: '#9ca3af', font: { size: 10, weight: 'bold' } },
-            ticks: { color: '#9ca3af', backdropColor: 'transparent', stepSize: 20 },
-            suggestedMin: 0,
-            suggestedMax: 100
-          }
-        },
-        plugins: { legend: { display: false } }
-      }
-    });
+  // Só instancia o gráfico do monitor quando o painel de TV está realmente visível — evita criar
+  // um Chart.js num canvas escondido (display:none) pra todo mundo que não é o usuário monitor.
+  const monitorRoot = document.getElementById('monitor-tv-dashboard');
+  if (monitorRoot && monitorRoot.style.display !== 'none') {
+    radarChartInstanceMonitor = renderRadarChartInto('radarChart5S-monitor', radarChartInstanceMonitor, scoresData);
   }
 }
 
-window.resetAudit = function() {
+function renderRadarChartInto(canvasId, existingInstance, scoresData) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas || typeof Chart === 'undefined') return existingInstance;
+
+  const labels = ['1. Utilização (Seiri)', '2. Organização (Seiton)', '3. Limpeza (Seiso)', '4. Padronização (Seiketsu)', '5. Disciplina (Shitsuke)'];
+
+  if (existingInstance) {
+    existingInstance.data.datasets[0].data = scoresData;
+    existingInstance.update();
+    return existingInstance;
+  }
+
+  return new Chart(canvas, {
+    type: 'radar',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Maturidade % por Senso',
+        data: scoresData,
+        backgroundColor: 'rgba(99, 102, 241, 0.25)',
+        borderColor: '#6366f1',
+        pointBackgroundColor: '#8b5cf6',
+        pointBorderColor: '#fff',
+        pointHoverBackgroundColor: '#fff',
+        pointHoverBorderColor: '#8b5cf6',
+        borderWidth: 2
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        r: {
+          angleLines: { color: 'rgba(255, 255, 255, 0.1)' },
+          grid: { color: 'rgba(255, 255, 255, 0.1)' },
+          pointLabels: { color: '#9ca3af', font: { size: 10, weight: 'bold' } },
+          ticks: { color: '#9ca3af', backdropColor: 'transparent', stepSize: 20 },
+          suggestedMin: 0,
+          suggestedMax: 100
+        }
+      },
+      plugins: { legend: { display: false } }
+    }
+  });
+}
+
+// PAINEL DEDICADO DE TV/MONITOR — curadoria do essencial (score global, radar, cobertura do
+// rodízio, status por setor, feed) num layout 16:9 fixo, sem rolagem.
+function renderMonitorTvDashboard() {
+  const root = document.getElementById('monitor-tv-dashboard');
+  if (!root || root.style.display === 'none') return;
+
+  const dayNames = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
+  const dayFullNames = { SEG: 'Segunda-feira', TER: 'Terça-feira', QUA: 'Quarta-feira', QUI: 'Quinta-feira', SEX: 'Sexta-feira', SAB: 'Sábado' };
+  const now = new Date();
+  const currentDayCode = dayNames[now.getDay()] === 'DOM' ? 'SEG' : dayNames[now.getDay()];
+
+  const dateEl = document.getElementById('monitor-tv-date');
+  if (dateEl) dateEl.innerText = `${dayFullNames[currentDayCode] || currentDayCode} • ${now.toLocaleDateString('pt-BR')} • ${now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
+
+  const globalScoreSrc = document.getElementById('global-maturity-score');
+  const scoreEl = document.getElementById('monitor-tv-global-score');
+  if (scoreEl) scoreEl.innerText = globalScoreSrc ? globalScoreSrc.innerText : '--%';
+
+  const coverage = getDailyCoverage(currentDayCode);
+  const coveragePct = Math.round((coverage.closedCells / coverage.totalCells) * 100);
+  const fillEl = document.getElementById('monitor-tv-coverage-fill');
+  if (fillEl) fillEl.style.width = `${coveragePct}%`;
+  const coverageLabelEl = document.getElementById('monitor-tv-coverage-label');
+  if (coverageLabelEl) coverageLabelEl.innerText = `${coverage.closedCells} / ${coverage.totalCells} células fechadas • ${coverage.closedSectors} / ${coverage.totalSectors} setores 100% completos`;
+
+  // MATRIZ 5S x DEPARTAMENTO — mesmo padrão de informação do Quadro Geral Consolidado do admin
+  // (status + nota + nº de votos, ou "calculado" pros 2 últimos sensos), sem nomes de quem votou.
+  const statusLabel = { bom: '🟢 Bom', regular: '🟡 Regular', ruim: '🔴 Ruim', pendente: '⚪ Pendente' };
+  const matrixEl = document.getElementById('monitor-tv-matrix');
+  if (matrixEl) {
+    const headRow = `
+      <div class="monitor-tv-matrix-row head">
+        <div></div>
+        ${SENSOS_LIST.map(s => `<div class="monitor-tv-matrix-head-cell">${s.name.split('. ')[1] || s.name}</div>`).join('')}
+      </div>
+    `;
+    const bodyRows = IMPAKTTO_SECTORS.map(sec => `
+      <div class="monitor-tv-matrix-row">
+        <div class="monitor-tv-matrix-dept">📍 ${sec}</div>
+        ${SENSOS_LIST.map(s => {
+          const isComputed = COMPUTED_SENSOS.some(cs => cs.key === s.key);
+          const summary = getBoardCellSummary(`${sec}_${s.key}_${currentDayCode}`);
+          const status = summary.voteCount > 0 ? summary.status : 'pendente';
+          const detail = summary.voteCount === 0
+            ? (isComputed ? 'aguarda base' : 'sem voto')
+            : (isComputed ? `🧮 ${summary.avgPoints}` : `${summary.avgPoints} (${summary.voteCount}v)`);
+          return `
+            <div class="monitor-tv-matrix-cell" data-status="${status}">
+              <span class="monitor-tv-matrix-cell-status">${statusLabel[status]}</span>
+              <span class="monitor-tv-matrix-cell-detail">${detail}</span>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    `).join('');
+    matrixEl.innerHTML = headRow + bodyRows;
+  }
+}
+
+window.resetAudit = async function() {
   if (confirm('Deseja redefinir a auditoria da IMPAK TTO?')) {
+    try {
+      await apiFetch('/audit-responses', { method: 'DELETE' });
+    } catch (err) {
+      alert('Não foi possível redefinir a auditoria: ' + err.message);
+      return;
+    }
     clientAuditScores = {};
-    localStorage.removeItem('5s_audit_scores_impaktto');
-    logActivity('Redefiniu todas as respostas da auditoria');
-    pushDataToServer();
+    await logActivity('Redefiniu todas as respostas da auditoria');
     renderAuditForms();
     calculateAuditResults();
   }
 };
 
-// MATRIZ GUT
-function handleAddGUT(e) {
+// MATRIZ GUT — agora compartilhada entre todos os dispositivos (antes era só local ao aparelho)
+async function handleAddGUT(e) {
   if (e) e.preventDefault();
   const problem = document.getElementById('gut-problem').value;
   const g = parseInt(document.getElementById('gut-g').value);
@@ -2083,22 +2116,22 @@ function handleAddGUT(e) {
 
   if (!problem) return;
 
-  const score = g * u * t;
-  const item = { id: Date.now(), problem, g, u, t, score, createdBy: currentUser ? currentUser.name : 'Usuário' };
-  clientGutMatrix.push(item);
-  localStorage.setItem('5s_gut_matrix_impaktto', JSON.stringify(clientGutMatrix));
+  try {
+    await apiFetch('/gut-matrix', { method: 'POST', body: { problem, g, u, t } });
+  } catch (err) {
+    alert('Não foi possível salvar o problema: ' + err.message);
+    return;
+  }
 
-  logActivity(`Adicionou o problema "${problem}" na Matriz GUT (Pontuação: ${score})`);
-  pushDataToServer();
+  await logActivity(`Adicionou o problema "${problem}" na Matriz GUT (Pontuação: ${g * u * t})`);
   document.getElementById('gut-problem').value = '';
-  renderGUTTable();
+  await refreshAllFromServer();
 }
 
 function renderGUTTable() {
   const tbody = document.getElementById('gut-table-body');
   if (!tbody) return;
 
-  clientGutMatrix = JSON.parse(localStorage.getItem('5s_gut_matrix_impaktto')) || clientGutMatrix;
   clientGutMatrix.sort((a, b) => b.score - a.score);
 
   if (clientGutMatrix.length === 0) {
@@ -2121,41 +2154,39 @@ function renderGUTTable() {
   `).join('');
 }
 
-window.removeGUT = function(id) {
+window.removeGUT = async function(id) {
   const item = clientGutMatrix.find(i => i.id === id);
-  if (item) logActivity(`Removeu o problema "${item.problem}" da Matriz GUT`);
-
-  clientGutMatrix = clientGutMatrix.filter(i => i.id !== id);
-  localStorage.setItem('5s_gut_matrix_impaktto', JSON.stringify(clientGutMatrix));
-  pushDataToServer();
-  renderGUTTable();
+  try {
+    await apiFetch('/gut-matrix', { method: 'DELETE', body: { id } });
+  } catch (err) {
+    alert('Não foi possível excluir: ' + err.message);
+    return;
+  }
+  if (item) await logActivity(`Removeu o problema "${item.problem}" da Matriz GUT`);
+  await refreshAllFromServer();
 };
 
-// KANBAN 5W2H
-function handleAddKanban(e) {
+// KANBAN 5W2H — agora compartilhado entre todos os dispositivos (a chave localStorage errada em
+// moveKanban que fazia o card "voltar" sozinho depois de recarregar deixa de existir)
+async function handleAddKanban(e) {
   if (e) e.preventDefault();
   const title = document.getElementById('kanban-title').value;
   const senso = document.getElementById('kanban-senso').value;
   const owner = document.getElementById('kanban-owner').value;
-  const date = document.getElementById('kanban-date').value;
+  const dueDate = document.getElementById('kanban-date').value;
 
   if (!title) return;
 
-  clientKanbanTasks.push({
-    id: Date.now().toString(),
-    title,
-    senso,
-    status: 'a-fazer',
-    owner: owner || 'Não atribuído',
-    date: date || 'A definir',
-    createdBy: currentUser ? currentUser.name : 'Usuário'
-  });
+  try {
+    await apiFetch('/kanban-tasks', { method: 'POST', body: { title, senso, owner: owner || 'Não atribuído', dueDate: dueDate || 'A definir' } });
+  } catch (err) {
+    alert('Não foi possível criar a tarefa: ' + err.message);
+    return;
+  }
 
-  localStorage.setItem('5s_kanban_tasks_impaktto', JSON.stringify(clientKanbanTasks));
-  logActivity(`Criou a tarefa no Kanban: "${title}" (Resp: ${owner || 'Não atribuído'})`);
-  pushDataToServer();
+  await logActivity(`Criou a tarefa no Kanban: "${title}" (Resp: ${owner || 'Não atribuído'})`);
   document.getElementById('kanban-title').value = '';
-  renderKanban();
+  await refreshAllFromServer();
 }
 
 function renderKanban() {
@@ -2168,8 +2199,6 @@ function renderKanban() {
   if (!cols['a-fazer']) return;
   Object.values(cols).forEach(col => col.innerHTML = '');
 
-  clientKanbanTasks = JSON.parse(localStorage.getItem('5s_kanban_tasks_impaktto')) || clientKanbanTasks;
-
   clientKanbanTasks.forEach(task => {
     const card = document.createElement('div');
     card.className = 'kanban-card';
@@ -2177,7 +2206,7 @@ function renderKanban() {
       <div class="kanban-card-title">${task.title}</div>
       <div class="kanban-card-meta">
         <span>👤 ${task.owner}</span>
-        <span>📅 ${task.date}</span>
+        <span>📅 ${task.dueDate}</span>
       </div>
       <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 0.25rem;">Criado por: ${task.createdBy || 'Usuário'}</div>
       <div style="margin-top: 0.5rem; display: flex; gap: 0.25rem; justify-content: flex-end;">
@@ -2191,7 +2220,7 @@ function renderKanban() {
   });
 }
 
-window.moveKanban = function(id, dir) {
+window.moveKanban = async function(id, dir) {
   const task = clientKanbanTasks.find(t => t.id === id);
   if (!task) return;
 
@@ -2201,53 +2230,61 @@ window.moveKanban = function(id, dir) {
   if (dir === 'next' && currentIdx < 2) currentIdx++;
   if (dir === 'prev' && currentIdx > 0) currentIdx--;
 
-  task.status = flow[currentIdx];
-  localStorage.setItem('5s_impaktto_tasks', JSON.stringify(clientKanbanTasks));
-  logActivity(`Moveu a tarefa "${task.title}" para ${task.status.toUpperCase()}`);
-  pushDataToServer();
-  renderKanban();
+  const newStatus = flow[currentIdx];
+  try {
+    await apiFetch('/kanban-tasks', { method: 'PATCH', body: { id, status: newStatus } });
+  } catch (err) {
+    alert('Não foi possível mover a tarefa: ' + err.message);
+    return;
+  }
+
+  await logActivity(`Moveu a tarefa "${task.title}" para ${newStatus.toUpperCase()}`);
+  await refreshAllFromServer();
 };
 
-window.deleteKanban = function(id) {
+window.deleteKanban = async function(id) {
   const task = clientKanbanTasks.find(t => t.id === id);
-  if (task) logActivity(`Excluiu a tarefa "${task.title}" do Kanban`);
-
-  clientKanbanTasks = clientKanbanTasks.filter(t => t.id !== id);
-  localStorage.setItem('5s_kanban_tasks_impaktto', JSON.stringify(clientKanbanTasks));
-  pushDataToServer();
-  renderKanban();
+  try {
+    await apiFetch('/kanban-tasks', { method: 'DELETE', body: { id } });
+  } catch (err) {
+    alert('Não foi possível excluir a tarefa: ' + err.message);
+    return;
+  }
+  if (task) await logActivity(`Excluiu a tarefa "${task.title}" do Kanban`);
+  await refreshAllFromServer();
 };
 
-// ISHIKAWA
-function handleUpdateIshikawa(e) {
+// ISHIKAWA — agora compartilhado entre todos os dispositivos (antes era só local ao aparelho)
+async function handleUpdateIshikawa(e) {
   if (e) e.preventDefault();
   const problem = document.getElementById('ishikawa-problem-input').value;
   const mType = document.getElementById('ishikawa-m-type').value;
   const cause = document.getElementById('ishikawa-cause-input').value;
 
-  if (problem) clientIshikawaData.problem = problem;
-  if (cause && clientIshikawaData[mType]) {
-    clientIshikawaData[mType].push(cause);
-    logActivity(`Adicionou a causa "${cause}" no Diagrama de Ishikawa (${mType.toUpperCase()})`);
-    pushDataToServer();
+  try {
+    if (problem) await apiFetch('/ishikawa', { method: 'POST', body: { problem } });
+    if (cause) {
+      await apiFetch('/ishikawa', { method: 'POST', body: { categoria: mType, causa: cause } });
+      await logActivity(`Adicionou a causa "${cause}" no Diagrama de Ishikawa (${mType.toUpperCase()})`);
+    }
+  } catch (err) {
+    alert('Não foi possível salvar: ' + err.message);
+    return;
   }
 
-  localStorage.setItem('5s_ishikawa_impaktto', JSON.stringify(clientIshikawaData));
   document.getElementById('ishikawa-cause-input').value = '';
-  renderIshikawa();
+  await refreshAllFromServer();
 }
 
 function renderIshikawa() {
   const problemTitle = document.getElementById('ishikawa-effect-title');
   if (problemTitle) problemTitle.innerText = clientIshikawaData.problem || 'Sem problema definido';
 
-  clientIshikawaData = JSON.parse(localStorage.getItem('5s_ishikawa_impaktto')) || clientIshikawaData;
-
   const mList = ['maoObra', 'metodo', 'maquina', 'material', 'meioAmbiente', 'medicao'];
   mList.forEach(m => {
     const el = document.getElementById(`ishikawa-list-${m}`);
     if (el) {
-      el.innerHTML = (clientIshikawaData[m] || []).map(c => `<li>${c}</li>`).join('') || '<li style="color:var(--text-dim)">Nenhuma causa anotada</li>';
+      el.innerHTML = (clientIshikawaData[m] || []).map(c => `<li>${c.causa}</li>`).join('') || '<li style="color:var(--text-dim)">Nenhuma causa anotada</li>';
     }
   });
 }

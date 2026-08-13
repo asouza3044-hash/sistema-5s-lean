@@ -8,3 +8,10 @@ npm-debug.log
 scratch/
 .env
 .env.local
+
+# Local Netlify folder
+.netlify
+
+# Artefatos de ferramentas locais (não fazem parte do projeto)
+.claude/
+deno.lock

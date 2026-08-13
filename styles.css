@@ -347,6 +347,7 @@ body.monitor-mode .main-container {
   width: 100%;
   border-collapse: collapse;
   text-align: center;
+  table-layout: fixed;
 }
 
 .factory-board-table th {
@@ -384,12 +385,12 @@ body.monitor-mode .main-container {
   cursor: pointer;
   opacity: 0.35;
   transition: all 0.2s ease;
+  box-sizing: border-box;
 }
 
 .score-btn-factory.selected {
   opacity: 1;
-  transform: scale(1.05);
-  box-shadow: 0 0 10px rgba(0,0,0,0.5);
+  box-shadow: 0 0 6px rgba(0,0,0,0.4);
 }
 
 .score-btn-factory[data-level="bom"].selected { background: #10b981; color: #ffffff; }
@@ -603,6 +604,283 @@ body.monitor-mode .score-btn-factory {
 body.monitor-mode #activity-log-container {
   max-height: 280px !important;
   font-size: 0.95rem !important;
+}
+
+/* --------------------------------------------------------------------------
+   PAINEL DEDICADO DE TV / MONITOR (GESTÃO VISUAL 16:9) — populado por
+   renderMonitorTvDashboard() em app.js, mostrado só para o usuário "monitor".
+   -------------------------------------------------------------------------- */
+.monitor-tv {
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  background: #070a12;
+  padding: 1.6vh 2vw;
+  display: flex;
+  flex-direction: column;
+  gap: 1.4vh;
+  overflow: hidden;
+}
+
+.monitor-tv-header {
+  display: flex;
+  align-items: center;
+  gap: 1.4vw;
+  flex-shrink: 0;
+}
+
+.monitor-tv-logo {
+  height: 6.5vh;
+  width: auto;
+  object-fit: contain;
+}
+
+.monitor-tv-title {
+  flex: 1;
+  min-width: 0;
+}
+
+.monitor-tv-title h1 {
+  font-family: var(--font-display);
+  font-size: 2.2vh;
+  font-weight: 800;
+  color: var(--text-main);
+  letter-spacing: 0.01em;
+}
+
+.monitor-tv-title p {
+  font-size: 1.35vh;
+  color: var(--text-muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-top: 0.2vh;
+}
+
+.monitor-tv-score-badge {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  background: linear-gradient(135deg, rgba(16,185,129,0.22), rgba(6,182,212,0.22));
+  border: 1px solid rgba(16,185,129,0.5);
+  border-radius: 14px;
+  padding: 0.9vh 1.6vw;
+  box-shadow: 0 0 25px rgba(16,185,129,0.25);
+}
+
+.monitor-tv-score-label {
+  font-size: 1.15vh;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #6ee7b7;
+}
+
+.monitor-tv-score-value {
+  font-family: var(--font-display);
+  font-size: 3.4vh;
+  font-weight: 800;
+  color: #ffffff;
+  line-height: 1.1;
+}
+
+/* Botão discreto pra sair da conta Monitor — o painel de TV cobre a tela inteira (inclusive o
+   cabeçalho normal do app, onde ficava o "Sair"), então sem isso não tinha como deslogar. */
+.monitor-tv-exit-btn {
+  flex-shrink: 0;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.15);
+  color: var(--text-muted);
+  font-size: 1.1vh;
+  font-weight: 700;
+  padding: 0.6vh 0.9vw;
+  border-radius: 8px;
+  cursor: pointer;
+  margin-left: 1vw;
+  transition: all 0.2s ease;
+}
+
+.monitor-tv-exit-btn:hover {
+  background: rgba(239,68,68,0.2);
+  border-color: rgba(239,68,68,0.5);
+  color: #fca5a5;
+}
+
+.monitor-tv-grid {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.4vw;
+}
+
+.monitor-tv-col {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1.4vh;
+}
+
+.monitor-tv-panel {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 1.4vh 1.4vw;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.monitor-tv-panel h2 {
+  font-family: var(--font-display);
+  font-size: 1.5vh;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--accent-cyan);
+  margin-bottom: 0.9vh;
+  flex-shrink: 0;
+}
+
+.monitor-tv-radar-panel {
+  flex: 1.35;
+}
+
+.monitor-tv-radar-wrap {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+}
+
+.monitor-tv-coverage {
+  flex-shrink: 0;
+}
+
+.monitor-tv-coverage-bar-track {
+  width: 100%;
+  height: 1.6vh;
+  background: rgba(255,255,255,0.08);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-bottom: 0.7vh;
+}
+
+.monitor-tv-coverage-bar-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #f59e0b, #10b981);
+  border-radius: 999px;
+  transition: width 0.6s ease;
+}
+
+.monitor-tv-coverage p {
+  font-size: 1.5vh;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+/* MATRIZ 5S x DEPARTAMENTO — status board clássico de gestão à vista (sem nomes de pessoas,
+   só o essencial: qual departamento está bem em qual senso, com o código de cores universal
+   verde/amarelo/vermelho/cinza usado em quadros andon de fábrica). */
+.monitor-tv-matrix-panel {
+  flex: 1;
+}
+
+.monitor-tv-matrix {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto repeat(5, 1fr);
+  gap: 0.5vh;
+}
+
+.monitor-tv-matrix-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) repeat(5, 1fr);
+  gap: 0.5vw;
+  align-items: stretch;
+}
+
+.monitor-tv-matrix-row.head {
+  align-items: end;
+  padding-bottom: 0.3vh;
+}
+
+.monitor-tv-matrix-head-cell {
+  font-size: 1.1vh;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.monitor-tv-matrix-dept {
+  display: flex;
+  align-items: center;
+  font-size: 1.55vh;
+  font-weight: 800;
+  color: var(--text-main);
+}
+
+.monitor-tv-matrix-cell {
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.08);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.2vh;
+  text-align: center;
+  padding: 0.2vh;
+  overflow: hidden;
+}
+
+.monitor-tv-matrix-cell-status {
+  font-size: 2.5vh;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.monitor-tv-matrix-cell-detail {
+  font-size: 2vh;
+  font-weight: 700;
+  opacity: 0.85;
+  white-space: nowrap;
+}
+
+.monitor-tv-matrix-cell[data-status="bom"] { background: rgba(16,185,129,0.28); border-color: #10b981; color: #6ee7b7; }
+.monitor-tv-matrix-cell[data-status="regular"] { background: rgba(245,158,11,0.28); border-color: #f59e0b; color: #fde68a; }
+.monitor-tv-matrix-cell[data-status="ruim"] { background: rgba(239,68,68,0.28); border-color: #ef4444; color: #fca5a5; }
+.monitor-tv-matrix-cell[data-status="pendente"] { background: rgba(255,255,255,0.03); border-color: rgba(255,255,255,0.1); color: var(--text-dim); }
+
+/* --------------------------------------------------------------------------
+   IMPRESSÃO — RELATÓRIO EXECUTIVO (gerado por printExecutiveReport() em app.js)
+   O app inteiro é escuro; sem isso, "Exportar Relatório Executivo" mandava a página toda pro
+   navegador imprimir e saía ilegível (texto claro em fundo escuro não aparece no papel).
+   -------------------------------------------------------------------------- */
+#print-report-root {
+  display: none;
+}
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #print-report-root, #print-report-root * {
+    visibility: visible;
+  }
+  #print-report-root {
+    display: block !important;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    background: #ffffff;
+    color: #111111;
+    padding: 24px;
+    font-family: var(--font-body);
+  }
 }
 
 
