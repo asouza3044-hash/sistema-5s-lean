@@ -94,6 +94,24 @@ CREATE TABLE IF NOT EXISTS ishikawa_diagrams (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Tabela de Fechamentos Mensais de Auditoria e Premiação Mór Anual por Departamento
+CREATE TABLE IF NOT EXISTS monthly_awards_closures (
+    id SERIAL PRIMARY KEY,
+    company_id VARCHAR(50) NOT NULL REFERENCES companies(id),
+    year INT NOT NULL,
+    month INT NOT NULL,
+    sector VARCHAR(100) NOT NULL,
+    monthly_avg_points NUMERIC(3,2) NOT NULL,
+    monthly_compliance_pct NUMERIC(5,2) NOT NULL,
+    hit_meta BOOLEAN NOT NULL DEFAULT FALSE,
+    won_award BOOLEAN NOT NULL DEFAULT FALSE,
+    closed_by_id VARCHAR(100),
+    closed_by_name VARCHAR(255),
+    notes TEXT,
+    closed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uq_monthly_closure UNIQUE (company_id, year, month, sector)
+);
+
 INSERT INTO companies (id, name, industry)
 VALUES ('impaktto', 'IMPAK TTO Plásticos de Engenharia', 'Usinagem / Plásticos de Engenharia')
 ON CONFLICT (id) DO NOTHING;

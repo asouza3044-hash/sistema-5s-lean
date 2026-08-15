@@ -310,10 +310,13 @@ async function refreshAllFromServer() {
     clientKanbanTasks = kanbanRes.items || [];
     clientIshikawaData = ishikawaRes.data || clientIshikawaData;
 
+    await loadDepartmentEvolutionData();
+
     renderFactoryBoard();
     renderActivityLogs();
     calculateAuditResults();
     renderUserManagementTable();
+    renderDepartmentEvolution();
     if (typeof renderGUTTable === 'function') renderGUTTable();
     if (typeof renderKanban === 'function') renderKanban();
     if (typeof renderIshikawa === 'function') renderIshikawa();
@@ -2288,3 +2291,191 @@ function renderIshikawa() {
     }
   });
 }
+
+// ===========================================================================
+// PAINEL DE EVOLUÇÃO DOS DEPARTAMENTOS & GRANDE PRÊMIO MÓR ANUAL 5S
+// ===========================================================================
+let clientDepartmentEvolutionData = { closures: [], annualStats: [], currentYear: new Date().getFullYear() };
+
+async function loadDepartmentEvolutionData() {
+  try {
+    const data = await apiFetch('/department-evolution');
+    if (data) {
+      clientDepartmentEvolutionData = data;
+    }
+  } catch (err) {
+    console.warn('Uso offline/fallback para evolução por departamento');
+  }
+}
+
+async function renderDepartmentEvolution() {
+  const container = document.getElementById('department-evolution-cards-container');
+  const annualBanner = document.getElementById('annual-grand-prize-banner');
+  const btnClosing = document.getElementById('btn-trigger-monthly-closing');
+  const filterEl = document.getElementById('evolution-sector-filter');
+
+  if (!container) return;
+
+  const isSenior = currentUser && (currentUser.role === 'administrador' || currentUser.level === 'senior');
+  if (btnClosing) btnClosing.style.display = isSenior ? 'inline-block' : 'none';
+
+  const selectedSector = filterEl ? filterEl.value : 'ALL';
+
+  // 1. BANNER DO GRANDE PRÊMIO MÓR ANUAL 5S
+  if (annualBanner) {
+    const stats = clientDepartmentEvolutionData.annualStats || [];
+    const leader = stats[0] || null;
+
+    annualBanner.innerHTML = `
+      <div style="background: linear-gradient(135deg, rgba(245, 158, 11, 0.25), rgba(217, 119, 6, 0.25)); border: 2px solid #f59e0b; padding: 1.1rem 1.4rem; border-radius: 14px; box-shadow: 0 0 25px rgba(245, 158, 11, 0.35);">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.75rem;">
+          <div>
+            <div style="font-size:0.78rem; font-weight:800; color:#fde047; text-transform:uppercase; letter-spacing:0.06em;">
+              👑 GRANDE PRÊMIO MÓR DE CAMPEÃO ANUAL 5S (${clientDepartmentEvolutionData.currentYear || new Date().getFullYear()})
+            </div>
+            <div style="font-size:1.4rem; font-weight:800; color:#ffffff; margin-top:0.25rem; text-shadow:0 0 12px rgba(253,224,71,0.5);">
+              ${leader ? `🏆 Líder Atual do Ano: <strong>Setor ${leader.sector.toUpperCase()}</strong>` : '🏆 Em Competição Anual por Todos os Departamentos'}
+            </div>
+            <div style="font-size:0.85rem; color:#e2e8f0; margin-top:0.35rem;">
+              ${leader ? `Média de Conformidade Acumulada: <strong>${leader.annualAvgCompliancePct}%</strong> (${leader.monthlyWinsCount || 0} Meses Vencidos com Prêmio)` : 'O departamento que mantiver a maior média mensal ao longo do ano conquista o Grande Prêmio Mór em Dinheiro!'}
+            </div>
+          </div>
+          <div style="background:rgba(0,0,0,0.3); border:1px solid #f59e0b; padding:0.6rem 1rem; border-radius:10px; text-align:center;">
+            <div style="font-size:0.72rem; color:#fde047; font-weight:800;">META MENSAL SETORIAL</div>
+            <div style="font-size:1.25rem; font-weight:800; color:#ffffff;">≥ 90% (4.5 Pts)</div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  // 2. CÁLCULO E RENDERIZAÇÃO DOS CARDS POR DEPARTAMENTO
+  const sectorsToRender = selectedSector === 'ALL' ? IMPAKTTO_SECTORS : [selectedSector];
+  let html = '';
+
+  for (const sector of sectorsToRender) {
+    // Calcular médias do setor a partir do quadro da fábrica
+    let totalPts = 0;
+    let count = 0;
+
+    Object.entries(clientFactoryBoard).forEach(([key, cell]) => {
+      if (key.startsWith(sector)) {
+        const summary = getBoardCellSummary(key);
+        if (summary.voteCount > 0) {
+          totalPts += summary.avgPoints;
+          count += 1;
+        }
+      }
+    });
+
+    const avgPts = count > 0 ? (totalPts / count) : 3.0;
+    const compliancePct = Math.round((avgPts / 3.0) * 100 * 10) / 10;
+    const hitMeta = (compliancePct >= 90.0);
+
+    // Buscar histórico de fechamentos deste setor
+    const sectorClosures = (clientDepartmentEvolutionData.closures || []).filter(c => c.sector === sector);
+
+    const badgeStyle = hitMeta
+      ? 'background:rgba(16,185,129,0.25); border:1px solid #10b981; color:#34d399;'
+      : 'background:rgba(245,158,11,0.2); border:1px solid #f59e0b; color:#fde047;';
+
+    const badgeText = hitMeta
+      ? '🏆 META ≥90% ATINGIDA - PREMIAÇÃO CONQUISTADA!'
+      : '🟡 EM EVOLUÇÃO SETORIAL';
+
+    html += `
+      <div style="background:rgba(30,41,59,0.8); backdrop-filter:blur(10px); border:1px solid ${hitMeta ? 'rgba(16,185,129,0.4)' : 'rgba(255,255,255,0.1)'}; border-radius:14px; padding:1.15rem; box-shadow:0 6px 20px rgba(0,0,0,0.3);">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.85rem; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:0.6rem;">
+          <h4 style="margin:0; font-size:1.15rem; color:#ffffff; font-family:Outfit, sans-serif;">
+            📍 Setor ${sector}
+          </h4>
+          <span style="font-size:0.75rem; font-weight:800; padding:0.3rem 0.65rem; border-radius:10px; ${badgeStyle}">
+            ${badgeText}
+          </span>
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem; margin-bottom:1rem;">
+          <div style="background:rgba(0,0,0,0.25); padding:0.75rem; border-radius:10px; text-align:center; border:1px solid rgba(255,255,255,0.05);">
+            <span style="font-size:0.72rem; color:#9ca3af; font-weight:700; display:block;">ÍNDICE DO DEPARTAMENTO</span>
+            <span style="font-size:1.5rem; font-weight:800; color:${hitMeta ? '#34d399' : '#fde047'}; font-family:Outfit, sans-serif;">
+              ${compliancePct}%
+            </span>
+          </div>
+
+          <div style="background:rgba(0,0,0,0.25); padding:0.75rem; border-radius:10px; text-align:center; border:1px solid rgba(255,255,255,0.05);">
+            <span style="font-size:0.72rem; color:#9ca3af; font-weight:700; display:block;">MÉDIA DE PONTOS (1 a 3)</span>
+            <span style="font-size:1.5rem; font-weight:800; color:#ffffff; font-family:Outfit, sans-serif;">
+              ${Math.round(avgPts * 10) / 10} / 3.0
+            </span>
+          </div>
+        </div>
+
+        <!-- PROGRESSO DE CONFORMIDADE DO DEPARTAMENTO -->
+        <div style="margin-bottom:1rem;">
+          <div style="display:flex; justify-content:space-between; font-size:0.75rem; color:#9ca3af; margin-bottom:0.25rem;">
+            <span>Progresso Rumo à Meta (90%):</span>
+            <strong style="color:#ffffff;">${compliancePct}% / 90%</strong>
+          </div>
+          <div style="height:10px; background:rgba(255,255,255,0.1); border-radius:6px; overflow:hidden;">
+            <div style="height:100%; width:${Math.min(100, compliancePct)}%; background:${hitMeta ? 'linear-gradient(90deg, #10b981, #34d399)' : 'linear-gradient(90deg, #f59e0b, #fde047)'}; border-radius:6px; transition:width 0.5s ease;"></div>
+          </div>
+        </div>
+
+        <!-- HISTÓRICO DE AUDITORIAS MENSAIS REGISTRADAS -->
+        <div style="background:rgba(0,0,0,0.2); padding:0.65rem 0.85rem; border-radius:8px; font-size:0.78rem;">
+          <strong style="color:var(--accent-cyan); display:block; margin-bottom:0.35rem;">📜 Histórico de Fechamentos Mensais:</strong>
+          ${sectorClosures.length > 0 ? sectorClosures.slice(0, 3).map(c => `
+            <div style="display:flex; justify-content:space-between; padding:0.25rem 0; border-bottom:1px solid rgba(255,255,255,0.05); color:#e2e8f0;">
+              <span>Mês ${c.month}/${c.year}: <strong>${c.monthlyCompliancePct}%</strong></span>
+              <span>${c.wonAward ? '🏆 Vencedor do Prêmio!' : (c.hitMeta ? '✅ Meta Atingida' : '🟡 Em Evolução')}</span>
+            </div>
+          `).join('') : '<div style="color:#9ca3af; font-style:italic;">Aguardando 1º fechamento no último dia útil do mês.</div>'}
+        </div>
+      </div>
+    `;
+  }
+
+  container.innerHTML = html;
+}
+
+// MODAL E EXECUÇÃO DO FECHAMENTO MENSAAL DE AUDITORIA (ÚLTIMO DIA ÚTIL DO MÊS)
+window.triggerMonthlyClosingModal = async function() {
+  const isSenior = currentUser && (currentUser.role === 'administrador' || currentUser.level === 'senior');
+  if (!isSenior) {
+    alert('Apenas a Gerência & Diretoria (Nível 3) podem realizar o fechamento de auditoria mensal.');
+    return;
+  }
+
+  const now = new Date();
+  const currentMonth = now.getMonth() + 1;
+  const currentYear = now.getFullYear();
+
+  const confirmRun = confirm(
+    `📅 FECHAMENTO DE AUDITORIA MENSAL (${currentMonth}/${currentYear})\n\n` +
+    `Você está prestes a realizar o Fechamento Oficial do Mês (${currentMonth}/${currentYear}) para a IMPAK TTO!\n\n` +
+    `Isso irá:\n` +
+    `1. Auditar os índices de todos os 5 Departamentos.\n` +
+    `2. Validar os setores que atingiram a Meta ≥90%.\n` +
+    `3. Proclamar o(s) vencedor(es) do Prêmio em Dinheiro do mês.\n` +
+    `4. Acumular o resultado para o Grande Prêmio Mór Anual.\n\n` +
+    `Deseja confirmar o fechamento oficial agora?`
+  );
+
+  if (!confirmRun) return;
+
+  try {
+    const res = await apiFetch('/department-evolution', {
+      method: 'POST',
+      body: { year: currentYear, month: currentMonth, notes: 'Fechamento do Último Dia Útil do Mês' }
+    });
+
+    if (res && res.ok) {
+      alert(`🎉 FECHAMENTO MENSAL REALIZADO COM SUCESSO!\n\nOs índices de todos os departamentos foram consolidados no Neon Postgres e os prêmios gravados no histórico!`);
+      await loadDepartmentEvolutionData();
+      renderDepartmentEvolution();
+      await refreshAllFromServer();
+    }
+  } catch (err) {
+    alert('Não foi possível realizar o fechamento mensal: ' + err.message);
+  }
+};

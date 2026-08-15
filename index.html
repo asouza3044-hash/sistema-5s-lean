@@ -318,6 +318,37 @@
         <!-- CONTAINER DO PROGRAMA DE PREMIAÇÃO MENSAL EM DINHEIRO (CONFIDENCIAL GRUPO 2 E 3) -->
         <div id="monthly-reward-badge"></div>
 
+        <!-- PAINEL DA EVOLUÇÃO DOS DEPARTAMENTOS & GRANDE PRÊMIO MÓR ANUAL 5S -->
+        <div id="card-department-evolution" style="margin-top: 1.25rem; background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(245, 158, 11, 0.4); border-radius: 14px; padding: 1.2rem; box-shadow: 0 8px 25px rgba(0,0,0,0.4);">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:0.75rem; margin-bottom:1rem;">
+            <div>
+              <h3 style="margin:0; font-size:1.2rem; color:#f59e0b; font-family:Outfit, sans-serif;">
+                🏆 Painel da Evolução dos Departamentos & Premiação 5S
+              </h3>
+              <span style="font-size:0.78rem; color:#9ca3af;">Acompanhamento Semanal, Fechamento Mensal no Último Dia Útil e Grande Prêmio Mór do Ano</span>
+            </div>
+            <div style="display:flex; gap:0.5rem; align-items:center;">
+              <select id="evolution-sector-filter" class="form-control" onchange="renderDepartmentEvolution()" style="width:auto; font-size:0.8rem; padding:0.35rem 0.65rem;">
+                <option value="ALL">📍 Todos os 5 Departamentos</option>
+                <option value="Usinagem">📍 Setor Usinagem</option>
+                <option value="Holter">📍 Setor Holter</option>
+                <option value="Armários">📍 Setor Armários</option>
+                <option value="Portas / Cortinas">📍 Setor Portas / Cortinas</option>
+                <option value="Acabamento">📍 Setor Acabamento</option>
+              </select>
+              <button id="btn-trigger-monthly-closing" class="btn btn-primary" onclick="triggerMonthlyClosingModal()" style="display:none; padding:0.45rem 0.85rem; font-size:0.78rem; font-weight:800; background:linear-gradient(135deg, #f59e0b, #d97706); border-radius:8px;">
+                📅 Fechamento Mensal (Grupo 3)
+              </button>
+            </div>
+          </div>
+
+          <!-- BANNER DO GRANDE PRÊMIO MÓR ANUAL DE CAMPEÃO 5S -->
+          <div id="annual-grand-prize-banner" style="margin-bottom:1rem;"></div>
+
+          <!-- CARDS DOS DEPARTAMENTOS -->
+          <div id="department-evolution-cards-container" class="grid-2col" style="gap:1rem;"></div>
+        </div>
+
       </div>
 
       <!-- CARD 2: QUADRO DIGITAL "COMO ESTÁ NOSSA ÁREA?" (INDIVIDUAL POR SETOR E CONSOLIDADO NA TV) -->
