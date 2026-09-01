@@ -475,17 +475,18 @@ function renderLevel1DirectVotingScreen() {
                   </span>
                 </div>
 
-                <!-- Input Nativo para Câmera (compatível com iPhone e Android) -->
+                <!-- Inputs Nativos para Câmera e Galeria (compatíveis com iPhone Safari e Android Chrome) -->
                 <input type="file" id="lvl1-photo-input-${s.key}" accept="image/*" capture="environment" style="position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); border:0; opacity:0;" onchange="handleLevel1PhotoUpload('${s.key}', event)">
+                <input type="file" id="lvl1-gallery-input-${s.key}" accept="image/*" style="position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); border:0; opacity:0;" onchange="handleLevel1PhotoUpload('${s.key}', event)">
 
                 <!-- Estado 1: Botão Nativo Label para Disparar Câmera no iOS/Android sem bloqueio -->
-                <div id="lvl1-photo-placeholder-${s.key}" style="display:${hasPhoto ? 'none' : 'block'};">
-                  <label for="lvl1-photo-input-${s.key}" style="width:100%; padding:0.85rem; background:linear-gradient(135deg, rgba(239,68,68,0.3), rgba(220,38,38,0.45)); border:2px solid #ef4444; border-radius:10px; color:#ffffff; font-size:0.92rem; font-weight:800; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:0.6rem; box-shadow:0 4px 15px rgba(239,68,68,0.35); touch-action:manipulation; -webkit-tap-highlight-color:transparent; text-align:center;">
-                    <span style="font-size:1.3rem;">📷</span> ABRIR CÂMERA &amp; TIRAR FOTO
+                <div id="lvl1-photo-placeholder-${s.key}" style="display:${hasPhoto ? 'none' : 'flex'}; flex-direction:column; gap:0.45rem;">
+                  <label for="lvl1-photo-input-${s.key}" style="width:100%; padding:0.9rem; background:linear-gradient(135deg, #ef4444, #dc2626); border:2px solid #f87171; border-radius:10px; color:#ffffff; font-size:0.95rem; font-weight:800; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:0.6rem; box-shadow:0 4px 15px rgba(239,68,68,0.4); touch-action:manipulation; text-align:center;">
+                    <span style="font-size:1.35rem;">📷</span> ABRIR CÂMERA &amp; TIRAR FOTO
                   </label>
-                  <div style="font-size:0.75rem; color:#e2e8f0; text-align:center; margin-top:0.45rem;">
-                    Toque no botão vermelho acima para acionar a câmera do iPhone/Android
-                  </div>
+                  <label for="lvl1-gallery-input-${s.key}" style="width:100%; padding:0.55rem; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.2); border-radius:8px; color:#e2e8f0; font-size:0.8rem; font-weight:600; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:0.4rem; text-align:center;">
+                    <span>🖼️</span> Ou escolher foto já tirada da Galeria
+                  </label>
                 </div>
 
                 <!-- Estado 2: Foto Anexada com Thumbnail, Confirmação Verde e Opções -->
@@ -498,7 +499,7 @@ function renderLevel1DirectVotingScreen() {
                     <div style="font-size:0.7rem; color:#d1d5db; margin-top:0.15rem;">Toque na miniatura para ampliar</div>
                     <div style="display:flex; gap:0.4rem; margin-top:0.35rem;">
                       <label for="lvl1-photo-input-${s.key}" style="padding:0.25rem 0.55rem; font-size:0.72rem; font-weight:700; background:rgba(255,255,255,0.15); border:1px solid rgba(255,255,255,0.3); border-radius:6px; color:#ffffff; cursor:pointer; display:inline-flex; align-items:center; gap:0.2rem;">
-                        🔄 Trocar
+                        🔄 Trocar Foto
                       </label>
                       <button type="button" onclick="removeLevel1Photo('${s.key}')" style="padding:0.25rem 0.55rem; font-size:0.72rem; font-weight:700; background:rgba(239,68,68,0.25); border:1px solid #ef4444; border-radius:6px; color:#fca5a5; cursor:pointer;">
                         🗑️ Remover
@@ -645,6 +646,21 @@ window.selectLevel1VoteOption = function(sensoKey, opt) {
   if (photoBox) {
     if (opt === 'ruim') {
       photoBox.style.display = 'block';
+      setTimeout(() => {
+        photoBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }, 80);
+
+      // Se ainda não tirou a foto, tenta disparar o seletor da câmera no próprio clique do botão Ruim
+      if (!level1Photos[sensoKey]) {
+        const camInp = document.getElementById(`lvl1-photo-input-${sensoKey}`);
+        if (camInp) {
+          try {
+            camInp.click();
+          } catch (e) {
+            console.warn('Auto-disparo bloqueado:', e);
+          }
+        }
+      }
     } else {
       photoBox.style.display = 'none';
     }
@@ -2656,3 +2672,21 @@ window.triggerMonthlyClosingModal = async function() {
     alert('Não foi possível realizar o fechamento mensal: ' + err.message);
   }
 };
+
+// ============================================================================
+// AUTO-ATUALIZAÇÃO DE VERSÃO NO CELULAR AO VOLTAR PRO APP (FURO DE CACHE)
+// ============================================================================
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') {
+    fetch('/index.html?t=' + Date.now(), { cache: 'no-store' })
+      .then(r => r.text())
+      .then(html => {
+        if (html.includes('v52.0') && !document.documentElement.innerHTML.includes('v52.0')) {
+          console.log('Nova versão v52.0 detectada no servidor! Recarregando...');
+          window.location.reload();
+        }
+      })
+      .catch(() => {});
+  }
+});
+
