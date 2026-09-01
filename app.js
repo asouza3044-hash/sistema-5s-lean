@@ -465,42 +465,42 @@ function renderLevel1DirectVotingScreen() {
               </div>
 
               <!-- CAMPO CONDICIONAL DE UPLOAD DE FOTO (ATIVADO APENAS QUANDO A NOTA FOR 'RUIM') -->
-              <div id="lvl1-photo-box-${s.key}" style="display:${selected === 'ruim' ? 'block' : 'none'}; margin-top:0.75rem; background:rgba(239,68,68,0.08); border:1.5px dashed rgba(239,68,68,0.45); border-radius:10px; padding:0.75rem;">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.45rem;">
-                  <span style="font-size:0.8rem; font-weight:700; color:#fca5a5;">
-                    📸 Foto de Justificativa da Não-Conformidade:
+              <div id="lvl1-photo-box-${s.key}" style="display:${selected === 'ruim' ? 'block' : 'none'}; margin-top:0.75rem; background:rgba(239,68,68,0.09); border:2px dashed #ef4444; border-radius:12px; padding:0.85rem;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.55rem;">
+                  <span style="font-size:0.82rem; font-weight:800; color:#fca5a5;">
+                    📸 Foto Obrigatória da Não-Conformidade:
                   </span>
-                  <span style="font-size:0.68rem; color:#ef4444; font-weight:800; background:rgba(239,68,68,0.2); padding:0.15rem 0.45rem; border-radius:4px; text-transform:uppercase;">
+                  <span style="font-size:0.68rem; color:#ffffff; font-weight:800; background:#ef4444; padding:0.18rem 0.5rem; border-radius:6px; text-transform:uppercase; letter-spacing:0.04em;">
                     Obrigatório
                   </span>
                 </div>
 
-                <!-- Input Mobile Nativo com Câmera Traseira (capture="environment") -->
-                <input type="file" id="lvl1-photo-input-${s.key}" accept="image/*" capture="environment" style="display:none;" onchange="handleLevel1PhotoUpload('${s.key}', event)">
+                <!-- Input Nativo para Câmera (compatível com iPhone e Android) -->
+                <input type="file" id="lvl1-photo-input-${s.key}" accept="image/*" capture="environment" style="position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); border:0; opacity:0;" onchange="handleLevel1PhotoUpload('${s.key}', event)">
 
-                <!-- Estado 1: Botão de Câmera (sem foto anexada) -->
+                <!-- Estado 1: Botão Nativo Label para Disparar Câmera no iOS/Android sem bloqueio -->
                 <div id="lvl1-photo-placeholder-${s.key}" style="display:${hasPhoto ? 'none' : 'block'};">
-                  <button type="button" onclick="document.getElementById('lvl1-photo-input-${s.key}').click()" style="width:100%; padding:0.75rem; background:rgba(239,68,68,0.18); border:1.5px solid #ef4444; border-radius:8px; color:#ffffff; font-size:0.85rem; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:0.5rem;">
-                    <span style="font-size:1.15rem;">📷</span> Abrir Câmera Traseira & Tirar Foto
-                  </button>
-                  <div style="font-size:0.72rem; color:#9ca3af; text-align:center; margin-top:0.35rem;">
-                    Tire uma foto nítida do ponto fora do padrão no setor
+                  <label for="lvl1-photo-input-${s.key}" style="width:100%; padding:0.85rem; background:linear-gradient(135deg, rgba(239,68,68,0.3), rgba(220,38,38,0.45)); border:2px solid #ef4444; border-radius:10px; color:#ffffff; font-size:0.92rem; font-weight:800; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:0.6rem; box-shadow:0 4px 15px rgba(239,68,68,0.35); touch-action:manipulation; -webkit-tap-highlight-color:transparent; text-align:center;">
+                    <span style="font-size:1.3rem;">📷</span> ABRIR CÂMERA &amp; TIRAR FOTO
+                  </label>
+                  <div style="font-size:0.75rem; color:#e2e8f0; text-align:center; margin-top:0.45rem;">
+                    Toque no botão vermelho acima para acionar a câmera do iPhone/Android
                   </div>
                 </div>
 
                 <!-- Estado 2: Foto Anexada com Thumbnail, Confirmação Verde e Opções -->
-                <div id="lvl1-photo-preview-${s.key}" style="display:${hasPhoto ? 'flex' : 'none'}; align-items:center; gap:0.75rem; background:rgba(16,185,129,0.12); border:1.5px solid #10b981; border-radius:8px; padding:0.55rem 0.7rem;">
-                  <img id="lvl1-photo-thumb-${s.key}" src="${level1Photos[s.key] || ''}" alt="Foto da Não-Conformidade" style="width:58px; height:58px; object-fit:cover; border-radius:6px; border:2px solid #10b981; cursor:pointer; flex-shrink:0;" onclick="openPhotoLightbox(this.src)" title="Toque para ampliar">
+                <div id="lvl1-photo-preview-${s.key}" style="display:${hasPhoto ? 'flex' : 'none'}; align-items:center; gap:0.75rem; background:rgba(16,185,129,0.15); border:1.5px solid #10b981; border-radius:10px; padding:0.6rem 0.75rem;">
+                  <img id="lvl1-photo-thumb-${s.key}" src="${level1Photos[s.key] || ''}" alt="Foto da Não-Conformidade" style="width:58px; height:58px; object-fit:cover; border-radius:8px; border:2px solid #10b981; cursor:pointer; flex-shrink:0;" onclick="openPhotoLightbox(this.src)" title="Toque para ampliar">
                   <div style="flex:1; min-width:0;">
-                    <div style="font-size:0.8rem; font-weight:800; color:#34d399; display:flex; align-items:center; gap:0.3rem;">
+                    <div style="font-size:0.82rem; font-weight:800; color:#34d399; display:flex; align-items:center; gap:0.3rem;">
                       <span>✅ Foto Anexada com Sucesso!</span>
                     </div>
                     <div style="font-size:0.7rem; color:#d1d5db; margin-top:0.15rem;">Toque na miniatura para ampliar</div>
                     <div style="display:flex; gap:0.4rem; margin-top:0.35rem;">
-                      <button type="button" onclick="document.getElementById('lvl1-photo-input-${s.key}').click()" style="padding:0.25rem 0.55rem; font-size:0.72rem; font-weight:700; background:rgba(255,255,255,0.12); border:1px solid rgba(255,255,255,0.25); border-radius:6px; color:#ffffff; cursor:pointer;">
-                        🔄 Trocar Foto
-                      </button>
-                      <button type="button" onclick="removeLevel1Photo('${s.key}')" style="padding:0.25rem 0.55rem; font-size:0.72rem; font-weight:700; background:rgba(239,68,68,0.2); border:1px solid #ef4444; border-radius:6px; color:#fca5a5; cursor:pointer;">
+                      <label for="lvl1-photo-input-${s.key}" style="padding:0.25rem 0.55rem; font-size:0.72rem; font-weight:700; background:rgba(255,255,255,0.15); border:1px solid rgba(255,255,255,0.3); border-radius:6px; color:#ffffff; cursor:pointer; display:inline-flex; align-items:center; gap:0.2rem;">
+                        🔄 Trocar
+                      </label>
+                      <button type="button" onclick="removeLevel1Photo('${s.key}')" style="padding:0.25rem 0.55rem; font-size:0.72rem; font-weight:700; background:rgba(239,68,68,0.25); border:1px solid #ef4444; border-radius:6px; color:#fca5a5; cursor:pointer;">
                         🗑️ Remover
                       </button>
                     </div>

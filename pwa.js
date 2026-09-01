@@ -117,8 +117,30 @@ function copyMobileUrl() {
   }
 }
 
+async function forceReloadNewVersion() {
+  try {
+    if ('caches' in window) {
+      const keys = await caches.keys();
+      await Promise.all(keys.map(k => caches.delete(k)));
+    }
+    if ('serviceWorker' in navigator) {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      for (const r of regs) {
+        await r.unregister();
+      }
+    }
+  } catch (e) {
+    console.warn('Erro ao limpar cache:', e);
+  }
+  // Força recarregamento com timestamp novo para furar cache do iPhone/Safari
+  const cleanUrl = window.location.origin + window.location.pathname;
+  window.location.href = cleanUrl + '?reload=' + Date.now();
+}
+
 // Disponibilizar no escopo global para onclicks
 window.triggerPwaInstall = triggerPwaInstall;
 window.openMobileAccessModal = openMobileAccessModal;
 window.closeMobileAccessModal = closeMobileAccessModal;
 window.copyMobileUrl = copyMobileUrl;
+window.forceReloadNewVersion = forceReloadNewVersion;
+

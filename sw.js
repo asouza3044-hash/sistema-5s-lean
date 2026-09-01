@@ -2,7 +2,7 @@
 // Service Worker - Portal 5S & Qualidade IMPAK TTO (PWA)
 // ============================================================================
 
-const CACHE_NAME = 'impaktto-5s-v1.0.2';
+const CACHE_NAME = 'impaktto-5s-v1.0.3';
 
 const STATIC_ASSETS = [
   '/',
