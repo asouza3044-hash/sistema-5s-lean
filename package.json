@@ -2,10 +2,12 @@
   "name": "sistema-5s-lean",
   "version": "1.0.0",
   "private": true,
-  "description": "Portal 5S IMPAK TTO - backend de Netlify Functions + Neon Postgres",
+  "description": "Portal 5S & Qualidade IMPAK TTO - Frontend + Netlify Functions + Neon Postgres",
   "scripts": {
-    "dev": "netlify dev",
-    "migrate": "node scripts/migrate-jsonblob-to-neon.mjs"
+    "dev": "node --env-file=.env dev-server.mjs",
+    "start": "node --env-file=.env dev-server.mjs",
+    "seed": "node --env-file=.env scripts/seed-official-users.mjs",
+    "migrate": "node --env-file=.env scripts/migrate-jsonblob-to-neon.mjs"
   },
   "dependencies": {
     "@neondatabase/serverless": "^0.10.4",

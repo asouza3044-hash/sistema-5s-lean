@@ -4,6 +4,19 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Qualidade e 5S - IMPAK TTO Plásticos de Engenharia</title>
+
+  <!-- PWA & Mobile Web App Settings -->
+  <meta name="theme-color" content="#0b0f19">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="5S IMPAK TTO">
+  <meta name="application-name" content="5S IMPAK TTO">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192x192.png">
+  <link rel="icon" type="image/png" sizes="96x96" href="icons/icon-96x96.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -13,10 +26,12 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
-  <!-- Local Styles com Cache Busting v49.0 -->
-  <link rel="stylesheet" href="styles.css?v=49.0">
+  <!-- Local Styles com Cache Busting v51.0 -->
+  <link rel="stylesheet" href="styles.css?v=51.0">
   <!-- JavaScript Principal Carregado no Head -->
-  <script src="app.js?v=49.0"></script>
+  <script src="app.js?v=51.0"></script>
+  <!-- PWA e Acesso Mobile -->
+  <script src="pwa.js?v=51.0" defer></script>
 </head>
 <body>
 
@@ -68,6 +83,16 @@
         <div style="text-align: center; margin-top: 0.5rem;">
           <button type="button" onclick="clearSystemSession()" style="background: none; border: none; color: var(--text-dim); font-size: 0.75rem; cursor: pointer; text-decoration: underline;">
             🔄 Limpar Cache / Resetar Sessão
+          </button>
+        </div>
+
+        <!-- PWA / MOBILE QUICK ACCESS NO LOGIN -->
+        <div style="margin-top: 1.1rem; padding-top: 0.9rem; border-top: 1px solid var(--border-color); display: flex; gap: 0.5rem; justify-content: center; flex-wrap: wrap;">
+          <button type="button" id="btn-pwa-install-login" class="btn btn-secondary" onclick="triggerPwaInstall()" style="display: none; padding: 0.45rem 0.85rem; font-size: 0.8rem; border-color: var(--accent-cyan); color: var(--accent-cyan); background: rgba(6, 182, 212, 0.1);">
+            📲 Instalar App 5S
+          </button>
+          <button type="button" class="btn btn-secondary" onclick="openMobileAccessModal()" style="padding: 0.45rem 0.85rem; font-size: 0.8rem; border-color: rgba(99, 102, 241, 0.4); background: rgba(99, 102, 241, 0.1);">
+            📱 Abrir no Celular
           </button>
         </div>
       </form>
@@ -144,6 +169,52 @@
     </div>
   </div>
 
+  <!-- MODAL DE ACESSO MOBILE / PWA COM QR CODE -->
+  <div id="modal-mobile-access" class="login-overlay" style="display: none; z-index: 10001;" onclick="closeMobileAccessModal(event)">
+    <div class="login-card" style="max-width: 440px; text-align: center;" onclick="event.stopPropagation()">
+      <div class="login-header">
+        <h2>📱 Acesso Rápido no Celular</h2>
+        <p>Abra o Portal 5S no celular e instale como App (PWA)</p>
+      </div>
+
+      <div style="background: rgba(255, 255, 255, 0.04); padding: 1rem; border-radius: var(--radius-md); margin-bottom: 1rem; border: 1px solid var(--border-color);">
+        <p style="font-size: 0.84rem; color: var(--text-muted); margin-bottom: 0.5rem;">
+          1. Conecte o celular no <strong>mesmo Wi-Fi</strong> deste computador.
+        </p>
+        <p style="font-size: 0.84rem; color: var(--text-muted); margin-bottom: 0.8rem;">
+          2. Aponte a câmera do celular para o QR Code abaixo:
+        </p>
+
+        <!-- QR CODE DINÂMICO -->
+        <div style="background: #ffffff; padding: 0.6rem; border-radius: 12px; display: inline-block; margin-bottom: 0.8rem; box-shadow: 0 4px 20px rgba(0,0,0,0.4);">
+          <img id="mobile-qr-code-img" src="" alt="QR Code para Celular" style="width: 190px; height: 190px; display: block; object-fit: contain;">
+        </div>
+
+        <div style="margin-top: 0.4rem;">
+          <label style="font-size: 0.76rem; color: var(--text-dim); display: block; margin-bottom: 0.35rem;">Ou acesse diretamente pelo link:</label>
+          <div style="display: flex; gap: 0.4rem;">
+            <input type="text" id="mobile-network-url" readonly class="form-control" style="font-size: 0.85rem; text-align: center; font-weight: 600; color: var(--accent-cyan);" value="http://172.20.10.2:8888">
+            <button type="button" class="btn btn-secondary" onclick="copyMobileUrl()" style="white-space: nowrap; padding: 0.4rem 0.75rem; font-size: 0.8rem;">
+              📋 Copiar
+            </button>
+          </div>
+          <span id="copy-feedback" style="display: none; color: var(--status-bom); font-size: 0.75rem; margin-top: 0.3rem;">✓ Link copiado para a área de transferência!</span>
+        </div>
+      </div>
+
+      <!-- INSTRUÇÕES DE INSTALAÇÃO PWA -->
+      <div style="text-align: left; background: rgba(99, 102, 241, 0.08); border: 1px solid var(--border-highlight); padding: 0.85rem; border-radius: var(--radius-md); margin-bottom: 1.1rem; font-size: 0.8rem; line-height: 1.5;">
+        <strong style="color: var(--accent-cyan); display: block; margin-bottom: 0.35rem;">📲 Como Usar em Tela Cheia (PWA):</strong>
+        <div style="margin-bottom: 0.35rem;">🤖 <strong>Android (Chrome):</strong> Toque em <strong>⋮</strong> e clique em <em>"Instalar aplicativo"</em> ou <em>"Adicionar à tela inicial"</em>.</div>
+        <div>🍎 <strong>iPhone (Safari):</strong> Toque no ícone Compartilhar (<span style="font-size: 0.95rem;">⎋</span>) e selecione <em>"Adicionar à Tela de Início"</em>.</div>
+      </div>
+
+      <button type="button" class="btn btn-secondary" onclick="closeMobileAccessModal()" style="width: 100%; padding: 0.7rem;">
+        Fechar
+      </button>
+    </div>
+  </div>
+
 
   <!-- APP HEADER (MARCA EXCLUSIVA IMPAK TTO CARREGADA APÓS O LOGIN) -->
   <header class="app-header">
@@ -157,6 +228,12 @@
 
     <!-- PAINEL DE SESSÃO DO USUÁRIO DA IMPAKTTO + BOTÃO DE TROCA DE SENHA -->
     <div class="user-session-bar" style="gap: 0.5rem; flex-wrap: wrap;">
+      <button id="btn-pwa-install-header" class="btn btn-secondary" onclick="triggerPwaInstall()" style="display: none; padding: 0.4rem 0.8rem; font-size: 0.78rem; border-color: var(--accent-cyan); color: var(--accent-cyan); background: rgba(6, 182, 212, 0.1);">
+        📲 Instalar App
+      </button>
+      <button class="btn btn-secondary" onclick="openMobileAccessModal()" style="padding: 0.4rem 0.8rem; font-size: 0.78rem; border-color: rgba(99, 102, 241, 0.4); background: rgba(99, 102, 241, 0.1);">
+        📱 Abrir no Celular
+      </button>
       <span id="logged-user-name" class="client-badge">👤 Logado</span>
       <button class="btn btn-secondary" onclick="openChangePasswordModal()" style="padding: 0.4rem 0.8rem; font-size: 0.78rem; background: rgba(99, 102, 241, 0.2); border-color: var(--primary);">
         🔑 Trocar Senha

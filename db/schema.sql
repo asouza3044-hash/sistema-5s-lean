@@ -33,6 +33,7 @@ CREATE TABLE IF NOT EXISTS factory_board_votes (
     score VARCHAR(20) NOT NULL,
     points INT NOT NULL,
     comment TEXT,
+    photo TEXT,
     voted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     -- Impede o mesmo usuário votar duas vezes na mesma célula no mesmo dia
     -- (substitui a flag local `5s_user_voted_*`, que era por aparelho, não por usuário).

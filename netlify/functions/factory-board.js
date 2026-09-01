@@ -22,7 +22,7 @@ exports.handler = async (event) => {
 
   if (event.httpMethod === 'GET') {
     const rows = await sql`
-      SELECT id, board_key, voter_username, voter_name, score, points, comment, voted_at
+      SELECT id, board_key, voter_username, voter_name, score, points, comment, photo, voted_at
       FROM factory_board_votes
       ORDER BY voted_at ASC
     `;
@@ -36,6 +36,7 @@ exports.handler = async (event) => {
         score: row.score,
         points: row.points,
         comment: row.comment,
+        photo: row.photo,
         timestamp: row.voted_at,
       });
     }
@@ -53,15 +54,15 @@ exports.handler = async (event) => {
     } catch (err) {
       return json(400, { error: 'JSON inválido' });
     }
-    const { boardKey, sector, senso, dayCode, score, points, comment } = body;
+    const { boardKey, sector, senso, dayCode, score, points, comment, photo } = body;
     if (!boardKey || !sector || !senso || !dayCode || !score) {
       return json(400, { error: 'Dados incompletos para registrar o voto' });
     }
 
     try {
       await sql`
-        INSERT INTO factory_board_votes (board_key, sector, senso, day_code, voter_username, voter_name, score, points, comment)
-        VALUES (${boardKey}, ${sector}, ${senso}, ${dayCode}, ${session.username}, ${session.name}, ${score}, ${points}, ${comment || null})
+        INSERT INTO factory_board_votes (board_key, sector, senso, day_code, voter_username, voter_name, score, points, comment, photo)
+        VALUES (${boardKey}, ${sector}, ${senso}, ${dayCode}, ${session.username}, ${session.name}, ${score}, ${points}, ${comment || null}, ${photo || null})
       `;
     } catch (err) {
       if (err && err.code === '23505') {

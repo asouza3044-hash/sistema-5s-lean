@@ -216,6 +216,8 @@ let modalSelectedScore = 'bom';
 // Nota selecionada para cada um dos 3 sensos obrigatórios do departamento-alvo do dia (fecha o
 // departamento inteiro de uma vez, não 1 senso solto). Chaves: seiri, seiton, seiso.
 let level1SelectedScores = { seiri: 'bom', seiton: 'bom', seiso: 'bom' };
+// Fotos de justificativa da não-conformidade anexadas para cada senso com nota 'ruim'
+let level1Photos = { seiri: null, seiton: null, seiso: null };
 
 // HELPER PARA CÁLCULO E CONVERSÃO DE MÉDIA DE VOTOS POR CÉLULA DO QUADRO (DIFERENCIA CÉLULAS PENDENTES DE CÉLULAS VOTADAS)
 // SEIKETSU/SHITSUKE NUNCA TÊM VOTO PRÓPRIO — SÃO A MÉDIA DOS 3 SENSOS OBRIGATÓRIOS DAQUELE SETOR NO DIA.
@@ -442,7 +444,7 @@ function renderLevel1DirectVotingScreen() {
       </div>
 
       <!-- 3 GRUPOS DE NOTA, 1 POR SENSO OBRIGATÓRIO — FECHA O SETOR INTEIRO NUMA SÓ TELA -->
-      <div style="display:flex; flex-direction:column; gap:0.85rem; margin-bottom:1.2rem;">
+      <div style="display:flex; flex-direction:column; gap:0.95rem; margin-bottom:1.2rem;">
         ${REQUIRED_SENSOS.map(s => {
           const selected = level1SelectedScores[s.key] || 'bom';
           const opts = [
@@ -450,15 +452,60 @@ function renderLevel1DirectVotingScreen() {
             { key: 'regular', label: '🟡 Regular', border: '#f59e0b', bg: 'rgba(245,158,11,0.3)' },
             { key: 'ruim', label: '🔴 Ruim', border: '#ef4444', bg: 'rgba(239,68,68,0.3)' },
           ];
+          const hasPhoto = !!level1Photos[s.key];
           return `
-            <div>
-              <div style="font-size:0.85rem; font-weight:800; color:#e2e8f0; margin-bottom:0.35rem;">${s.name}</div>
+            <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:12px; padding:0.75rem;">
+              <div style="font-size:0.85rem; font-weight:800; color:#e2e8f0; margin-bottom:0.45rem;">${s.name}</div>
               <div style="display:flex; gap:0.4rem;">
                 ${opts.map(o => `
                   <button type="button" id="lvl1-opt-${s.key}-${o.key}" onclick="selectLevel1VoteOption('${s.key}', '${o.key}')" style="flex:1; padding:0.65rem 0.4rem; font-size:0.85rem; font-weight:700; border-radius:10px; cursor:pointer; touch-action:manipulation; border:2px solid ${selected === o.key ? o.border : 'rgba(255,255,255,0.12)'}; background:${selected === o.key ? o.bg : 'rgba(255,255,255,0.04)'}; color:${selected === o.key ? '#ffffff' : '#9ca3af'};">
                     ${o.label}
                   </button>
                 `).join('')}
+              </div>
+
+              <!-- CAMPO CONDICIONAL DE UPLOAD DE FOTO (ATIVADO APENAS QUANDO A NOTA FOR 'RUIM') -->
+              <div id="lvl1-photo-box-${s.key}" style="display:${selected === 'ruim' ? 'block' : 'none'}; margin-top:0.75rem; background:rgba(239,68,68,0.08); border:1.5px dashed rgba(239,68,68,0.45); border-radius:10px; padding:0.75rem;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.45rem;">
+                  <span style="font-size:0.8rem; font-weight:700; color:#fca5a5;">
+                    📸 Foto de Justificativa da Não-Conformidade:
+                  </span>
+                  <span style="font-size:0.68rem; color:#ef4444; font-weight:800; background:rgba(239,68,68,0.2); padding:0.15rem 0.45rem; border-radius:4px; text-transform:uppercase;">
+                    Obrigatório
+                  </span>
+                </div>
+
+                <!-- Input Mobile Nativo com Câmera Traseira (capture="environment") -->
+                <input type="file" id="lvl1-photo-input-${s.key}" accept="image/*" capture="environment" style="display:none;" onchange="handleLevel1PhotoUpload('${s.key}', event)">
+
+                <!-- Estado 1: Botão de Câmera (sem foto anexada) -->
+                <div id="lvl1-photo-placeholder-${s.key}" style="display:${hasPhoto ? 'none' : 'block'};">
+                  <button type="button" onclick="document.getElementById('lvl1-photo-input-${s.key}').click()" style="width:100%; padding:0.75rem; background:rgba(239,68,68,0.18); border:1.5px solid #ef4444; border-radius:8px; color:#ffffff; font-size:0.85rem; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:0.5rem;">
+                    <span style="font-size:1.15rem;">📷</span> Abrir Câmera Traseira & Tirar Foto
+                  </button>
+                  <div style="font-size:0.72rem; color:#9ca3af; text-align:center; margin-top:0.35rem;">
+                    Tire uma foto nítida do ponto fora do padrão no setor
+                  </div>
+                </div>
+
+                <!-- Estado 2: Foto Anexada com Thumbnail, Confirmação Verde e Opções -->
+                <div id="lvl1-photo-preview-${s.key}" style="display:${hasPhoto ? 'flex' : 'none'}; align-items:center; gap:0.75rem; background:rgba(16,185,129,0.12); border:1.5px solid #10b981; border-radius:8px; padding:0.55rem 0.7rem;">
+                  <img id="lvl1-photo-thumb-${s.key}" src="${level1Photos[s.key] || ''}" alt="Foto da Não-Conformidade" style="width:58px; height:58px; object-fit:cover; border-radius:6px; border:2px solid #10b981; cursor:pointer; flex-shrink:0;" onclick="openPhotoLightbox(this.src)" title="Toque para ampliar">
+                  <div style="flex:1; min-width:0;">
+                    <div style="font-size:0.8rem; font-weight:800; color:#34d399; display:flex; align-items:center; gap:0.3rem;">
+                      <span>✅ Foto Anexada com Sucesso!</span>
+                    </div>
+                    <div style="font-size:0.7rem; color:#d1d5db; margin-top:0.15rem;">Toque na miniatura para ampliar</div>
+                    <div style="display:flex; gap:0.4rem; margin-top:0.35rem;">
+                      <button type="button" onclick="document.getElementById('lvl1-photo-input-${s.key}').click()" style="padding:0.25rem 0.55rem; font-size:0.72rem; font-weight:700; background:rgba(255,255,255,0.12); border:1px solid rgba(255,255,255,0.25); border-radius:6px; color:#ffffff; cursor:pointer;">
+                        🔄 Trocar Foto
+                      </button>
+                      <button type="button" onclick="removeLevel1Photo('${s.key}')" style="padding:0.25rem 0.55rem; font-size:0.72rem; font-weight:700; background:rgba(239,68,68,0.2); border:1px solid #ef4444; border-radius:6px; color:#fca5a5; cursor:pointer;">
+                        🗑️ Remover
+                      </button>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           `;
@@ -479,6 +526,96 @@ function renderLevel1DirectVotingScreen() {
     </div>
   `;
 }
+
+// Compressão client-side em canvas para salvar foto otimizada no Postgres
+function compressImageFile(file, maxWidth = 1024, quality = 0.75) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = reject;
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onerror = reject;
+      img.onload = () => {
+        let w = img.width;
+        let h = img.height;
+        if (w > maxWidth || h > maxWidth) {
+          if (w > h) {
+            h = Math.round((h * maxWidth) / w);
+            w = maxWidth;
+          } else {
+            w = Math.round((w * maxWidth) / h);
+            h = maxWidth;
+          }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+window.handleLevel1PhotoUpload = async function(sensoKey, event) {
+  const file = event.target.files && event.target.files[0];
+  if (!file) return;
+
+  try {
+    const compressed = await compressImageFile(file, 1024, 0.75);
+    level1Photos[sensoKey] = compressed;
+
+    const placeholder = document.getElementById(`lvl1-photo-placeholder-${sensoKey}`);
+    const preview = document.getElementById(`lvl1-photo-preview-${sensoKey}`);
+    const thumb = document.getElementById(`lvl1-photo-thumb-${sensoKey}`);
+
+    if (thumb) thumb.src = compressed;
+    if (placeholder) placeholder.style.display = 'none';
+    if (preview) preview.style.display = 'flex';
+  } catch (err) {
+    console.error('Erro ao processar foto:', err);
+    alert('Não foi possível processar a imagem da câmera. Tente novamente.');
+  }
+};
+
+window.removeLevel1Photo = function(sensoKey) {
+  level1Photos[sensoKey] = null;
+  const input = document.getElementById(`lvl1-photo-input-${sensoKey}`);
+  if (input) input.value = '';
+  const placeholder = document.getElementById(`lvl1-photo-placeholder-${sensoKey}`);
+  const preview = document.getElementById(`lvl1-photo-preview-${sensoKey}`);
+  if (placeholder) placeholder.style.display = 'block';
+  if (preview) preview.style.display = 'none';
+};
+
+window.openPhotoLightbox = function(photoUrl) {
+  let modal = document.getElementById('modal-photo-lightbox');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'modal-photo-lightbox';
+    modal.className = 'login-overlay';
+    modal.style.cssText = 'display:none; z-index:10002; background:rgba(0,0,0,0.88); backdrop-filter:blur(10px); cursor:pointer; padding:1rem;';
+    modal.onclick = () => { modal.style.display = 'none'; };
+    modal.innerHTML = `
+      <div style="max-width:92vw; max-height:92vh; position:relative; text-align:center;" onclick="event.stopPropagation()">
+        <div style="font-size:0.88rem; font-weight:700; color:#fca5a5; margin-bottom:0.5rem; text-align:left;">
+          📸 Foto de Justificativa da Não-Conformidade (5S)
+        </div>
+        <img id="lightbox-img" src="" style="max-width:100%; max-height:75vh; border-radius:12px; border:2px solid #ef4444; box-shadow:0 10px 40px rgba(0,0,0,0.9); object-fit:contain;">
+        <div style="margin-top:0.85rem; display:flex; justify-content:center;">
+          <button type="button" class="btn btn-secondary" onclick="document.getElementById('modal-photo-lightbox').style.display='none'" style="padding:0.6rem 1.4rem; font-size:0.9rem; font-weight:700;">✕ Fechar Imagem</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+  }
+  const img = document.getElementById('lightbox-img');
+  if (img) img.src = photoUrl;
+  modal.style.display = 'flex';
+};
 
 window.selectLevel1VoteOption = function(sensoKey, opt) {
   level1SelectedScores[sensoKey] = opt;
@@ -502,11 +639,19 @@ window.selectLevel1VoteOption = function(sensoKey, opt) {
       btn.style.color = '#9ca3af';
     }
   });
+
+  // Regra de Negócio: Exigência da foto ativada APENAS quando a nota for "Ruim"
+  const photoBox = document.getElementById(`lvl1-photo-box-${sensoKey}`);
+  if (photoBox) {
+    if (opt === 'ruim') {
+      photoBox.style.display = 'block';
+    } else {
+      photoBox.style.display = 'none';
+    }
+  }
 };
 
-// FECHA O SETOR INTEIRO DE UMA VEZ: 1 POST POR SENSO OBRIGATÓRIO (3 no total). Se algum já tinha
-// sido votado por este usuário hoje (ex: via modal de moderação), o 409 daquele é só ignorado — os
-// outros continuam sendo gravados normalmente.
+// FECHA O SETOR INTEIRO DE UMA VEZ: 1 POST POR SENSO OBRIGATÓRIO (3 no total).
 window.submitLevel1DirectVote = async function() {
   if (!currentUser) return;
 
@@ -517,6 +662,19 @@ window.submitLevel1DirectVote = async function() {
   const assignment = getRotationAssignment(currentUser, currentDayCode);
   const sectorName = assignment.targetSector;
 
+  // Validação: Exigência da foto ativada APENAS quando a nota for "Ruim"
+  for (const s of REQUIRED_SENSOS) {
+    const scoreChoice = level1SelectedScores[s.key] || 'bom';
+    if (scoreChoice === 'ruim' && !level1Photos[s.key]) {
+      alert(`⚠️ Atenção: você avaliou o senso "${s.name}" como RUIM.\n\nÉ obrigatório tirar e anexar a Foto de Justificativa da Não-Conformidade antes de fechar o setor.`);
+      const photoBox = document.getElementById(`lvl1-photo-box-${s.key}`);
+      if (photoBox) {
+        photoBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+      return;
+    }
+  }
+
   const commentInput = document.getElementById('lvl1-comment-input');
   const commentText = commentInput ? commentInput.value.trim() : '';
   const scorePts = { bom: 3, regular: 2, ruim: 1 };
@@ -526,12 +684,22 @@ window.submitLevel1DirectVote = async function() {
   for (const s of REQUIRED_SENSOS) {
     const scoreChoice = level1SelectedScores[s.key] || 'bom';
     const boardKey = `${sectorName}_${s.key}_${currentDayCode}`;
+    const photoData = scoreChoice === 'ruim' ? (level1Photos[s.key] || null) : null;
     try {
       await apiFetch('/factory-board', {
         method: 'POST',
-        body: { boardKey, sector: sectorName, senso: s.key, dayCode: currentDayCode, score: scoreChoice, points: scorePts[scoreChoice], comment: commentText }
+        body: {
+          boardKey,
+          sector: sectorName,
+          senso: s.key,
+          dayCode: currentDayCode,
+          score: scoreChoice,
+          points: scorePts[scoreChoice],
+          comment: commentText,
+          photo: photoData
+        }
       });
-      results.push(`${s.name.split('. ')[1] || s.name}: ${labelMap[scoreChoice]}`);
+      results.push(`${s.name.split('. ')[1] || s.name}: ${labelMap[scoreChoice]}${photoData ? ' 📸' : ''}`);
     } catch (err) {
       if (err.status !== 409) {
         alert(`Não foi possível registrar ${s.name}: ${err.message}`);
@@ -548,6 +716,7 @@ window.submitLevel1DirectVote = async function() {
 
   await refreshAllFromServer();
   level1SelectedScores = { seiri: 'bom', seiton: 'bom', seiso: 'bom' };
+  level1Photos = { seiri: null, seiton: null, seiso: null };
   renderLevel1DirectVotingScreen();
 };
 
@@ -572,9 +741,17 @@ window.openVoteChoiceModal = function(sectorName, boardKey, sensoName, day) {
   const votesHtml = summary.votes.length === 0
     ? `<p style="font-size:0.85rem; color:var(--text-dim); margin:0.5rem 0;">Nenhum voto registrado ainda nesta célula hoje.</p>`
     : summary.votes.map(v => `
-        <div style="display:flex; justify-content:space-between; align-items:center; gap:0.5rem; padding:0.4rem 0; border-bottom:1px solid rgba(255,255,255,0.06); font-size:0.8rem;">
-          <span>👤 <strong>${v.name}</strong>: ${scoreLabel[v.score] || v.score}${v.comment ? ` — <em>"${v.comment}"</em>` : ''}</span>
-          ${canModerate ? `<button type="button" class="btn btn-danger" style="padding:0.15rem 0.5rem; font-size:0.7rem; flex-shrink:0;" onclick="removeVoteFromModal(${v.id})">🗑️ Remover</button>` : ''}
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:0.5rem; padding:0.5rem 0; border-bottom:1px solid rgba(255,255,255,0.06); font-size:0.8rem;">
+          <div style="flex:1;">
+            <div>👤 <strong>${v.name}</strong>: ${scoreLabel[v.score] || v.score}${v.comment ? ` — <em>"${v.comment}"</em>` : ''}</div>
+            ${v.photo ? `
+              <div style="margin-top:0.4rem; display:flex; align-items:center; gap:0.45rem;">
+                <img src="${v.photo}" onclick="openPhotoLightbox(this.src)" style="width:48px; height:48px; object-fit:cover; border-radius:6px; border:2px solid #ef4444; cursor:pointer;" title="Clique para ampliar a foto da não-conformidade">
+                <span style="font-size:0.75rem; color:#f87171; cursor:pointer; font-weight:700;" onclick="openPhotoLightbox('${v.photo}')">📸 Foto da Não-Conformidade</span>
+              </div>
+            ` : ''}
+          </div>
+          ${canModerate ? `<button type="button" class="btn btn-danger" style="padding:0.2rem 0.55rem; font-size:0.72rem; flex-shrink:0;" onclick="removeVoteFromModal(${v.id})">🗑️ Remover</button>` : ''}
         </div>
       `).join('');
 
